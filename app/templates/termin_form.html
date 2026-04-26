@@ -1,10 +1,13 @@
 {% extends "base.html" %}
+{% import '_icons.html' as ico %}
 {% block title %}{% if termin %}Termin bearbeiten{% else %}Neuer Termin{% endif %} — Wahlkampf{% endblock %}
 {% block body %}
 <header>
   <h1>{% if termin %}Termin bearbeiten{% else %}Neuer Termin{% endif %}</h1>
   <nav class="nav">
-    <a href="/termine" class="btn btn-ghost">Zur Übersicht</a>
+    <a href="/termine" class="btn btn-ghost btn-ico" aria-label="Zur Übersicht">
+      {{ ico.svg_arrow_left() }}<span class="btn-text">Zur Übersicht</span>
+    </a>
   </nav>
 </header>
 
@@ -47,7 +50,9 @@
     <input id="bild" name="bild" type="file" accept="image/jpeg,image/png,image/webp">
 
     <p style="margin-top:1.25rem;">
-      <button type="submit" class="btn">Speichern</button>
+      <button type="submit" class="btn btn-ico" aria-label="Speichern">
+        {{ ico.svg_check() }}<span class="btn-text">Speichern</span>
+      </button>
     </p>
   </form>
 </div>

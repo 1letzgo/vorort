@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import '_icons.html' as ico %}
 {% block title %}Wahlkampf — Start{% endblock %}
 {% block body %}
 <header>
@@ -8,8 +9,12 @@
   <h2 style="margin-top:0;">Willkommen</h2>
   <p class="muted" style="margin-top:0;">Termine und Kalender für den Ortsverein.</p>
   <p style="margin: 1.25rem 0 0; display:flex; flex-wrap:wrap; gap:.75rem;">
-    <a class="btn" href="/login">Anmelden</a>
-    <a class="btn btn-ghost" href="/registrierung">Registrieren</a>
+    <a class="btn btn-ico" href="/login" aria-label="Anmelden">
+      {{ ico.svg_login() }}<span class="btn-text">Anmelden</span>
+    </a>
+    <a class="btn btn-ghost btn-ico" href="/registrierung" aria-label="Registrieren">
+      {{ ico.svg_user_plus() }}<span class="btn-text">Registrieren</span>
+    </a>
   </p>
 </div>
 {% endblock %}

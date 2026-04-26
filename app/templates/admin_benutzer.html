@@ -1,10 +1,13 @@
 {% extends "base.html" %}
+{% import '_icons.html' as ico %}
 {% block title %}Benutzer — Wahlkampf{% endblock %}
 {% block body %}
 <header>
   <h1>Benutzer</h1>
   <nav class="nav">
-    <a href="/termine" class="btn btn-ghost">Zur Übersicht</a>
+    <a href="/termine" class="btn btn-ghost btn-ico" aria-label="Zur Übersicht">
+      {{ ico.svg_arrow_left() }}<span class="btn-text">Zur Übersicht</span>
+    </a>
   </nav>
 </header>
 
@@ -44,21 +47,29 @@
           <div style="display:flex; flex-wrap:wrap; gap:.35rem; justify-content:flex-end;">
             {% if not u.is_approved %}
             <form method="post" action="/admin/benutzer/{{ u.id }}/freigeben" style="margin:0;">
-              <button type="submit" class="btn btn-sm">Freigeben</button>
+              <button type="submit" class="btn btn-sm btn-ico" aria-label="Nutzer {{ u.display_name or u.username }} freigeben">
+                {{ ico.svg_check() }}<span class="btn-text">Freigeben</span>
+              </button>
             </form>
             {% endif %}
             {% if not u.is_admin %}
             <form method="post" action="/admin/benutzer/{{ u.id }}/admin-ernennen" style="margin:0;">
-              <button type="submit" class="btn btn-ghost btn-sm">Admin</button>
+              <button type="submit" class="btn btn-ghost btn-sm btn-ico" aria-label="Nutzer {{ u.display_name or u.username }} zum Admin machen">
+                {{ ico.svg_user_plus() }}<span class="btn-text">Admin</span>
+              </button>
             </form>
             {% elif admin_count > 1 %}
             <form method="post" action="/admin/benutzer/{{ u.id }}/admin-entfernen" style="margin:0;">
-              <button type="submit" class="btn btn-ghost btn-sm">Kein Admin</button>
+              <button type="submit" class="btn btn-ghost btn-sm btn-ico" aria-label="Admin-Rechte von {{ u.display_name or u.username }} entfernen">
+                {{ ico.svg_minus_circle() }}<span class="btn-text">Kein Admin</span>
+              </button>
             </form>
             {% endif %}
             {% if u.id != user.id and (not u.is_admin or admin_count > 1) %}
             <form method="post" action="/admin/benutzer/{{ u.id }}/loeschen" style="margin:0;" onsubmit="return confirm('Diesen Nutzer wirklich löschen?');">
-              <button type="submit" class="btn btn-danger btn-sm">Löschen</button>
+              <button type="submit" class="btn btn-danger btn-sm btn-ico" aria-label="Nutzer {{ u.display_name or u.username }} löschen">
+                {{ ico.svg_trash() }}<span class="btn-text">Löschen</span>
+              </button>
             </form>
             {% endif %}
           </div>
