@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{% if termin %}Termin bearbeiten{% else %}Neuer Termin{% endif %} — Wahlkampf{% endblock %}
+{% block body %}
+<header>
+  <h1>{% if termin %}Termin bearbeiten{% else %}Neuer Termin{% endif %}</h1>
+  <nav class="nav">
+    <a href="/termine" class="btn btn-ghost">Zur Übersicht</a>
+  </nav>
+</header>
+
+<div class="card">
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="{% if termin %}/termine/{{ termin.id }}/bearbeiten{% else %}/termine/neu{% endif %}" enctype="multipart/form-data">
+    <label for="title">Titel</label>
+    <input id="title" name="title" type="text" required maxlength="200" value="{{ termin.title if termin else '' }}">
+
+    <label for="datum">Datum</label>
+    <input id="datum" name="datum" type="date" required value="{{ termin.starts_at.strftime('%Y-%m-%d') if termin else '' }}">
+
+    <div class="row2">
+      <div>
+        <label for="start_uhrzeit">Beginn (HH:MM)</label>
+        <input id="start_uhrzeit" name="start_uhrzeit" type="text" placeholder="09:30" required value="{{ termin.starts_at.strftime('%H:%M') if termin else '' }}">
+      </div>
+      <div>
+        <label for="end_uhrzeit">Ende (optional)</label>
+        <input id="end_uhrzeit" name="end_uhrzeit" type="text" placeholder="11:00" value="{% if termin and termin.ends_at %}{{ termin.ends_at.strftime('%H:%M') }}{% endif %}">
+      </div>
+    </div>
+
+    <label for="location">Ort</label>
+    <input id="location" name="location" type="text" maxlength="300" value="{{ termin.location if termin else '' }}">
+
+    <label for="description">Text / Beschreibung</label>
+    <textarea id="description" name="description">{{ termin.description if termin else '' }}</textarea>
+
+    {% if termin and termin.image_path %}
+    <p style="margin:.75rem 0 .35rem; font-size:.9rem;"><strong>Aktuelles Foto</strong></p>
+    <p style="margin:0 0 .5rem;"><img src="/media/{{ termin.image_path }}" alt="" style="max-width:200px; border-radius:8px; border:1px solid var(--border);"></p>
+    <label style="display:flex; align-items:center; gap:.5rem; font-weight:500;">
+      <input type="checkbox" name="bild_entfernen" value="1">
+      Foto entfernen
+    </label>
+    {% endif %}
+
+    <label for="bild">{% if termin %}Neues Foto (optional, ersetzt das alte){% else %}Foto (optional, JPEG/PNG/WebP, max. {{ max_mb }} MB){% endif %}</label>
+    <input id="bild" name="bild" type="file" accept="image/jpeg,image/png,image/webp">
+
+    <p style="margin-top:1.25rem;">
+      <button type="submit" class="btn">Speichern</button>
+    </p>
+  </form>
+</div>
+{% endblock %}

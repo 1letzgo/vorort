@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Registrieren — Wahlkampf{% endblock %}
+{% block body %}
+<header>
+  <h1>Wahlkampf</h1>
+</header>
+<div class="card" style="max-width: 400px; margin: 0 auto;">
+  <h2 style="margin-top:0;">Registrieren</h2>
+  <p class="muted" style="margin-top:0;">Name und Passwort — ein Administrator schaltet dich danach frei (keine E-Mail nötig).</p>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="/registrierung">
+    <label for="name">Name</label>
+    <input id="name" name="name" type="text" autocomplete="name" required maxlength="80" placeholder="Vor- und Nachname oder Kürzel">
+
+    <label for="password">Passwort</label>
+    <input id="password" name="password" type="password" autocomplete="new-password" required minlength="8">
+
+    <label for="password2">Passwort wiederholen</label>
+    <input id="password2" name="password2" type="password" autocomplete="new-password" required minlength="8">
+
+    <p style="margin-top:1.25rem;">
+      <button type="submit" class="btn">Registrieren</button>
+    </p>
+  </form>
+  <p class="muted" style="margin-bottom:0;">Schon freigeschaltet? <a href="/login">Zur Anmeldung</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Wahlkampf{% endblock %}</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #e8e4dc;
+      --card: #fff;
+      --text: #1a1a1a;
+      --muted: #5c5c5c;
+      --accent: #c41e3a;
+      --accent-dim: #9e1830;
+      --border: #e2ddd6;
+      --radius: 10px;
+      --shadow: 0 2px 12px rgba(0,0,0,.06);
+    }
+    * { box-sizing: border-box; }
+    html { color-scheme: light; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;
+    }
+    header h1 { font-size: 1.25rem; margin: 0; font-weight: 650; }
+    .header-leading {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex: 1;
+      min-width: min(100%, 12rem);
+    }
+    .header-leading .header-ics-btn { margin-left: auto; }
+    .nav { display: flex; gap: 1rem; align-items: center; font-size: .95rem; flex-wrap: wrap; justify-content: flex-end; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: .55rem 1rem;
+      border-radius: var(--radius);
+      background: var(--accent);
+      color: #fff !important;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      text-decoration: none !important;
+      font-size: .95rem;
+      font-family: inherit;
+      line-height: 1.5;
+      box-sizing: border-box;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .btn:hover { background: var(--accent-dim); }
+    .btn-sm { padding: .4rem .75rem; font-size: .875rem; }
+    .btn-xs {
+      padding: .2rem .45rem;
+      font-size: .72rem;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--accent) !important;
+      border: 1px solid var(--border);
+    }
+    .btn-danger {
+      background: #7a1e2e;
+    }
+    .btn-danger:hover { background: #5c1622; }
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .muted { color: var(--muted); font-size: .9rem; }
+    .error {
+      background: #fde8ec;
+      border: 1px solid #f3b8c4;
+      color: #7a1e2e;
+      padding: .75rem 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+    }
+    .info {
+      background: #e8f2ec;
+      border: 1px solid #a8d4b8;
+      color: #1e4d2e;
+      padding: .75rem 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+    }
+    label { display: block; font-weight: 600; margin: .75rem 0 .35rem; font-size: .9rem; }
+    input[type="text"], input[type="password"], input[type="date"], input[type="file"], textarea {
+      width: 100%;
+      padding: .55rem .65rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font: inherit;
+      background: #fff;
+      color: var(--text);
+    }
+    input[type="file"] { padding: .4rem; }
+    textarea { min-height: 100px; resize: vertical; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    @media (max-width: 520px) { .row2 { grid-template-columns: 1fr; } }
+    dialog.popup-dialog {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      max-width: min(100vw - 2rem, 480px);
+      box-shadow: 0 8px 32px rgba(0,0,0,.15);
+      background: var(--card);
+      color: var(--text);
+    }
+    dialog.popup-dialog::backdrop {
+      background: rgba(0,0,0,.35);
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="wrap">
+    {% block body %}{% endblock %}
+  </div>
+</body>
+</html>
