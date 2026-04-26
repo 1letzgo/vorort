@@ -49,25 +49,25 @@
     .wrap {
       max-width: 720px;
       margin: 0 auto;
-      padding-top: calc(1.25rem + constant(safe-area-inset-top));
-      padding-top: calc(1.25rem + env(safe-area-inset-top, 0px));
+      padding-top: 1.25rem;
       padding-right: max(1rem, env(safe-area-inset-right, 0px));
       padding-bottom: max(3rem, calc(1.25rem + env(safe-area-inset-bottom, 0px)));
       padding-left: max(1rem, env(safe-area-inset-left, 0px));
     }
     header {
       position: sticky;
-      top: constant(safe-area-inset-top);
-      top: env(safe-area-inset-top, 0px);
+      top: 0;
       z-index: 100;
       margin-left: calc(-1 * max(1rem, env(safe-area-inset-left, 0px)));
       margin-right: calc(-1 * max(1rem, env(safe-area-inset-right, 0px)));
       margin-bottom: 1.5rem;
-      padding: 0.65rem max(1rem, env(safe-area-inset-right, 0px)) 0.65rem max(1rem, env(safe-area-inset-left, 0px));
+      padding-right: max(1rem, env(safe-area-inset-right, 0px));
+      padding-bottom: 0.65rem;
+      padding-left: max(1rem, env(safe-area-inset-left, 0px));
+      padding-top: calc(0.65rem + constant(safe-area-inset-top));
+      padding-top: calc(0.65rem + env(safe-area-inset-top, 0px));
       background: var(--bg);
       box-shadow: 0 6px 14px rgba(0, 0, 0, 0.05);
-      -webkit-backface-visibility: hidden;
-      backface-visibility: hidden;
     }
     header h1 { font-size: 1.25rem; margin: 0; font-weight: 650; }
     .header-inner {
