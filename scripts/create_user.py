@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Legt einen Benutzer in der SQLite-Datenbank an. Nutzung nach dem ersten Start:
+"""Legt einen Benutzer an (z. B. Recovery). Normalerweise reicht die Registrierung:
+Der erste registrierte Nutzer wird automatisch Admin und freigeschaltet.
 
-    python scripts/create_user.py --username max --password geheim --display "Max M."
+    python scripts/create_user.py --username max --password geheim --display "Max M." [--admin]
 
 Setzt DATABASE_URL wie die App (Standard: ./wahlkampf.db im Projektroot).
 """
@@ -45,6 +46,7 @@ def main() -> None:
         if db.query(models.User).filter(models.User.username == u).first():
             print(f"Benutzer „{u}“ existiert bereits.", file=sys.stderr)
             sys.exit(1)
+        was_empty = db.query(models.User).count() == 0
         user = models.User(
             username=u,
             password_hash=hash_password(args.password),
@@ -54,6 +56,9 @@ def main() -> None:
         )
         db.add(user)
         db.commit()
+        if was_empty:
+            db.merge(models.AppSetting(key="founder_done", value="1"))
+            db.commit()
         role = "Admin" if args.admin else "Benutzer"
         print(f"Benutzer „{u}“ angelegt (id={user.id}, {role}).")
     finally:

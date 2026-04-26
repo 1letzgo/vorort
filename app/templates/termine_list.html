@@ -7,11 +7,10 @@
     <button type="button" class="btn header-ics-btn" id="ics-open">Abonnieren</button>
   </div>
   <nav class="nav">
-    {% if user.is_admin %}
-    <span class="muted"><strong>Admin</strong></span>
-    <a href="/admin/freigaben" class="btn btn-ghost">Freigaben{% if pending_count %} ({{ pending_count }}){% endif %}</a>
-    {% endif %}
     <a href="/termine/neu" class="btn">Neuer Termin</a>
+    {% if user.is_admin %}
+    <a href="/admin/benutzer" class="btn btn-admin">Admin{% if pending_count %} ({{ pending_count }}){% endif %}</a>
+    {% endif %}
     <a href="/logout" class="btn btn-ghost">Ausloggen</a>
   </nav>
 </header>

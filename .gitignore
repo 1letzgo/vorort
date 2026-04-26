@@ -4,5 +4,6 @@ __pycache__/
 venv/
 .env
 *.db
+wahlkampf.db
 uploads/
 .DS_Store

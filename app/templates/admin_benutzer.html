@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Benutzer — Wahlkampf{% endblock %}
+{% block body %}
+<header>
+  <h1>Benutzer</h1>
+  <nav class="nav">
+    <a href="/termine" class="btn btn-ghost">Zur Übersicht</a>
+  </nav>
+</header>
+
+<p class="muted" style="margin-top:0;">Alle Konten verwalten: freischalten, zum Administrator machen oder entfernen, löschen.</p>
+
+<div class="card" style="padding:0; overflow-x:auto;">
+  <table style="width:100%; min-width:520px; border-collapse:collapse; font-size:.9rem;">
+    <thead>
+      <tr style="background:var(--bg); text-align:left; border-bottom:1px solid var(--border);">
+        <th style="padding:.65rem .85rem;">Name</th>
+        <th style="padding:.65rem .85rem;">Status</th>
+        <th style="padding:.65rem .85rem;">Seit</th>
+        <th style="padding:.65rem .85rem; text-align:right;">Aktionen</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr style="border-bottom:1px solid var(--border); vertical-align:top;">
+        <td style="padding:.65rem .85rem;">
+          <strong>{{ u.display_name or u.username }}</strong>
+          {% if u.username != u.display_name and u.display_name %}
+          <br><span class="muted" style="font-size:.8rem;">{{ u.username }}</span>
+          {% endif %}
+        </td>
+        <td style="padding:.65rem .85rem;">
+          {% if u.is_approved %}
+          <span style="white-space:nowrap;">Freigegeben</span>
+          {% else %}
+          <span style="white-space:nowrap; color:var(--accent-dim); font-weight:600;">Ausstehend</span>
+          {% endif %}
+          {% if u.is_admin %}
+          <br><span class="muted" style="font-size:.8rem;">Administrator</span>
+          {% endif %}
+        </td>
+        <td style="padding:.65rem .85rem;" class="muted">{{ u.created_at.strftime('%d.%m.%Y') }}</td>
+        <td style="padding:.5rem .85rem; text-align:right;">
+          <div style="display:flex; flex-wrap:wrap; gap:.35rem; justify-content:flex-end;">
+            {% if not u.is_approved %}
+            <form method="post" action="/admin/benutzer/{{ u.id }}/freigeben" style="margin:0;">
+              <button type="submit" class="btn btn-sm">Freigeben</button>
+            </form>
+            {% endif %}
+            {% if not u.is_admin %}
+            <form method="post" action="/admin/benutzer/{{ u.id }}/admin-ernennen" style="margin:0;">
+              <button type="submit" class="btn btn-ghost btn-sm">Admin</button>
+            </form>
+            {% elif admin_count > 1 %}
+            <form method="post" action="/admin/benutzer/{{ u.id }}/admin-entfernen" style="margin:0;">
+              <button type="submit" class="btn btn-ghost btn-sm">Kein Admin</button>
+            </form>
+            {% endif %}
+            {% if u.id != user.id and (not u.is_admin or admin_count > 1) %}
+            <form method="post" action="/admin/benutzer/{{ u.id }}/loeschen" style="margin:0;" onsubmit="return confirm('Diesen Nutzer wirklich löschen?');">
+              <button type="submit" class="btn btn-danger btn-sm">Löschen</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

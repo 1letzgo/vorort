@@ -25,3 +25,18 @@ def run_sqlite_migrations(engine: Engine) -> None:
                     "ALTER TABLE users ADD COLUMN is_approved INTEGER NOT NULL DEFAULT 1"
                 ),
             )
+
+    if insp.has_table("app_settings") and insp.has_table("users"):
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO app_settings (key, value)
+                    SELECT 'founder_done', '1'
+                    WHERE (SELECT COUNT(*) FROM users) > 0
+                    AND NOT EXISTS (
+                        SELECT 1 FROM app_settings WHERE key = 'founder_done'
+                    )
+                    """
+                ),
+            )

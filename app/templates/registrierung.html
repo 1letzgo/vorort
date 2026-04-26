@@ -6,11 +6,15 @@
 </header>
 <div class="card" style="max-width: 400px; margin: 0 auto;">
   <h2 style="margin-top:0;">Registrieren</h2>
-  <p class="muted" style="margin-top:0;">Name und Passwort — ein Administrator schaltet dich danach frei (keine E-Mail nötig).</p>
+  <p class="muted" style="margin-top:0;"><strong>Name</strong> ist dein Anzeigename (z. B. bei Terminen). <strong>Benutzername</strong> nutzt du nur zum Anmelden — ohne Leerzeichen. Keine E-Mail nötig. <strong>Der erste Nutzer</strong> wird automatisch freigeschaltet und Administrator.</p>
   {% if error %}<div class="error">{{ error }}</div>{% endif %}
   <form method="post" action="/registrierung">
     <label for="name">Name</label>
-    <input id="name" name="name" type="text" autocomplete="name" required maxlength="80" placeholder="Vor- und Nachname oder Kürzel">
+    <input id="name" name="name" type="text" autocomplete="name" required maxlength="120" placeholder="z. B. Max Mustermann" value="{{ name_value }}">
+
+    <label for="benutzername">Benutzername</label>
+    <input id="benutzername" name="benutzername" type="text" autocomplete="username" required maxlength="80" placeholder="z. B. max.mustermann" value="{{ username_value }}">
+    <p class="muted" style="margin:.25rem 0 0; font-size:.85rem;">Nur Buchstaben, Ziffern, Punkt, Unterstrich, Bindestrich.</p>
 
     <label for="password">Passwort</label>
     <input id="password" name="password" type="password" autocomplete="new-password" required minlength="8">
@@ -22,6 +26,6 @@
       <button type="submit" class="btn">Registrieren</button>
     </p>
   </form>
-  <p class="muted" style="margin-bottom:0;">Schon freigeschaltet? <a href="/login">Zur Anmeldung</a></p>
+  <p class="muted" style="margin-bottom:0;">Schon freigeschaltet? <a href="/login">Zur Anmeldung</a> (mit Benutzername)</p>
 </div>
 {% endblock %}

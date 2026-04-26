@@ -12,6 +12,7 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
+from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -37,6 +38,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_IMAGE = {"image/jpeg", "image/png", "image/webp"}
 EXT_MAP = {".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp"}
+USERNAME_PATTERN = re.compile(r"^[\w.-]+$", re.UNICODE)
 
 
 @asynccontextmanager
@@ -113,7 +115,12 @@ def login_form(request: Request):
     info = None
     if request.query_params.get("pending") == "1":
         info = "Dein Konto ist noch nicht freigegeben. Bitte warte auf einen Administrator."
-    if request.query_params.get("registered") == "1":
+    if request.query_params.get("registered") == "first":
+        info = (
+            "Als erster Nutzer bist du automatisch Administrator und freigeschaltet — "
+            "du kannst dich jetzt anmelden."
+        )
+    elif request.query_params.get("registered") == "1":
         info = (
             "Registrierung gespeichert. Sobald ein Administrator dich freischaltet, "
             "kannst du dich anmelden."
@@ -132,7 +139,12 @@ def login_submit(
     username: Annotated[str, Form()],
     password: Annotated[str, Form()],
 ):
-    user = db.query(models.User).filter(models.User.username == username.strip()).first()
+    uname = username.strip()
+    user = (
+        db.query(models.User)
+        .filter(func.lower(models.User.username) == uname.lower())
+        .first()
+    )
     if not user or not verify_password(password, user.password_hash):
         return templates.TemplateResponse(
             request,
@@ -141,14 +153,30 @@ def login_submit(
             status_code=401,
         )
     if not user.is_approved:
-        return templates.TemplateResponse(
-            request,
-            "login.html",
-            {
-                "error": None,
-                "info": "Dein Konto ist noch nicht freigegeben. Bitte warte auf einen Administrator.",
-            },
+        # Kein aktiver Administrator → Notfall: einloggender Nutzer wird freigeschaltet
+        # und Admin (z. B. nach fehlerhaftem Gründer-Flag oder leerer Verwaltung).
+        has_active_admin = (
+            db.query(models.User)
+            .filter(
+                models.User.is_admin.is_(True),
+                models.User.is_approved.is_(True),
+            )
+            .first()
         )
+        if not has_active_admin:
+            user.is_approved = True
+            user.is_admin = True
+            db.merge(models.AppSetting(key="founder_done", value="1"))
+            db.commit()
+        else:
+            return templates.TemplateResponse(
+                request,
+                "login.html",
+                {
+                    "error": None,
+                    "info": "Dein Konto ist noch nicht freigegeben. Bitte warte auf einen Administrator.",
+                },
+            )
     request.session["user_id"] = user.id
     return RedirectResponse("/termine", status_code=302)
 
@@ -158,7 +186,11 @@ def registrierung_form(request: Request):
     return templates.TemplateResponse(
         request,
         "registrierung.html",
-        {"error": None},
+        {
+            "error": None,
+            "name_value": "",
+            "username_value": "",
+        },
     )
 
 
@@ -167,89 +199,176 @@ def registrierung_submit(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
     name: Annotated[str, Form()],
+    benutzername: Annotated[str, Form()],
     password: Annotated[str, Form()],
     password2: Annotated[str, Form()],
 ):
-    username = " ".join(name.split()).strip()
+    display_name = " ".join(name.split()).strip()
+    username_raw = benutzername.strip()
+    username_norm = username_raw.lower()
     err = None
-    if len(username) < 2:
+    if len(display_name) < 2:
         err = "Bitte einen Namen mit mindestens 2 Zeichen angeben."
-    elif len(username) > 80:
-        err = "Name ist zu lang (max. 80 Zeichen)."
+    elif len(display_name) > 120:
+        err = "Name ist zu lang (max. 120 Zeichen)."
+    elif len(username_norm) < 2:
+        err = "Benutzername mindestens 2 Zeichen."
+    elif len(username_norm) > 80:
+        err = "Benutzername ist zu lang (max. 80 Zeichen)."
+    elif not USERNAME_PATTERN.match(username_norm):
+        err = (
+            "Benutzername: nur Buchstaben, Ziffern, Punkt, Unterstrich und Bindestrich "
+            "(keine Leerzeichen)."
+        )
     elif len(password) < 8:
         err = "Passwort mindestens 8 Zeichen."
     elif password != password2:
         err = "Passwörter stimmen nicht überein."
+    ctx = {
+        "name_value": display_name,
+        "username_value": username_raw,
+    }
     if err:
         return templates.TemplateResponse(
             request,
             "registrierung.html",
-            {"error": err},
+            {"error": err, **ctx},
             status_code=400,
         )
-    if db.query(models.User).filter(models.User.username == username).first():
+    if (
+        db.query(models.User)
+        .filter(func.lower(models.User.username) == username_norm)
+        .first()
+    ):
         return templates.TemplateResponse(
             request,
             "registrierung.html",
-            {"error": "Dieser Name ist bereits registriert."},
+            {
+                "error": "Dieser Benutzername ist bereits vergeben.",
+                **ctx,
+            },
             status_code=400,
         )
+    # Gründer:in = erste erfolgreiche Registrierung (persistiertes Flag, nicht nur User-Zähler)
+    founder_done = db.get(models.AppSetting, "founder_done")
+    is_first_user = founder_done is None
     db.add(
         models.User(
-            username=username,
+            username=username_norm,
             password_hash=hash_password(password),
-            display_name=username,
-            is_approved=False,
-            is_admin=False,
+            display_name=display_name,
+            is_approved=is_first_user,
+            is_admin=is_first_user,
         ),
     )
+    if is_first_user:
+        db.merge(models.AppSetting(key="founder_done", value="1"))
     db.commit()
+    if is_first_user:
+        return RedirectResponse("/login?registered=first", status_code=302)
     return RedirectResponse("/login?registered=1", status_code=302)
 
 
-@app.get("/admin/freigaben", response_class=HTMLResponse)
-def admin_freigaben(
+def _admin_count(db: Session) -> int:
+    return (
+        db.query(models.User).filter(models.User.is_admin.is_(True)).count()
+    )
+
+
+@app.get("/admin/benutzer", response_class=HTMLResponse)
+def admin_benutzer_list(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
     user: AdminUser,
 ):
-    pending = (
-        db.query(models.User)
-        .filter(models.User.is_approved.is_(False))
-        .order_by(models.User.created_at.asc())
-        .all()
+    all_users = (
+        db.query(models.User).order_by(models.User.created_at.asc()).all()
     )
     return templates.TemplateResponse(
         request,
-        "admin_freigaben.html",
-        {"user": user, "pending": pending},
+        "admin_benutzer.html",
+        {
+            "user": user,
+            "users": all_users,
+            "admin_count": _admin_count(db),
+        },
     )
 
 
-@app.post("/admin/freigaben/{user_id}/genehmigen")
-def admin_freigabe_genehmigen(
-    user_id: int,
+@app.post("/admin/benutzer/{uid}/freigeben")
+def admin_benutzer_freigeben(
+    uid: int,
     db: Annotated[Session, Depends(get_db)],
     _: AdminUser,
 ):
-    u = db.get(models.User, user_id)
+    u = db.get(models.User, uid)
     if u and not u.is_approved:
         u.is_approved = True
         db.commit()
-    return RedirectResponse("/admin/freigaben", status_code=302)
+    return RedirectResponse("/admin/benutzer", status_code=302)
 
 
-@app.post("/admin/freigaben/{user_id}/ablehnen")
-def admin_freigabe_ablehnen(
-    user_id: int,
+@app.post("/admin/benutzer/{uid}/admin-ernennen")
+def admin_benutzer_admin_ernennen(
+    uid: int,
     db: Annotated[Session, Depends(get_db)],
     _: AdminUser,
 ):
-    u = db.get(models.User, user_id)
-    if u and not u.is_approved and not u.is_admin:
-        db.delete(u)
+    u = db.get(models.User, uid)
+    if u:
+        u.is_admin = True
+        u.is_approved = True
         db.commit()
-    return RedirectResponse("/admin/freigaben", status_code=302)
+    return RedirectResponse("/admin/benutzer", status_code=302)
+
+
+@app.post("/admin/benutzer/{uid}/admin-entfernen")
+def admin_benutzer_admin_entfernen(
+    uid: int,
+    db: Annotated[Session, Depends(get_db)],
+    _: AdminUser,
+):
+    u = db.get(models.User, uid)
+    if not u or not u.is_admin:
+        return RedirectResponse("/admin/benutzer", status_code=302)
+    if _admin_count(db) <= 1:
+        raise HTTPException(
+            status_code=403,
+            detail="Es muss mindestens ein Administrator bleiben.",
+        )
+    u.is_admin = False
+    db.commit()
+    return RedirectResponse("/admin/benutzer", status_code=302)
+
+
+@app.post("/admin/benutzer/{uid}/loeschen")
+def admin_benutzer_loeschen(
+    uid: int,
+    db: Annotated[Session, Depends(get_db)],
+    actor: AdminUser,
+):
+    if uid == actor.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Du kannst dein eigenes Konto nicht löschen.",
+        )
+    u = db.get(models.User, uid)
+    if not u:
+        return RedirectResponse("/admin/benutzer", status_code=302)
+    if u.is_admin and _admin_count(db) <= 1:
+        raise HTTPException(
+            status_code=403,
+            detail="Der letzte Administrator kann nicht gelöscht werden.",
+        )
+    db.query(models.Termin).filter(
+        models.Termin.created_by_id == uid,
+    ).update(
+        {models.Termin.created_by_id: actor.id},
+        synchronize_session=False,
+    )
+    db.delete(u)
+    db.commit()
+    return RedirectResponse("/admin/benutzer", status_code=302)
 
 
 @app.get("/logout")
