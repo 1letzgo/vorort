@@ -287,7 +287,9 @@
       padding: .55rem .65rem;
       border: 1px solid var(--border);
       border-radius: 8px;
-      font: inherit;
+      font-family: inherit;
+      /* mind. 16px: verhindert Auto-Zoom bei Fokus auf iOS */
+      font-size: max(16px, 1rem);
       background: #fff;
       color: var(--text);
     }

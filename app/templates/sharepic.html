@@ -29,7 +29,8 @@
   .sharepic-fields label { margin-top: 0.5rem; }
   .sharepic-fields textarea {
     min-height: 4.5rem;
-    font-size: 0.9rem;
+    /* mind. 16px: sonst zoomt iOS Safari beim Fokus ins Feld */
+    font-size: 16px;
     line-height: 1.35;
   }
   .sharepic-fields textarea#sharepic-text2 { min-height: 3.2rem; }
@@ -63,15 +64,14 @@
       <input type="range" id="sharepic-zoom" min="100" max="300" value="100" step="5" aria-valuemin="100" aria-valuemax="300" aria-valuenow="100">
       <button type="button" class="btn btn-ghost btn-sm" id="sharepic-reset-view" aria-label="Bildausschnitt zurücksetzen">Zurücksetzen</button>
     </div>
-    <p class="sharepic-hint">100&nbsp;% = volle Fläche. <strong>Desktop:</strong> ziehen, Mausrad oder Regler. <strong>Mobil:</strong> zwei Finger zum Zoomen, ein Finger zum Verschieben.</p>
     <label for="sharepic-text1">Text Banner (max. 1 Zeile)</label>
     <textarea id="sharepic-text1" name="text1" rows="2" maxlength="500" placeholder="z. B. Olaf in WST"></textarea>
     <label for="sharepic-text2">Text unten (max. 2 Zeilen)</label>
     <textarea id="sharepic-text2" name="text2" rows="2" maxlength="500" placeholder="z. B. Termin und Ort"></textarea>
     <p class="sharepic-hint">Open Sans, 50 px, fett — Zeilenumbruch mit Enter oder automatisch.</p>
     <p style="margin-top:1rem; display:flex; flex-wrap:wrap; gap:.5rem;">
-      <button type="button" class="btn btn-sm btn-ico btn-with-label" id="sharepic-download" aria-label="PNG herunterladen">
-        {{ ico.svg_check() }}<span class="btn-text">PNG herunterladen</span>
+      <button type="button" class="btn btn-sm btn-ico btn-with-label" id="sharepic-download" aria-label="JPG herunterladen">
+        {{ ico.svg_check() }}<span class="btn-text">JPG herunterladen</span>
       </button>
     </p>
   </div>
@@ -481,10 +481,10 @@
       if (!blob) return;
       var a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "sharepic-wahlkampf.png";
+      a.download = "sharepic-wahlkampf.jpg";
       a.click();
       URL.revokeObjectURL(a.href);
-    }, "image/png");
+    }, "image/jpeg", 0.92);
   });
 
   document.fonts.load(FONT).then(scheduleRedraw).catch(scheduleRedraw);
