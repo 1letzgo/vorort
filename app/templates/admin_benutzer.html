@@ -1,17 +1,9 @@
 {% extends "base.html" %}
+{% from '_ui_macros.html' import app_header %}
 {% import '_icons.html' as ico %}
 {% block title %}Benutzer — Wahlkampf{% endblock %}
 {% block body %}
-<header>
-  <div class="header-inner">
-    <h1>Benutzer</h1>
-    <nav class="header-toolbar">
-      <a href="/termine" class="btn btn-ghost btn-ico" aria-label="Zur Übersicht">
-        {{ ico.svg_arrow_left() }}<span class="btn-text">Zur Übersicht</span>
-      </a>
-    </nav>
-  </div>
-</header>
+{{ app_header('Benutzer') }}
 
 <p class="muted" style="margin-top:0;">Alle Konten verwalten: freischalten, zum Administrator machen oder entfernen, löschen.</p>
 

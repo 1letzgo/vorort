@@ -5,7 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#e8e4dc" media="(prefers-color-scheme: light)">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Wahlkampf">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  {% set path_prefix = request.scope.get('root_path') or '' %}
+  <link rel="manifest" href="{{ path_prefix }}/manifest.webmanifest">
+  <link rel="icon" href="{{ path_prefix }}/static/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ path_prefix }}/static/icon.svg">
   <title>{% block title %}Wahlkampf{% endblock %}</title>
   <style>
     :root {
@@ -184,6 +190,55 @@
       padding: 1.25rem;
       margin-bottom: 1rem;
     }
+    .card.card--flush {
+      padding: 0;
+      overflow: hidden;
+    }
+    .page-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+    .menu-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .menu-list a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.9rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text) !important;
+      font-weight: 600;
+      text-decoration: none !important;
+    }
+    .menu-list a:hover {
+      background: var(--bg);
+    }
+    .menu-list li:last-child a {
+      border-bottom: none;
+    }
+    .menu-list a.menu-link-logout {
+      color: var(--accent) !important;
+    }
+    .menu-pending-badge {
+      flex-shrink: 0;
+      min-width: 1.15rem;
+      height: 1.15rem;
+      padding: 0 0.35rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      line-height: 1.15rem;
+      text-align: center;
+      background: #c41e3a;
+      color: #fff;
+      border-radius: 999px;
+    }
     .muted { color: var(--muted); font-size: .9rem; }
     .error {
       background: #fde8ec;
@@ -258,6 +313,30 @@
       } else {
         init();
       }
+    })();
+  </script>
+  <script>
+    (function () {
+      var inPwa =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (typeof navigator !== "undefined" && navigator.standalone === true);
+      if (!inPwa) return;
+      document.addEventListener(
+        "click",
+        function (e) {
+          var a = e.target.closest("a");
+          if (!a || a.hasAttribute("download")) return;
+          var tgt = (a.getAttribute("target") || "").toLowerCase();
+          if (tgt !== "_blank") return;
+          try {
+            if (new URL(a.href, location.href).origin === location.origin) {
+              e.preventDefault();
+              location.href = a.href;
+            }
+          } catch (err) {}
+        },
+        true
+      );
     })();
   </script>
 </body>

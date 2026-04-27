@@ -1,29 +1,18 @@
 {% extends "base.html" %}
+{% from '_ui_macros.html' import app_header %}
 {% import '_icons.html' as ico %}
-{% block title %}Wahlkampf{% endblock %}
+{% block title %}Termine — Wahlkampf{% endblock %}
 {% block body %}
-<header>
-  <div class="header-inner">
-    <h1>Wahlkampf</h1>
-    <nav class="header-toolbar" aria-label="Hauptaktionen">
-      <button type="button" class="btn btn-ico" id="ics-open" aria-label="Kalender abonnieren">
-        {{ ico.svg_calendar() }}<span class="btn-text">Abonnieren</span>
-      </button>
-      <a href="/termine/neu" class="btn btn-ico" aria-label="Neuer Termin">
-        {{ ico.svg_plus() }}<span class="btn-text">Neuer Termin</span>
-      </a>
-      {% if user.is_admin %}
-      <a href="/admin/benutzer" class="btn btn-admin btn-ico" aria-label="{% if pending_count %}Administration, {{ pending_count }} ausstehend{% else %}Administration{% endif %}">
-        {{ ico.svg_cog() }}<span class="btn-text">Admin{% if pending_count %} ({{ pending_count }}){% endif %}</span>
-        {% if pending_count %}<span class="btn-pending-badge" aria-hidden="true">{{ pending_count }}</span>{% endif %}
-      </a>
-      {% endif %}
-      <a href="/logout" class="btn btn-ghost btn-ico" aria-label="Ausloggen">
-        {{ ico.svg_logout() }}<span class="btn-text">Ausloggen</span>
-      </a>
-    </nav>
-  </div>
-</header>
+{{ app_header('Termine') }}
+
+<div class="page-toolbar" aria-label="Aktionen für Termine">
+  <button type="button" class="btn btn-ico" id="ics-open" aria-label="Kalender abonnieren">
+    {{ ico.svg_calendar() }}<span class="btn-text">Abonnieren</span>
+  </button>
+  <a href="/termine/neu" class="btn btn-ico" aria-label="Neuer Termin">
+    {{ ico.svg_plus() }}<span class="btn-text">Neuer Termin</span>
+  </a>
+</div>
 
 {% if feed_url.startswith('https://') %}
 {% set webcal_url = 'webcal://' ~ feed_url[8:] %}
@@ -42,7 +31,7 @@
       <a class="btn btn-sm btn-ico" href="{{ webcal_url }}" aria-label="In Apple Kalender abonnieren">
         {{ ico.svg_calendar() }}<span class="lbl-full">Apple Kalender (iPhone, iPad, Mac)</span><span class="lbl-short">Apple</span>
       </a>
-      <a class="btn btn-sm btn-ico" href="{{ google_cal_url }}" target="_blank" rel="noopener noreferrer" aria-label="In Google Kalender abonnieren">
+      <a class="btn btn-sm btn-ico" href="{{ google_cal_url }}" rel="noopener noreferrer" aria-label="In Google Kalender abonnieren">
         {{ ico.svg_calendar() }}<span class="lbl-full">Google Kalender (Android &amp; Web)</span><span class="lbl-short">Google</span>
       </a>
     </div>

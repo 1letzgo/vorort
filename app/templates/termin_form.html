@@ -1,17 +1,13 @@
 {% extends "base.html" %}
+{% from '_ui_macros.html' import app_header_toolbar %}
 {% import '_icons.html' as ico %}
 {% block title %}{% if termin %}Termin bearbeiten{% else %}Neuer Termin{% endif %} — Wahlkampf{% endblock %}
 {% block body %}
-<header>
-  <div class="header-inner">
-    <h1>{% if termin %}Termin bearbeiten{% else %}Neuer Termin{% endif %}</h1>
-    <nav class="header-toolbar">
-      <a href="/termine" class="btn btn-ghost btn-ico" aria-label="Zur Übersicht">
-        {{ ico.svg_arrow_left() }}<span class="btn-text">Zur Übersicht</span>
-      </a>
-    </nav>
-  </div>
-</header>
+{% call app_header_toolbar('Termin bearbeiten' if termin else 'Neuer Termin') %}
+  <a href="/termine" class="btn btn-ghost btn-ico" aria-label="Zur Terminliste">
+    {{ ico.svg_arrow_left() }}<span class="btn-text">Termine</span>
+  </a>
+{% endcall %}
 
 <div class="card">
   {% if error %}<div class="error">{{ error }}</div>{% endif %}

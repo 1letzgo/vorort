@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from '_ui_macros.html' import app_header %}
+{% block title %}Menü — Wahlkampf{% endblock %}
+{% block body %}
+{{ app_header('Menü', show_menu=False) }}
+
+<div class="card card--flush">
+  <ul class="menu-list" role="list">
+    <li><a href="/termine">Termine</a></li>
+    <li><a href="/plakate">Plakate</a></li>
+    {% if user.is_admin %}
+    <li>
+      <a href="/admin/benutzer">
+        <span>Administration</span>
+        {% if pending_count %}<span class="menu-pending-badge" aria-label="{{ pending_count }} ausstehend">{{ pending_count }}</span>{% endif %}
+      </a>
+    </li>
+    {% endif %}
+    <li><a href="/logout" class="menu-link-logout">Ausloggen</a></li>
+  </ul>
+</div>
+{% endblock %}

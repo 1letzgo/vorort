@@ -9,7 +9,7 @@ from typing import Annotated, Optional
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.exception_handlers import http_exception_handler
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from sqlalchemy import func
@@ -32,9 +32,11 @@ from app.ics_service import all_termine_for_feed, build_ics_calendar
 from app.settings_store import ensure_ics_token_for_ui, verify_ics_token
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_IMAGE = {"image/jpeg", "image/png", "image/webp"}
 EXT_MAP = {".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp"}
@@ -73,6 +75,46 @@ async def http_exc(request: Request, exc: HTTPException):
 
 
 app.mount("/media", StaticFiles(directory=str(UPLOAD_DIR)), name="media")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+def _app_path_prefix(request: Request) -> str:
+    """Pfad-Präfix hinter Reverse-Proxy (uvicorn --root-path) für PWA scope/start_url."""
+    return (request.scope.get("root_path") or "").rstrip("/")
+
+
+@app.get("/manifest.webmanifest", include_in_schema=False)
+def web_app_manifest(request: Request):
+    prefix = _app_path_prefix(request)
+    start_url = f"{prefix}/menu" if prefix else "/menu"
+    scope = f"{prefix}/" if prefix else "/"
+    icon_path = f"{prefix}/static/icon.svg" if prefix else "/static/icon.svg"
+    body = {
+        "name": "Wahlkampf",
+        "short_name": "Wahlkampf",
+        "description": "Termine, Menü und Organisation im Wahlkampf.",
+        "id": start_url,
+        "start_url": start_url,
+        "scope": scope,
+        "display": "standalone",
+        "display_override": ["standalone", "browser"],
+        "background_color": "#e8e4dc",
+        "theme_color": "#e8e4dc",
+        "icons": [
+            {
+                "src": icon_path,
+                "sizes": "any",
+                "type": "image/svg+xml",
+                "purpose": "any",
+            },
+        ],
+        "prefer_related_applications": False,
+    }
+    return JSONResponse(
+        content=body,
+        media_type="application/manifest+json",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 
 def _can_manage_termin(user: models.User, termin: models.Termin) -> bool:
@@ -103,10 +145,20 @@ def _safe_ext(filename: Optional[str], content_type: Optional[str]) -> str:
     return ""
 
 
+def _pending_approval_count(db: Session, user: models.User) -> int:
+    if not user.is_admin:
+        return 0
+    return (
+        db.query(models.User)
+        .filter(models.User.is_approved.is_(False))
+        .count()
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 def root(request: Request):
     if request.session.get("user_id"):
-        return RedirectResponse("/termine", status_code=302)
+        return RedirectResponse("/menu", status_code=302)
     return templates.TemplateResponse(request, "home.html", {})
 
 
@@ -178,7 +230,35 @@ def login_submit(
                 },
             )
     request.session["user_id"] = user.id
-    return RedirectResponse("/termine", status_code=302)
+    return RedirectResponse("/menu", status_code=302)
+
+
+@app.get("/menu", response_class=HTMLResponse)
+def app_menu(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    user: CurrentUser,
+):
+    return templates.TemplateResponse(
+        request,
+        "menu.html",
+        {
+            "user": user,
+            "pending_count": _pending_approval_count(db, user),
+        },
+    )
+
+
+@app.get("/plakate", response_class=HTMLResponse)
+def plakate_view(
+    request: Request,
+    user: CurrentUser,
+):
+    return templates.TemplateResponse(
+        request,
+        "plakate.html",
+        {"user": user},
+    )
 
 
 @app.get("/registrierung", response_class=HTMLResponse)
@@ -420,13 +500,6 @@ def termine_list(
     token = ensure_ics_token_for_ui(db, ICS_TOKEN)
     base = str(request.base_url).rstrip("/")
     feed_url = f"{base}/calendar.ics?t={token}"
-    pending_count = 0
-    if user.is_admin:
-        pending_count = (
-            db.query(models.User)
-            .filter(models.User.is_approved.is_(False))
-            .count()
-        )
     return templates.TemplateResponse(
         request,
         "termine_list.html",
@@ -434,7 +507,6 @@ def termine_list(
             "user": user,
             "termin_rows": termin_rows,
             "feed_url": feed_url,
-            "pending_count": pending_count,
         },
     )
 

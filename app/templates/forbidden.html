@@ -1,17 +1,8 @@
 {% extends "base.html" %}
-{% import '_icons.html' as ico %}
+{% from '_ui_macros.html' import app_header %}
 {% block title %}Keine Berechtigung — Wahlkampf{% endblock %}
 {% block body %}
-<header>
-  <div class="header-inner">
-    <h1>Zugriff verweigert</h1>
-    <nav class="header-toolbar">
-      <a href="/termine" class="btn btn-ghost btn-ico" aria-label="Zur Übersicht">
-        {{ ico.svg_arrow_left() }}<span class="btn-text">Zur Übersicht</span>
-      </a>
-    </nav>
-  </div>
-</header>
+{{ app_header('Zugriff verweigert') }}
 <div class="card">
   <p style="margin:0;">{{ message }}</p>
 </div>

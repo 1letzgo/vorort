@@ -1,0 +1,30 @@
+{% import '_icons.html' as ico %}
+
+{% macro app_header(title, show_menu=True) %}
+<header>
+  <div class="header-inner">
+    <h1>{{ title }}</h1>
+    {% if show_menu %}
+    <nav class="header-toolbar">
+      <a href="/menu" class="btn btn-ghost btn-ico" aria-label="Menü">
+        {{ ico.svg_menu() }}<span class="btn-text">Menü</span>
+      </a>
+    </nav>
+    {% endif %}
+  </div>
+</header>
+{% endmacro %}
+
+{% macro app_header_toolbar(title) %}
+<header>
+  <div class="header-inner">
+    <h1>{{ title }}</h1>
+    <nav class="header-toolbar">
+      {{ caller() }}
+      <a href="/menu" class="btn btn-ghost btn-ico" aria-label="Menü">
+        {{ ico.svg_menu() }}<span class="btn-text">Menü</span>
+      </a>
+    </nav>
+  </div>
+</header>
+{% endmacro %}

@@ -1,17 +1,13 @@
 {% extends "base.html" %}
+{% from '_ui_macros.html' import app_header_toolbar %}
 {% import '_icons.html' as ico %}
 {% block title %}Termin löschen — Wahlkampf{% endblock %}
 {% block body %}
-<header>
-  <div class="header-inner">
-    <h1>Termin löschen</h1>
-    <nav class="header-toolbar">
-      <a href="/termine" class="btn btn-ghost btn-ico" aria-label="Abbrechen">
-        {{ ico.svg_x() }}<span class="btn-text">Abbrechen</span>
-      </a>
-    </nav>
-  </div>
-</header>
+{% call app_header_toolbar('Termin löschen') %}
+  <a href="/termine" class="btn btn-ghost btn-ico" aria-label="Abbrechen">
+    {{ ico.svg_x() }}<span class="btn-text">Abbrechen</span>
+  </a>
+{% endcall %}
 
 <div class="card">
   <p style="margin-top:0;">Soll dieser Termin <strong>unwiderruflich</strong> gelöscht werden?</p>
