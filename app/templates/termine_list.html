@@ -17,10 +17,10 @@
         <h2 style="margin:0; font-size:1.15rem; flex:1; min-width:8rem;"><a href="/termine/{{ t.id }}">{{ t.title }}</a></h2>
         {% if row.kann_verwalten %}
         <div style="display:flex; gap:.5rem; flex-shrink:0; align-items:center;">
-          <a href="/termine/{{ t.id }}/bearbeiten" class="btn btn-ghost btn-xs btn-ico" aria-label="Termin bearbeiten">
+          <a href="/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Termin bearbeiten">
             {{ ico.svg_pencil() }}<span class="btn-text">Bearbeiten</span>
           </a>
-          <a href="/termine/{{ t.id }}/loeschen" class="btn btn-danger btn-xs btn-ico" aria-label="Termin löschen">
+          <a href="/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="Termin löschen">
             {{ ico.svg_trash() }}<span class="btn-text">Löschen</span>
           </a>
         </div>
@@ -49,13 +49,13 @@
           {% if row.ich_teilnehme %}
           <span class="muted" style="font-size:.85rem;">Du nimmst teil.</span>
           <form method="post" action="/termine/{{ t.id }}/abmelden" style="margin:0;">
-            <button type="submit" class="btn btn-ghost btn-sm btn-ico" aria-label="Vom Termin abmelden">
+            <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Vom Termin abmelden">
               {{ ico.svg_logout() }}<span class="btn-text">Vom Termin abmelden</span>
             </button>
           </form>
           {% else %}
           <form method="post" action="/termine/{{ t.id }}/teilnehmen" style="margin:0;">
-            <button type="submit" class="btn btn-sm btn-ico" aria-label="Am Termin teilnehmen">
+            <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Am Termin teilnehmen">
               {{ ico.svg_check() }}<span class="btn-text">Teilnehmen</span>
             </button>
           </form>
@@ -108,10 +108,10 @@
 {{ app_header('Termine') }}
 
 <div class="page-toolbar" aria-label="Aktionen für Termine">
-  <button type="button" class="btn btn-ico" id="ics-open" aria-label="Kalender abonnieren">
+  <button type="button" class="btn btn-sm btn-ico btn-with-label" id="ics-open" aria-label="Kalender abonnieren">
     {{ ico.svg_calendar() }}<span class="btn-text">Abonnieren</span>
   </button>
-  <a href="/termine/neu" class="btn btn-ico" aria-label="Neuer Termin">
+  <a href="/termine/neu" class="btn btn-sm btn-ico btn-with-label" aria-label="Neuer Termin">
     {{ ico.svg_plus() }}<span class="btn-text">Neuer Termin</span>
   </a>
 </div>
@@ -130,10 +130,10 @@
     <h2 id="ics-dialog-title" style="margin-top:0; font-size:1.05rem;">Kalender abonnieren</h2>
     <p class="muted" style="margin-top:0;">Mit einem Tipp direkt abonnieren — oder den Link unten kopieren und manuell einfügen.</p>
     <div style="display:flex; flex-wrap:wrap; gap:.5rem; margin:.85rem 0 0;">
-      <a class="btn btn-sm btn-ico" href="{{ webcal_url }}" aria-label="In Apple Kalender abonnieren">
+      <a class="btn btn-sm btn-ico btn-with-label" href="{{ webcal_url }}" aria-label="In Apple Kalender abonnieren">
         {{ ico.svg_calendar() }}<span class="lbl-full">Apple Kalender (iPhone, iPad, Mac)</span><span class="lbl-short">Apple</span>
       </a>
-      <a class="btn btn-sm btn-ico" href="{{ google_cal_url }}" rel="noopener noreferrer" aria-label="In Google Kalender abonnieren">
+      <a class="btn btn-sm btn-ico btn-with-label" href="{{ google_cal_url }}" rel="noopener noreferrer" aria-label="In Google Kalender abonnieren">
         {{ ico.svg_calendar() }}<span class="lbl-full">Google Kalender (Android &amp; Web)</span><span class="lbl-short">Google</span>
       </a>
     </div>
@@ -141,7 +141,7 @@
     <p style="margin:.85rem 0 0; font-size:.85rem;"><strong>Link zum Kopieren</strong></p>
     <p style="word-break: break-all; font-size: .85rem; background: var(--bg); padding: .65rem; border-radius: 8px; border: 1px solid var(--border); margin:0;"><code>{{ feed_url }}</code></p>
     <p style="margin:1rem 0 0; display:flex; gap:.5rem; justify-content:flex-end;">
-      <button type="submit" class="btn btn-ghost btn-sm btn-ico" aria-label="Dialog schließen">
+      <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Dialog schließen">
         {{ ico.svg_x() }}<span class="btn-text">Schließen</span>
       </button>
     </p>

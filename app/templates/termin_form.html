@@ -4,7 +4,7 @@
 {% block title %}{% if termin %}Termin bearbeiten{% else %}Neuer Termin{% endif %} — Wahlkampf{% endblock %}
 {% block body %}
 {% call app_header_toolbar('Termin bearbeiten' if termin else 'Neuer Termin') %}
-  <a href="{% if termin %}/termine/{{ termin.id }}{% else %}/termine{% endif %}" class="btn btn-ghost btn-ico" aria-label="{% if termin %}Zur Terminansicht{% else %}Zur Terminliste{% endif %}">
+  <a href="{% if termin %}/termine/{{ termin.id }}{% else %}/termine{% endif %}" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="{% if termin %}Zur Terminansicht{% else %}Zur Terminliste{% endif %}">
     {{ ico.svg_arrow_left() }}<span class="btn-text">{% if termin %}Zurück{% else %}Termine{% endif %}</span>
   </a>
 {% endcall %}
@@ -54,7 +54,7 @@
     <input id="bild" name="bild" type="file" accept="image/jpeg,image/png,image/webp">
 
     <p style="margin-top:1.25rem;">
-      <button type="submit" class="btn btn-ico" aria-label="Speichern">
+      <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Speichern">
         {{ ico.svg_check() }}<span class="btn-text">Speichern</span>
       </button>
     </p>

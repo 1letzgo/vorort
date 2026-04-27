@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from '_ui_macros.html' import app_header %}
+{% import '_icons.html' as ico %}
 {% block title %}Plakate — Wahlkampf{% endblock %}
 {% block head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -15,7 +16,11 @@
     border-radius: 0;
     z-index: 1;
   }
-  .plakate-map-actions { margin: 0 0 1rem; }
+  .plakate-map-actions {
+    margin: 0;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
   .plakate-form .row-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: flex-end; margin-top: 1rem; }
   .plakate-coords { font-size: 0.85rem; color: var(--muted); margin: 0 0 0.75rem; }
   .plakate-table-wrap { overflow-x: auto; margin-top: 0.5rem; }
@@ -50,10 +55,12 @@
 {{ app_header('Plakate') }}
 
 <div class="card card--flush plakate-map-wrap">
+  <div class="plakate-map-actions">
+    <button type="button" class="btn btn-sm btn-ico btn-with-label" id="plakate-locate" aria-label="Mein Standort auf der Karte anzeigen">
+      {{ ico.svg_map_pin() }}<span class="btn-text">Mein Standort</span>
+    </button>
+  </div>
   <div id="plakate-map" role="application" aria-label="Karte Plakat-Standorte"></div>
-</div>
-<div class="plakate-map-actions">
-  <button type="button" class="btn btn-sm" id="plakate-locate">Mein Standort</button>
 </div>
 
 <dialog id="plakate-add-dialog" class="popup-dialog" aria-labelledby="plakate-dialog-title" aria-modal="true">
