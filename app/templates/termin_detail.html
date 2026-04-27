@@ -1,10 +1,12 @@
 {% extends "base.html" %}
-{% from '_ui_macros.html' import app_header_toolbar %}
+{% from '_ui_macros.html' import app_header %}
 {% import '_icons.html' as ico %}
 {% set t = row.termin %}
 {% block title %}{{ t.title }} — Termin — Wahlkampf{% endblock %}
 {% block body %}
-{% call app_header_toolbar(t.title) %}
+{{ app_header(t.title) }}
+
+<div class="page-toolbar" aria-label="Aktionen für diesen Termin">
   <a href="/termine" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Zur Terminliste">
     {{ ico.svg_arrow_left() }}<span class="btn-text">Termine</span>
   </a>
@@ -16,7 +18,7 @@
     {{ ico.svg_trash() }}<span class="btn-text">Löschen</span>
   </a>
   {% endif %}
-{% endcall %}
+</div>
 
 <article class="card">
   <div style="display:flex; gap:1rem; align-items:flex-start; flex-wrap:wrap;">

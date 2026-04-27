@@ -679,68 +679,6 @@ def termine_list(
     )
 
 
-@app.get("/termine/{termin_id}", response_class=HTMLResponse)
-def termin_detail(
-    termin_id: int,
-    request: Request,
-    db: Annotated[Session, Depends(get_db)],
-    user: CurrentUser,
-):
-    row = _termin_detail_row(db, user, termin_id)
-    if not row:
-        raise HTTPException(status_code=404, detail="Termin nicht gefunden")
-    termin_vergangen = row["termin"].starts_at < datetime.utcnow()
-    return templates.TemplateResponse(
-        request,
-        "termin_detail.html",
-        {
-            "user": user,
-            "row": row,
-            "termin_vergangen": termin_vergangen,
-        },
-    )
-
-
-@app.post("/termine/{termin_id}/teilnehmen")
-def termin_teilnehmen(
-    termin_id: int,
-    db: Annotated[Session, Depends(get_db)],
-    user: CurrentUser,
-):
-    t = db.get(models.Termin, termin_id)
-    if not t:
-        raise HTTPException(status_code=404, detail="Termin nicht gefunden")
-    exists = (
-        db.query(models.TerminTeilnahme)
-        .filter_by(termin_id=termin_id, user_id=user.id)
-        .first()
-    )
-    if not exists:
-        db.add(
-            models.TerminTeilnahme(termin_id=termin_id, user_id=user.id),
-        )
-        db.commit()
-    return RedirectResponse(f"/termine/{termin_id}", status_code=302)
-
-
-@app.post("/termine/{termin_id}/abmelden")
-@app.post("/termine/{termin_id}/absagen")
-def termin_abmelden(
-    termin_id: int,
-    db: Annotated[Session, Depends(get_db)],
-    user: CurrentUser,
-):
-    row = (
-        db.query(models.TerminTeilnahme)
-        .filter_by(termin_id=termin_id, user_id=user.id)
-        .first()
-    )
-    if row:
-        db.delete(row)
-        db.commit()
-    return RedirectResponse(f"/termine/{termin_id}", status_code=302)
-
-
 @app.get("/termine/neu", response_class=HTMLResponse)
 def termin_new_form(request: Request, user: CurrentUser):
     return templates.TemplateResponse(
@@ -830,6 +768,68 @@ async def termin_create(
 
     db.commit()
     return RedirectResponse(f"/termine/{t.id}", status_code=302)
+
+
+@app.get("/termine/{termin_id}", response_class=HTMLResponse)
+def termin_detail(
+    termin_id: int,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    user: CurrentUser,
+):
+    row = _termin_detail_row(db, user, termin_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Termin nicht gefunden")
+    termin_vergangen = row["termin"].starts_at < datetime.utcnow()
+    return templates.TemplateResponse(
+        request,
+        "termin_detail.html",
+        {
+            "user": user,
+            "row": row,
+            "termin_vergangen": termin_vergangen,
+        },
+    )
+
+
+@app.post("/termine/{termin_id}/teilnehmen")
+def termin_teilnehmen(
+    termin_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    user: CurrentUser,
+):
+    t = db.get(models.Termin, termin_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="Termin nicht gefunden")
+    exists = (
+        db.query(models.TerminTeilnahme)
+        .filter_by(termin_id=termin_id, user_id=user.id)
+        .first()
+    )
+    if not exists:
+        db.add(
+            models.TerminTeilnahme(termin_id=termin_id, user_id=user.id),
+        )
+        db.commit()
+    return RedirectResponse(f"/termine/{termin_id}", status_code=302)
+
+
+@app.post("/termine/{termin_id}/abmelden")
+@app.post("/termine/{termin_id}/absagen")
+def termin_abmelden(
+    termin_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    user: CurrentUser,
+):
+    row = (
+        db.query(models.TerminTeilnahme)
+        .filter_by(termin_id=termin_id, user_id=user.id)
+        .first()
+    )
+    if row:
+        db.delete(row)
+        db.commit()
+    return RedirectResponse(f"/termine/{termin_id}", status_code=302)
 
 
 @app.get("/termine/{termin_id}/bearbeiten", response_class=HTMLResponse)
