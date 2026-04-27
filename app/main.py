@@ -607,16 +607,6 @@ def logout(request: Request):
     return RedirectResponse("/login", status_code=302)
 
 
-def _termin_teilnehmer_display(t: models.Termin, internal_names: list[str]) -> list[dict]:
-    extern_keys = externe_teilnehmer_decode(t.externe_teilnehmer_json)
-    extern_names = externe_teilnehmer_labels(extern_keys)
-    items: list[dict] = [{"name": n, "extern": False} for n in internal_names]
-    for n in extern_names:
-        items.append({"name": n, "extern": True})
-    items.sort(key=lambda x: (x["name"].lower(), x["extern"]))
-    return items
-
-
 def _termin_row_from_instance(t: models.Termin, user: models.User) -> dict:
     names = sorted(
         {
@@ -627,11 +617,14 @@ def _termin_row_from_instance(t: models.Termin, user: models.User) -> dict:
     )
     ich = any(tn.user_id == user.id for tn in t.teilnahmen)
     kann = _can_manage_termin(user, t)
-    teilnehmer_display = _termin_teilnehmer_display(t, names)
+    extern_labels = externe_teilnehmer_labels(
+        externe_teilnehmer_decode(t.externe_teilnehmer_json),
+    )
+    teilnehmer_extern = sorted(extern_labels, key=str.lower)
     return {
         "termin": t,
         "teilnehmer": names,
-        "teilnehmer_display": teilnehmer_display,
+        "teilnehmer_extern": teilnehmer_extern,
         "ich_teilnehme": ich,
         "kann_verwalten": kann,
     }

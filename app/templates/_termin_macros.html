@@ -1,15 +1,22 @@
 {% macro teilnehmer_liste(row) %}
-        <p style="margin:0 0 .5rem; font-size:.9rem;">
-          <strong>Teilnehmer{% if row.teilnehmer_display|length %} ({{ row.teilnehmer_display|length }}){% endif %}:</strong>
-          {% if row.teilnehmer_display|length %}
-          <span>
-            {% for item in row.teilnehmer_display %}
-              {% if not loop.first %}, {% endif %}
-              {% if item.extern %}<strong>{{ item.name }}</strong>{% else %}{{ item.name }}{% endif %}
-            {% endfor %}
-          </span>
-          {% else %}
-          <span class="muted">noch niemand</span>
-          {% endif %}
+{%- set n = row.teilnehmer|length + row.teilnehmer_extern|length -%}
+        <p style="margin:0 0 .35rem; font-size:.9rem;">
+          <strong>Teilnehmer{% if n %} ({{ n }}){% endif %}:</strong>
         </p>
+{%- if n %}
+        {%- if row.teilnehmer|length %}
+        <p style="margin:0 0 .2rem; font-size:.9rem; line-height:1.3;">
+          <span class="muted" style="font-size:.82rem; display:block; margin-bottom:.05rem;">Aus der Gruppe</span>
+          <span>{{ row.teilnehmer | join(', ') }}</span>
+        </p>
+        {%- endif %}
+        {%- if row.teilnehmer_extern|length %}
+        <p style="margin:0 0 .35rem; font-size:.9rem; line-height:1.3;">
+          <span class="muted" style="font-size:.82rem; display:block; margin-bottom:.05rem;">Externe Gäste</span>
+          <span>{%- for name in row.teilnehmer_extern %}<strong>{{ name }}</strong>{%- if not loop.last %}, {% endif %}{%- endfor %}</span>
+        </p>
+        {%- endif %}
+{%- else %}
+        <p style="margin:0 0 .5rem; font-size:.9rem;"><span class="muted">noch niemand</span></p>
+{%- endif %}
 {% endmacro %}
