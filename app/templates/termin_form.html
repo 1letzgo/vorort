@@ -4,8 +4,8 @@
 {% block title %}{% if termin %}Termin bearbeiten{% else %}Neuer Termin{% endif %} — Wahlkampf{% endblock %}
 {% block body %}
 {% call app_header_toolbar('Termin bearbeiten' if termin else 'Neuer Termin') %}
-  <a href="/termine" class="btn btn-ghost btn-ico" aria-label="Zur Terminliste">
-    {{ ico.svg_arrow_left() }}<span class="btn-text">Termine</span>
+  <a href="{% if termin %}/termine/{{ termin.id }}{% else %}/termine{% endif %}" class="btn btn-ghost btn-ico" aria-label="{% if termin %}Zur Terminansicht{% else %}Zur Terminliste{% endif %}">
+    {{ ico.svg_arrow_left() }}<span class="btn-text">{% if termin %}Zurück{% else %}Termine{% endif %}</span>
   </a>
 {% endcall %}
 
@@ -34,6 +34,12 @@
 
     <label for="description">Text / Beschreibung</label>
     <textarea id="description" name="description">{{ termin.description if termin else '' }}</textarea>
+
+    <label for="vorbereitung">Vorbereitung</label>
+    <textarea id="vorbereitung" name="vorbereitung" placeholder="Material, Aufgaben vor dem Termin …">{{ termin.vorbereitung if termin else '' }}</textarea>
+
+    <label for="nachbereitung">Nachbereitung</label>
+    <textarea id="nachbereitung" name="nachbereitung" placeholder="To-dos, Ergebnisse nach dem Termin …">{{ termin.nachbereitung if termin else '' }}</textarea>
 
     {% if termin and termin.image_path %}
     <p style="margin:.75rem 0 .35rem; font-size:.9rem;"><strong>Aktuelles Foto</strong></p>

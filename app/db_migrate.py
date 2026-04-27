@@ -40,3 +40,19 @@ def run_sqlite_migrations(engine: Engine) -> None:
                     """
                 ),
             )
+
+    if insp.has_table("termine"):
+        term_cols = {c["name"] for c in insp.get_columns("termine")}
+        with engine.begin() as conn:
+            if "vorbereitung" not in term_cols:
+                conn.execute(
+                    text(
+                        "ALTER TABLE termine ADD COLUMN vorbereitung TEXT NOT NULL DEFAULT ''"
+                    ),
+                )
+            if "nachbereitung" not in term_cols:
+                conn.execute(
+                    text(
+                        "ALTER TABLE termine ADD COLUMN nachbereitung TEXT NOT NULL DEFAULT ''"
+                    ),
+                )

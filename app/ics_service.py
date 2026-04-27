@@ -22,8 +22,15 @@ def build_ics_calendar(termine: list[Termin], cal_name: str = "SPD Wahlkampf") -
         ev = Event()
         ev.add("uid", f"termin-{t.id}@wahlkampf")
         ev.add("summary", t.title)
+        desc_parts: list[str] = []
         if t.description:
-            ev.add("description", t.description)
+            desc_parts.append(t.description)
+        if t.vorbereitung:
+            desc_parts.append(f"Vorbereitung:\n{t.vorbereitung}")
+        if t.nachbereitung:
+            desc_parts.append(f"Nachbereitung:\n{t.nachbereitung}")
+        if desc_parts:
+            ev.add("description", "\n\n".join(desc_parts))
         if t.location:
             ev.add("location", t.location)
         start = t.starts_at

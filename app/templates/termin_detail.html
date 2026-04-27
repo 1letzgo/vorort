@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% from '_ui_macros.html' import app_header_toolbar %}
+{% import '_icons.html' as ico %}
+{% set t = row.termin %}
+{% block title %}{{ t.title }} — Termin — Wahlkampf{% endblock %}
+{% block body %}
+{% call app_header_toolbar(t.title) %}
+  <a href="/termine" class="btn btn-ghost btn-ico" aria-label="Zur Terminliste">
+    {{ ico.svg_arrow_left() }}<span class="btn-text">Termine</span>
+  </a>
+  {% if row.kann_verwalten %}
+  <a href="/termine/{{ t.id }}/bearbeiten" class="btn btn-ghost btn-ico" aria-label="Termin bearbeiten">
+    {{ ico.svg_pencil() }}<span class="btn-text">Bearbeiten</span>
+  </a>
+  <a href="/termine/{{ t.id }}/loeschen" class="btn btn-danger btn-ico" aria-label="Termin löschen">
+    {{ ico.svg_trash() }}<span class="btn-text">Löschen</span>
+  </a>
+  {% endif %}
+{% endcall %}
+
+<article class="card">
+  <div style="display:flex; gap:1rem; align-items:flex-start; flex-wrap:wrap;">
+    {% if t.image_path %}
+    <div style="flex-shrink:0;">
+      <img src="/media/{{ t.image_path }}" alt="" style="width:min(100%, 280px); height:auto; border-radius:8px; border:1px solid var(--border);">
+    </div>
+    {% endif %}
+    <div style="flex:1; min-width:200px;">
+      <p class="muted" style="margin:0 0 .75rem;">
+        {{ t.starts_at.strftime('%d.%m.%Y') }} · {{ t.starts_at.strftime('%H:%M') }}
+        {% if t.ends_at %}– {{ t.ends_at.strftime('%H:%M') }}{% endif %}
+        {% if t.location %} · {{ t.location }}{% endif %}
+      </p>
+      {% if t.description %}
+      <div style="margin-bottom:1rem;">
+        <h2 style="margin:0 0 .35rem; font-size:1rem;">Beschreibung</h2>
+        <p style="margin:0; white-space:pre-wrap;">{{ t.description }}</p>
+      </div>
+      {% endif %}
+
+      <div style="margin-bottom:1rem;">
+        <h2 style="margin:0 0 .35rem; font-size:1rem;">Vorbereitung</h2>
+        {% if t.vorbereitung %}
+        <p style="margin:0; white-space:pre-wrap;">{{ t.vorbereitung }}</p>
+        {% else %}
+        <p class="muted" style="margin:0; font-size:.9rem;">Keine Angaben.</p>
+        {% endif %}
+      </div>
+
+      <div style="margin-bottom:1rem;">
+        <h2 style="margin:0 0 .35rem; font-size:1rem;">Nachbereitung</h2>
+        {% if t.nachbereitung %}
+        <p style="margin:0; white-space:pre-wrap;">{{ t.nachbereitung }}</p>
+        {% else %}
+        <p class="muted" style="margin:0; font-size:.9rem;">Keine Angaben.</p>
+        {% endif %}
+      </div>
+
+      <div style="padding-top:.75rem; border-top:1px solid var(--border);">
+        <p style="margin:0 0 .5rem; font-size:.9rem;">
+          <strong>Teilnehmer{% if row.teilnehmer %} ({{ row.teilnehmer|length }}){% endif %}:</strong>
+          {% if row.teilnehmer %}
+          <span>{{ row.teilnehmer|join(', ') }}</span>
+          {% else %}
+          <span class="muted">noch niemand</span>
+          {% endif %}
+        </p>
+        {% if not termin_vergangen %}
+        <div style="display:flex; flex-wrap:wrap; gap:.5rem; align-items:center;">
+          {% if row.ich_teilnehme %}
+          <span class="muted" style="font-size:.85rem;">Du nimmst teil.</span>
+          <form method="post" action="/termine/{{ t.id }}/abmelden" style="margin:0;">
+            <button type="submit" class="btn btn-ghost btn-sm btn-ico" aria-label="Vom Termin abmelden">
+              {{ ico.svg_logout() }}<span class="btn-text">Vom Termin abmelden</span>
+            </button>
+          </form>
+          {% else %}
+          <form method="post" action="/termine/{{ t.id }}/teilnehmen" style="margin:0;">
+            <button type="submit" class="btn btn-sm btn-ico" aria-label="Am Termin teilnehmen">
+              {{ ico.svg_check() }}<span class="btn-text">Teilnehmen</span>
+            </button>
+          </form>
+          {% endif %}
+        </div>
+        {% else %}
+        <p class="muted" style="margin:0; font-size:.82rem;">Termin vorbei — Anmeldung nicht mehr möglich.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</article>
+{% endblock %}

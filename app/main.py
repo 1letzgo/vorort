@@ -600,6 +600,24 @@ def logout(request: Request):
     return RedirectResponse("/login", status_code=302)
 
 
+def _termin_row_from_instance(t: models.Termin, user: models.User) -> dict:
+    names = sorted(
+        {
+            (tn.user.display_name or tn.user.username).strip()
+            for tn in t.teilnahmen
+        },
+        key=str.lower,
+    )
+    ich = any(tn.user_id == user.id for tn in t.teilnahmen)
+    kann = _can_manage_termin(user, t)
+    return {
+        "termin": t,
+        "teilnehmer": names,
+        "ich_teilnehme": ich,
+        "kann_verwalten": kann,
+    }
+
+
 def _termin_list_rows(db: Session, user: models.User) -> list[dict]:
     rows = (
         db.query(models.Termin)
@@ -611,26 +629,23 @@ def _termin_list_rows(db: Session, user: models.User) -> list[dict]:
         .order_by(models.Termin.starts_at.asc())
         .all()
     )
-    out = []
-    for t in rows:
-        names = sorted(
-            {
-                (tn.user.display_name or tn.user.username).strip()
-                for tn in t.teilnahmen
-            },
-            key=str.lower,
+    return [_termin_row_from_instance(t, user) for t in rows]
+
+
+def _termin_detail_row(db: Session, user: models.User, termin_id: int) -> dict | None:
+    t = (
+        db.query(models.Termin)
+        .options(
+            selectinload(models.Termin.teilnahmen).selectinload(
+                models.TerminTeilnahme.user
+            ),
         )
-        ich = any(tn.user_id == user.id for tn in t.teilnahmen)
-        kann = _can_manage_termin(user, t)
-        out.append(
-            {
-                "termin": t,
-                "teilnehmer": names,
-                "ich_teilnehme": ich,
-                "kann_verwalten": kann,
-            },
-        )
-    return out
+        .filter(models.Termin.id == termin_id)
+        .first()
+    )
+    if not t:
+        return None
+    return _termin_row_from_instance(t, user)
 
 
 def _split_termine_upcoming_past(rows: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -664,6 +679,28 @@ def termine_list(
     )
 
 
+@app.get("/termine/{termin_id}", response_class=HTMLResponse)
+def termin_detail(
+    termin_id: int,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    user: CurrentUser,
+):
+    row = _termin_detail_row(db, user, termin_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Termin nicht gefunden")
+    termin_vergangen = row["termin"].starts_at < datetime.utcnow()
+    return templates.TemplateResponse(
+        request,
+        "termin_detail.html",
+        {
+            "user": user,
+            "row": row,
+            "termin_vergangen": termin_vergangen,
+        },
+    )
+
+
 @app.post("/termine/{termin_id}/teilnehmen")
 def termin_teilnehmen(
     termin_id: int,
@@ -683,7 +720,7 @@ def termin_teilnehmen(
             models.TerminTeilnahme(termin_id=termin_id, user_id=user.id),
         )
         db.commit()
-    return RedirectResponse("/termine", status_code=302)
+    return RedirectResponse(f"/termine/{termin_id}", status_code=302)
 
 
 @app.post("/termine/{termin_id}/abmelden")
@@ -701,7 +738,7 @@ def termin_abmelden(
     if row:
         db.delete(row)
         db.commit()
-    return RedirectResponse("/termine", status_code=302)
+    return RedirectResponse(f"/termine/{termin_id}", status_code=302)
 
 
 @app.get("/termine/neu", response_class=HTMLResponse)
@@ -727,6 +764,8 @@ async def termin_create(
     datum: Annotated[date, Form()],
     start_uhrzeit: Annotated[str, Form()],
     description: Annotated[str, Form()] = "",
+    vorbereitung: Annotated[str, Form()] = "",
+    nachbereitung: Annotated[str, Form()] = "",
     location: Annotated[str, Form()] = "",
     end_uhrzeit: Annotated[str, Form()] = "",
     bild: Annotated[Optional[UploadFile], File()] = None,
@@ -752,6 +791,8 @@ async def termin_create(
     t = models.Termin(
         title=title.strip(),
         description=description.strip(),
+        vorbereitung=vorbereitung.strip(),
+        nachbereitung=nachbereitung.strip(),
         location=location.strip(),
         starts_at=st,
         ends_at=en,
@@ -788,7 +829,7 @@ async def termin_create(
             db.add(t)
 
     db.commit()
-    return RedirectResponse("/termine", status_code=302)
+    return RedirectResponse(f"/termine/{t.id}", status_code=302)
 
 
 @app.get("/termine/{termin_id}/bearbeiten", response_class=HTMLResponse)
@@ -828,6 +869,8 @@ async def termin_edit_save(
     datum: Annotated[date, Form()],
     start_uhrzeit: Annotated[str, Form()],
     description: Annotated[str, Form()] = "",
+    vorbereitung: Annotated[str, Form()] = "",
+    nachbereitung: Annotated[str, Form()] = "",
     location: Annotated[str, Form()] = "",
     end_uhrzeit: Annotated[str, Form()] = "",
     bild_entfernen: Annotated[str, Form()] = "",
@@ -862,6 +905,8 @@ async def termin_edit_save(
 
     t.title = title.strip()
     t.description = description.strip()
+    t.vorbereitung = vorbereitung.strip()
+    t.nachbereitung = nachbereitung.strip()
     t.location = location.strip()
     t.starts_at = st
     t.ends_at = en
@@ -901,7 +946,7 @@ async def termin_edit_save(
 
     db.add(t)
     db.commit()
-    return RedirectResponse("/termine", status_code=302)
+    return RedirectResponse(f"/termine/{termin_id}", status_code=302)
 
 
 @app.get("/termine/{termin_id}/loeschen", response_class=HTMLResponse)

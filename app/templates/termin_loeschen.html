@@ -4,7 +4,7 @@
 {% block title %}Termin löschen — Wahlkampf{% endblock %}
 {% block body %}
 {% call app_header_toolbar('Termin löschen') %}
-  <a href="/termine" class="btn btn-ghost btn-ico" aria-label="Abbrechen">
+  <a href="/termine/{{ termin.id }}" class="btn btn-ghost btn-ico" aria-label="Abbrechen">
     {{ ico.svg_x() }}<span class="btn-text">Abbrechen</span>
   </a>
 {% endcall %}
@@ -17,7 +17,7 @@
     <button type="submit" class="btn btn-danger btn-ico" aria-label="Termin endgültig löschen">
       {{ ico.svg_trash() }}<span class="btn-text">Endgültig löschen</span>
     </button>
-    <a href="/termine" class="btn btn-ghost btn-ico" aria-label="Abbrechen">
+    <a href="/termine/{{ termin.id }}" class="btn btn-ghost btn-ico" aria-label="Abbrechen">
       {{ ico.svg_x() }}<span class="btn-text">Abbrechen</span>
     </a>
   </form>
