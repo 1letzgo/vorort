@@ -64,8 +64,8 @@
       <button type="button" class="btn btn-ghost btn-sm" id="sharepic-reset-view" aria-label="Bildausschnitt zurücksetzen">Zurücksetzen</button>
     </div>
     <p class="sharepic-hint">100&nbsp;% = volle Fläche. <strong>Desktop:</strong> ziehen, Mausrad oder Regler. <strong>Mobil:</strong> zwei Finger zum Zoomen, ein Finger zum Verschieben.</p>
-    <label for="sharepic-text1">Text Banner (max. 3 Zeilen)</label>
-    <textarea id="sharepic-text1" name="text1" rows="3" maxlength="500" placeholder="z. B. Olaf in WST"></textarea>
+    <label for="sharepic-text1">Text Banner (max. 1 Zeile)</label>
+    <textarea id="sharepic-text1" name="text1" rows="2" maxlength="500" placeholder="z. B. Olaf in WST"></textarea>
     <label for="sharepic-text2">Text unten (max. 2 Zeilen)</label>
     <textarea id="sharepic-text2" name="text2" rows="2" maxlength="500" placeholder="z. B. Termin und Ort"></textarea>
     <p class="sharepic-hint">Open Sans, 50 px, fett — Zeilenumbruch mit Enter oder automatisch.</p>
@@ -85,7 +85,7 @@
   var H = 1024;
   var PHOTO = { x: 0, y: 144, w: 768, h: 735 };
   /* Banner: nur im roten Schrägbalken (unterhalb festem Kopf), nicht in der Fotofläche */
-  var TEXT1 = { y: 188, maxW: 640, lineHeight: 48, maxLines: 3 };
+  var TEXT1 = { y: 188, maxW: 640, lineHeight: 48, maxLines: 1 };
   /* Fußzeile: roter Block ca. y 882–1023 — zwei Zeilen vertikal zentriert, seitlicher Rand */
   var FOOTER_TOP = 882;
   var FOOTER_H = 1024 - FOOTER_TOP;
@@ -94,7 +94,7 @@
   var TEXT2_BLOCK = TEXT2_LH * TEXT2_LINES;
   var TEXT2 = {
     x: 56,
-    y: FOOTER_TOP + Math.floor((FOOTER_H - TEXT2_BLOCK) / 2),
+    y: FOOTER_TOP + Math.floor((FOOTER_H - TEXT2_BLOCK) / 2) - 16,
     maxW: 656,
     lineHeight: TEXT2_LH,
     maxLines: 2,
@@ -465,13 +465,14 @@
   var ta1 = document.getElementById("sharepic-text1");
   var ta2 = document.getElementById("sharepic-text2");
   ta1.addEventListener("input", function () {
-    limitLines(ta1, 3);
+    limitLines(ta1, 1);
     scheduleRedraw();
   });
   ta2.addEventListener("input", function () {
     limitLines(ta2, 2);
     scheduleRedraw();
   });
+  limitLines(ta1, 1);
   limitLines(ta2, 2);
 
   document.getElementById("sharepic-download").addEventListener("click", function () {
