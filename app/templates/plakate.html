@@ -16,11 +16,6 @@
     border-radius: 0;
     z-index: 1;
   }
-  .plakate-map-actions {
-    margin: 0;
-    padding: 0.75rem 1.25rem;
-    border-bottom: 1px solid var(--border);
-  }
   .plakate-form .row-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: flex-end; margin-top: 1rem; }
   .plakate-coords { font-size: 0.85rem; color: var(--muted); margin: 0 0 0.75rem; }
   .plakate-table-wrap { overflow-x: auto; margin-top: 0.5rem; }
@@ -54,12 +49,13 @@
 {% block body %}
 {{ app_header('Plakate') }}
 
+<div class="page-toolbar" aria-label="Aktionen für die Karte">
+  <button type="button" class="btn btn-sm btn-ico btn-with-label" id="plakate-locate" aria-label="Mein Standort auf der Karte anzeigen">
+    {{ ico.svg_map_pin() }}<span class="btn-text">Mein Standort</span>
+  </button>
+</div>
+
 <div class="card card--flush plakate-map-wrap">
-  <div class="plakate-map-actions">
-    <button type="button" class="btn btn-sm btn-ico btn-with-label" id="plakate-locate" aria-label="Mein Standort auf der Karte anzeigen">
-      {{ ico.svg_map_pin() }}<span class="btn-text">Mein Standort</span>
-    </button>
-  </div>
   <div id="plakate-map" role="application" aria-label="Karte Plakat-Standorte"></div>
 </div>
 
