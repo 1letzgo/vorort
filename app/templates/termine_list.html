@@ -52,11 +52,11 @@
       {% endif %}
       {% if row.kann_verwalten %}
       <div class="termin-footer-actions__admin">
-        <a href="/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Termin bearbeiten">
-          {{ ico.svg_pencil() }}<span class="btn-text">Bearbeiten</span>
+        <a href="/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico" aria-label="Termin bearbeiten" title="Bearbeiten">
+          {{ ico.svg_pencil() }}
         </a>
-        <a href="/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="Termin löschen">
-          {{ ico.svg_trash() }}<span class="btn-text">Löschen</span>
+        <a href="/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico" aria-label="Termin löschen" title="Löschen">
+          {{ ico.svg_trash() }}
         </a>
       </div>
       {% endif %}
