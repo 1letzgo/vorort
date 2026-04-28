@@ -2,6 +2,117 @@
 {% from '_ui_macros.html' import app_header %}
 {% import '_icons.html' as ico %}
 {% block title %}{% if termin %}Termin bearbeiten{% else %}Neuer Termin{% endif %} — Wahlkampf{% endblock %}
+{% block head %}
+<style>
+  .termin-form-card.card--flush .termin-form-card__form {
+    padding: 1.15rem 1.2rem 1.1rem;
+  }
+  .termin-form-card .ics-popup__head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    margin: 0 0 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .termin-form-card .ics-popup__head-icon {
+    flex-shrink: 0;
+    width: 2.85rem;
+    height: 2.85rem;
+    border-radius: 12px;
+    background: linear-gradient(
+      145deg,
+      rgba(196, 30, 58, 0.14),
+      rgba(196, 30, 58, 0.06)
+    );
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .termin-form-card .ics-popup__head-icon .ico {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+  .termin-form-card .ics-popup__h {
+    margin: 0;
+    font-size: 1.14rem;
+    font-weight: 650;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .termin-form-card .ics-popup__lead {
+    margin: 0.35rem 0 0;
+    font-size: 0.84rem;
+    color: var(--muted);
+    line-height: 1.45;
+  }
+  .termin-form-card .error {
+    margin-bottom: 1rem;
+  }
+  .termin-form-card .ics-popup__panel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem 0.85rem 0.85rem;
+    margin-top: 0.65rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  }
+  .termin-form-card form > .ics-popup__panel:first-of-type {
+    margin-top: 0;
+  }
+  .termin-form-card .ics-popup__panel--accent {
+    border-color: rgba(196, 30, 58, 0.22);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.65),
+      0 0 0 1px rgba(196, 30, 58, 0.06);
+  }
+  .termin-form-card .ics-popup__panel .ics-popup__label {
+    margin: 0 0 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.055em;
+    color: var(--muted);
+  }
+  .termin-form-card .ics-popup__panel > label:first-of-type {
+    margin-top: 0;
+  }
+  .termin-form-card__guest-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .termin-form-card__guest-list label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    margin: 0;
+    font-size: 0.9rem;
+  }
+  .termin-form-card__img-preview {
+    margin: 0 0 0.5rem;
+  }
+  .termin-form-card__img-preview img {
+    max-width: 200px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .termin-form-card .ics-popup__foot {
+    margin-top: 1.1rem;
+    padding-top: 0.95rem;
+    border-top: 1px solid var(--border);
+  }
+  .termin-form-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+</style>
+{% endblock %}
 {% block body %}
 {{ app_header('Termin bearbeiten' if termin else 'Neuer Termin') }}
 
@@ -11,65 +122,93 @@
   </a>
 </div>
 
-<div class="card">
-  {% if error %}<div class="error">{{ error }}</div>{% endif %}
-  <form method="post" action="{% if termin %}/termine/{{ termin.id }}/bearbeiten{% else %}/termine/neu{% endif %}" enctype="multipart/form-data">
-    <label for="title">Titel</label>
-    <input id="title" name="title" type="text" required maxlength="200" value="{{ termin.title if termin else '' }}">
-
-    <label for="datum">Datum</label>
-    <input id="datum" name="datum" type="date" required value="{{ termin.starts_at.strftime('%Y-%m-%d') if termin else '' }}">
-
-    <div class="row2">
-      <div>
-        <label for="start_uhrzeit">Beginn (HH:MM)</label>
-        <input id="start_uhrzeit" name="start_uhrzeit" type="text" placeholder="09:30" required value="{{ termin.starts_at.strftime('%H:%M') if termin else '' }}">
+<div class="card card--flush termin-form-card">
+  <form method="post" class="ics-popup__form termin-form-card__form" action="{% if termin %}/termine/{{ termin.id }}/bearbeiten{% else %}/termine/neu{% endif %}" enctype="multipart/form-data">
+    <header class="ics-popup__head">
+      <div class="ics-popup__head-icon" aria-hidden="true">
+        {% if termin %}{{ ico.svg_pencil() }}{% else %}{{ ico.svg_plus() }}{% endif %}
       </div>
       <div>
-        <label for="end_uhrzeit">Ende (optional)</label>
-        <input id="end_uhrzeit" name="end_uhrzeit" type="text" placeholder="11:00" value="{% if termin and termin.ends_at %}{{ termin.ends_at.strftime('%H:%M') }}{% endif %}">
+        <h2 class="ics-popup__h" id="termin-form-title">{% if termin %}Termin bearbeiten{% else %}Neuen Termin anlegen{% endif %}</h2>
+        <p class="ics-popup__lead">
+          {% if termin %}Änderungen gelten für die gesamte Terminansicht und eingetragene Teilnehmer.{% else %}Datum, Ort und Text — sichtbar für alle mit Zugang zur Terminliste.{% endif %}
+        </p>
       </div>
-    </div>
+    </header>
 
-    <label for="location">Ort</label>
-    <input id="location" name="location" type="text" maxlength="300" value="{{ termin.location if termin else '' }}">
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
 
-    <label for="description">Text / Beschreibung</label>
-    <textarea id="description" name="description">{{ termin.description if termin else '' }}</textarea>
+    <section class="ics-popup__panel ics-popup__panel--accent" aria-label="Grunddaten">
+      <label for="title">Titel</label>
+      <input id="title" name="title" type="text" required maxlength="200" value="{{ termin.title if termin else '' }}">
 
-    <label for="vorbereitung">Vorbereitung</label>
-    <textarea id="vorbereitung" name="vorbereitung" placeholder="Material, Aufgaben vor dem Termin …">{{ termin.vorbereitung if termin else '' }}</textarea>
+      <label for="datum">Datum</label>
+      <input id="datum" name="datum" type="date" required value="{{ termin.starts_at.strftime('%Y-%m-%d') if termin else '' }}">
 
-    <label for="nachbereitung">Nachbereitung</label>
-    <textarea id="nachbereitung" name="nachbereitung" placeholder="To-dos, Ergebnisse nach dem Termin …">{{ termin.nachbereitung if termin else '' }}</textarea>
+      <div class="row2">
+        <div>
+          <label for="start_uhrzeit">Beginn (HH:MM)</label>
+          <input id="start_uhrzeit" name="start_uhrzeit" type="text" placeholder="09:30" required value="{{ termin.starts_at.strftime('%H:%M') if termin else '' }}">
+        </div>
+        <div>
+          <label for="end_uhrzeit">Ende (optional)</label>
+          <input id="end_uhrzeit" name="end_uhrzeit" type="text" placeholder="11:00" value="{% if termin and termin.ends_at %}{{ termin.ends_at.strftime('%H:%M') }}{% endif %}">
+        </div>
+      </div>
 
-    <p style="margin:1rem 0 .25rem; font-weight:650;">Externe Gäste</p>
-    <div style="display:flex; flex-direction:column; gap:.25rem; margin-bottom:.15rem;">
-      {% for key, label in externe_optionen %}
-      <label style="display:flex; align-items:center; gap:.5rem; font-weight:500;">
-        <input type="checkbox" name="extern_gast" value="{{ key }}"{% if key in externe_auswahl %} checked{% endif %}>
-        {{ label }}
-      </label>
-      {% endfor %}
-    </div>
+      <label for="location">Ort</label>
+      <input id="location" name="location" type="text" maxlength="300" value="{{ termin.location if termin else '' }}">
+    </section>
+
+    <section class="ics-popup__panel" aria-label="Beschreibung und Ablauf">
+      <label for="description">Text / Beschreibung</label>
+      <textarea id="description" name="description">{{ termin.description if termin else '' }}</textarea>
+
+      <label for="vorbereitung">Vorbereitung</label>
+      <textarea id="vorbereitung" name="vorbereitung" placeholder="Material, Aufgaben vor dem Termin …">{{ termin.vorbereitung if termin else '' }}</textarea>
+
+      <label for="nachbereitung">Nachbereitung</label>
+      <textarea id="nachbereitung" name="nachbereitung" placeholder="To-dos, Ergebnisse nach dem Termin …">{{ termin.nachbereitung if termin else '' }}</textarea>
+    </section>
+
+    <section class="ics-popup__panel" aria-label="Externe Gäste">
+      <h3 class="ics-popup__label">Externe Gäste</h3>
+      <div class="termin-form-card__guest-list">
+        {% for key, label in externe_optionen %}
+        <label>
+          <input type="checkbox" name="extern_gast" value="{{ key }}"{% if key in externe_auswahl %} checked{% endif %}>
+          {{ label }}
+        </label>
+        {% endfor %}
+      </div>
+    </section>
 
     {% if termin and termin.image_path %}
-    <p style="margin:.75rem 0 .35rem; font-size:.9rem;"><strong>Aktuelles Foto</strong></p>
-    <p style="margin:0 0 .5rem;"><img src="/media/{{ termin.image_path }}" alt="" style="max-width:200px; border-radius:8px; border:1px solid var(--border);"></p>
-    <label style="display:flex; align-items:center; gap:.5rem; font-weight:500;">
-      <input type="checkbox" name="bild_entfernen" value="1">
-      Foto entfernen
-    </label>
+    <section class="ics-popup__panel" aria-label="Aktuelles Foto">
+      <h3 class="ics-popup__label">Aktuelles Foto</h3>
+      <p class="termin-form-card__img-preview"><img src="/media/{{ termin.image_path }}" alt=""></p>
+      <label>
+        <input type="checkbox" name="bild_entfernen" value="1">
+        Foto entfernen
+      </label>
+    </section>
     {% endif %}
 
-    <label for="bild">{% if termin %}Neues Foto (optional, ersetzt das alte){% else %}Foto (optional, JPEG/PNG/WebP, max. {{ max_mb }} MB){% endif %}</label>
-    <input id="bild" name="bild" type="file" accept="image/jpeg,image/png,image/webp">
+    <section class="ics-popup__panel" aria-label="{% if termin %}Neues Foto{% else %}Foto{% endif %}">
+      <label for="bild">{% if termin %}Neues Foto (optional, ersetzt das alte){% else %}Foto (optional, JPEG/PNG/WebP, max. {{ max_mb }} MB){% endif %}</label>
+      <input id="bild" name="bild" type="file" accept="image/jpeg,image/png,image/webp">
+    </section>
 
-    <p style="margin-top:1.25rem;">
-      <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Speichern">
-        {{ ico.svg_check() }}<span class="btn-text">Speichern</span>
-      </button>
-    </p>
+    <footer class="ics-popup__foot">
+      <div class="termin-form-card__actions">
+        <a href="{% if termin %}/termine/{{ termin.id }}{% else %}/termine{% endif %}" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Abbrechen">
+          {{ ico.svg_x() }}<span class="btn-text">Abbrechen</span>
+        </a>
+        <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Speichern">
+          {{ ico.svg_check() }}<span class="btn-text">Speichern</span>
+        </button>
+      </div>
+    </footer>
   </form>
 </div>
 {% endblock %}
