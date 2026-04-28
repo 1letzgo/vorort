@@ -70,32 +70,76 @@
   }
   .termin-comment-card__hdr {
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.45rem;
+    padding: 0.72rem 1rem;
+    background: var(--accent);
+    color: #fff;
+    border-bottom: none;
+    font-size: 0.9rem;
+    border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0;
+  }
+  .termin-comment-card__hdr-row {
+    display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
     gap: 0.35rem 0.85rem;
-    padding: 0.72rem 1rem;
-    background: linear-gradient(to bottom, rgba(196, 30, 58, 0.07), transparent);
-    border-bottom: 1px solid var(--border);
-    font-size: 0.9rem;
   }
   .termin-comment-card__author {
     font-weight: 650;
-    color: var(--text);
+    color: #fff !important;
     min-width: 0;
   }
   .termin-comment-card__meta {
     font-size: 0.82rem;
     flex-shrink: 0;
     margin-left: auto;
+    color: rgba(255, 255, 255, 0.88) !important;
+  }
+  .termin-comment-card__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    justify-content: flex-end;
+  }
+  .termin-comment-card__hdr .btn.btn-xs.btn-ghost {
+    color: #fff !important;
+    border-color: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .termin-comment-card__hdr .btn.btn-xs.btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.85);
+    color: #fff !important;
+  }
+  .termin-comment-card__hdr .btn.btn-xs.btn-danger {
+    background: rgba(0, 0, 0, 0.28);
+    border-color: rgba(255, 255, 255, 0.45);
+    color: #fff !important;
+  }
+  .termin-comment-card__hdr .btn.btn-xs.btn-danger:hover {
+    background: rgba(0, 0, 0, 0.42);
+    border-color: rgba(255, 255, 255, 0.75);
+    color: #fff !important;
   }
   .termin-comment-card__body {
+    position: relative;
     padding: 0.85rem 1rem;
   }
   .termin-comment-card__text {
     margin: 0;
     white-space: pre-wrap;
     word-break: break-word;
+  }
+  .termin-comment-card__raw {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
   }
   button.termin-kommentar-open {
     margin-top: 0.75rem;
@@ -209,16 +253,25 @@
     {% for k in termin_kommentare %}
     <article class="card card--flush termin-comment-card">
       <header class="termin-comment-card__hdr">
-        <span class="termin-comment-card__author">{{ k.author_name }}</span>
-        <span class="termin-comment-card__meta muted">{{ k.created_display }}</span>
+        <div class="termin-comment-card__hdr-row">
+          <span class="termin-comment-card__author">{{ k.author_name }}</span>
+          <span class="termin-comment-card__meta muted">{{ k.created_display }}</span>
+        </div>
+        {% if k.can_edit %}
+        <div class="termin-comment-card__toolbar" role="toolbar" aria-label="Kommentar bearbeiten oder löschen">
+          <button type="button" class="btn btn-xs btn-ghost termin-komm-edit" data-id="{{ k.id }}">Bearbeiten</button>
+          <button type="button" class="btn btn-xs btn-danger termin-komm-del" data-id="{{ k.id }}">Löschen</button>
+        </div>
+        {% endif %}
       </header>
       <div class="termin-comment-card__body">
         <p class="termin-comment-card__text">{{ k.body }}</p>
+        <textarea class="termin-comment-card__raw" readonly tabindex="-1" aria-hidden="true">{{ k.body }}</textarea>
       </div>
     </article>
     {% endfor %}
   </div>
-  <button type="button" class="btn btn-sm btn-with-label termin-kommentar-open btn-ghost" id="termin-kommentar-open" aria-expanded="false" aria-haspopup="dialog">
+  <button type="button" class="btn btn-sm btn-with-label termin-kommentar-open" id="termin-kommentar-open" aria-expanded="false" aria-haspopup="dialog">
     Kommentieren
   </button>
 </section>
@@ -226,6 +279,7 @@
 <dialog id="termin-kommentar-dialog" class="popup-dialog termin-kommentar-dialog" aria-labelledby="termin-kommentar-dialog-title" aria-modal="true">
   <h2 id="termin-kommentar-dialog-title" style="margin-top:0; font-size:1.05rem;">Kommentar schreiben</h2>
   <form id="termin-kommentar-form">
+    <input type="hidden" id="termin-kommentar-edit-id" value="">
     <label for="termin-kommentar-text">Text</label>
     <textarea id="termin-kommentar-text" name="body" rows="5" maxlength="4000" required placeholder="Dein Kommentar …"></textarea>
     <div class="termin-kommentar-dialog-actions">
@@ -246,86 +300,186 @@
   var textarea = document.getElementById("termin-kommentar-text");
   var msgEl = document.getElementById("termin-kommentar-msg");
   var openBtn = document.getElementById("termin-kommentar-open");
+  var dlgTitle = document.getElementById("termin-kommentar-dialog-title");
+  var editIdInput = document.getElementById("termin-kommentar-edit-id");
+  var submitBtn = document.getElementById("termin-kommentar-submit");
+
   function escapeHtml(text) {
     var d = document.createElement("div");
-    d.textContent = text;
+    d.textContent = text == null ? "" : String(text);
     return d.innerHTML;
   }
+
   function renderKommentare(items) {
     listEl.innerHTML = (items || []).map(function (k) {
+      var toolbar = "";
+      if (k.can_edit) {
+        toolbar =
+          '<div class="termin-comment-card__toolbar" role="toolbar">' +
+          '<button type="button" class="btn btn-xs btn-ghost termin-komm-edit" data-id="' +
+          k.id +
+          '">Bearbeiten</button>' +
+          '<button type="button" class="btn btn-xs btn-danger termin-komm-del" data-id="' +
+          k.id +
+          '">Löschen</button>' +
+          "</div>";
+      }
       return (
         '<article class="card card--flush termin-comment-card">' +
         '<header class="termin-comment-card__hdr">' +
-        '<span class="termin-comment-card__author">' + escapeHtml(k.author_name) + '</span>' +
-        '<span class="termin-comment-card__meta muted">' + escapeHtml(k.created_display) + '</span>' +
+        '<div class="termin-comment-card__hdr-row">' +
+        '<span class="termin-comment-card__author">' +
+        escapeHtml(k.author_name) +
+        '</span>' +
+        '<span class="termin-comment-card__meta muted">' +
+        escapeHtml(k.created_display) +
+        "</span>" +
+        "</div>" +
+        toolbar +
         '</header><div class="termin-comment-card__body">' +
         '<p class="termin-comment-card__text">' +
-        escapeHtml(k.body || '') +
-        '</p></div></article>'
+        escapeHtml(k.body || "") +
+        '</p>' +
+        '<textarea class="termin-comment-card__raw" readonly tabindex="-1" aria-hidden="true"></textarea>' +
+        "</div></article>"
       );
     }).join("");
+    (items || []).forEach(function (k, idx) {
+      var arts = listEl.querySelectorAll(".termin-comment-card");
+      var ta = arts[idx] && arts[idx].querySelector(".termin-comment-card__raw");
+      if (ta) ta.value = k.body != null ? String(k.body) : "";
+    });
   }
+
   function showMsg(t) {
-    if (msgEl) msgEl.textContent = t || '';
+    if (msgEl) msgEl.textContent = t || "";
   }
-  function openDlg() {
-    showMsg('');
-    dlg.showModal();
-    openBtn.setAttribute('aria-expanded', 'true');
-    textarea.focus();
+
+  function resetDlgForm() {
+    editIdInput.value = "";
+    textarea.value = "";
+    dlgTitle.textContent = "Kommentar schreiben";
+    submitBtn.textContent = "Absenden";
+    showMsg("");
   }
+
   function closeDlg() {
     dlg.close();
-    openBtn.setAttribute('aria-expanded', 'false');
+    openBtn.setAttribute("aria-expanded", "false");
+    resetDlgForm();
   }
-  if (openBtn && dlg && form && textarea && listEl) {
-    openBtn.addEventListener("click", function () {
-      textarea.value = "";
-      openDlg();
-    });
-    document.getElementById("termin-kommentar-cancel").addEventListener("click", closeDlg);
-    dlg.addEventListener("cancel", function (ev) {
-      ev.preventDefault();
-      closeDlg();
-    });
-    form.addEventListener("submit", function (ev) {
-      ev.preventDefault();
-      showMsg('');
-      var body = (textarea.value || '').trim();
-      if (!body) {
-        showMsg('Bitte Text eingeben.');
-        textarea.focus();
-        return;
+
+  function apiJson(method, url, bodyObj) {
+    var opts = {
+      method: method,
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    };
+    if (bodyObj !== undefined) {
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(bodyObj);
+    }
+    return fetch(url, opts).then(function (res) {
+      var ct = (res.headers.get("content-type") || "").toLowerCase();
+      if (!ct.includes("application/json")) {
+        return Promise.reject(new Error(!res.ok ? "Anmeldung erforderlich oder Netzwerkfehler." : "Unerwartete Antwort."));
       }
-      var btn = document.getElementById("termin-kommentar-submit");
-      btn.disabled = true;
-      fetch((pathPrefix || "") + "/termine/" + terminId + "/kommentare", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ body: textarea.value.trim() }),
-      })
-        .then(function (res) {
-          return res.json().then(function (j) {
-            if (!res.ok) {
-              throw new Error(typeof j.detail === 'string' ? j.detail : (res.status === 422 ? 'Eingabe ungültig.' : 'Kommentar konnte nicht gespeichert werden.'));
-            }
-            return j;
-          });
-        })
-        .then(function (j) {
-          renderKommentare(j.kommentare);
-          textarea.value = '';
-          closeDlg();
-        })
-        .catch(function (err) {
-          showMsg(err.message || 'Fehler beim Speichern.');
-        })
-        .finally(function () {
-          btn.disabled = false;
-        });
+      return res.json().then(function (j) {
+        if (!res.ok) {
+          var detail = j.detail;
+          var msg =
+            typeof detail === "string"
+              ? detail
+              : res.status === 403
+                ? "Keine Berechtigung."
+                : res.status === 422
+                  ? "Eingabe ungültig."
+                  : "Kommentar konnte nicht gespeichert werden.";
+          throw new Error(msg);
+        }
+        return j;
+      });
     });
   }
+
+  if (!(openBtn && dlg && form && textarea && listEl && editIdInput && submitBtn && dlgTitle)) return;
+
+  openBtn.addEventListener("click", function () {
+    resetDlgForm();
+    dlg.showModal();
+    openBtn.setAttribute("aria-expanded", "true");
+    textarea.focus();
+  });
+
+  document.getElementById("termin-kommentar-cancel").addEventListener("click", closeDlg);
+  dlg.addEventListener("cancel", function (ev) {
+    ev.preventDefault();
+    closeDlg();
+  });
+
+  listEl.addEventListener("click", function (ev) {
+    var eb = ev.target.closest(".termin-komm-edit");
+    var db = ev.target.closest(".termin-komm-del");
+    if (eb) {
+      ev.preventDefault();
+      var card = eb.closest(".termin-comment-card");
+      var raw = card && card.querySelector(".termin-comment-card__raw");
+      editIdInput.value = eb.getAttribute("data-id") || "";
+      textarea.value = raw ? raw.value : "";
+      dlgTitle.textContent = "Kommentar bearbeiten";
+      submitBtn.textContent = "Speichern";
+      showMsg("");
+      dlg.showModal();
+      openBtn.setAttribute("aria-expanded", "true");
+      textarea.focus();
+      return;
+    }
+    if (!db) return;
+    ev.preventDefault();
+    var cid = db.getAttribute("data-id");
+    if (!cid || !confirm("Diesen Kommentar wirklich löschen?")) return;
+    apiJson(
+      "DELETE",
+      (pathPrefix || "") + "/termine/" + terminId + "/kommentare/" + cid,
+    )
+      .then(function (j) {
+        renderKommentare(j.kommentare);
+      })
+      .catch(function (err) {
+        alert(err.message || "Löschen fehlgeschlagen.");
+      });
+  });
+
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    showMsg("");
+    var bodyVal = (textarea.value || "").trim();
+    if (!bodyVal) {
+      showMsg("Bitte Text eingeben.");
+      textarea.focus();
+      return;
+    }
+    submitBtn.disabled = true;
+    var editId = (editIdInput.value || "").trim();
+    var url =
+      (pathPrefix || "") +
+      "/termine/" +
+      terminId +
+      "/kommentare" +
+      (editId ? "/" + encodeURIComponent(editId) : "");
+    var meth = editId ? "PATCH" : "POST";
+    apiJson(meth, url, { body: textarea.value.trim() })
+      .then(function (j) {
+        renderKommentare(j.kommentare);
+        closeDlg();
+      })
+      .catch(function (err) {
+        showMsg(err.message || "Fehler beim Speichern.");
+      })
+      .finally(function () {
+        submitBtn.disabled = false;
+      });
+  });
 })();
 </script>
 {% endblock %}

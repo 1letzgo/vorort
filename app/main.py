@@ -190,7 +190,9 @@ def _user_display_names(db: Session, user_ids: set[int]) -> dict[int, str]:
     }
 
 
-def _termin_kommentare_public(db: Session, termin_id: int) -> list[dict]:
+def _termin_kommentare_public(
+    db: Session, termin_id: int, user: models.User
+) -> list[dict]:
     rows = (
         db.query(models.TerminKommentar)
         .filter(models.TerminKommentar.termin_id == termin_id)
@@ -203,15 +205,21 @@ def _termin_kommentare_public(db: Session, termin_id: int) -> list[dict]:
     for r in rows:
         dt = r.created_at
         au = names.get(r.user_id, "Unbekannt")
+        may_manage = bool(user.is_admin or r.user_id == user.id)
         out.append(
             {
                 "id": r.id,
                 "author_name": au,
                 "body": r.body or "",
                 "created_display": dt.strftime("%d.%m.%Y · %H:%M"),
+                "can_edit": may_manage,
+                "can_delete": may_manage,
             },
         )
     return out
+
+
+def _plakate_list_payload(db: Session) -> list[dict]:
     rows = (
         db.query(models.Plakat)
         .order_by(models.Plakat.hung_at.desc())
@@ -863,7 +871,7 @@ def termin_detail(
     if not row:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden")
     termin_vergangen = row["termin"].starts_at < datetime.utcnow()
-    kommentare = _termin_kommentare_public(db, termin_id)
+    kommentare = _termin_kommentare_public(db, termin_id, user)
     return templates.TemplateResponse(
         request,
         "termin_detail.html",
@@ -899,7 +907,70 @@ def termin_kommentar_create(
     return JSONResponse(
         {
             "ok": True,
-            "kommentare": _termin_kommentare_public(db, termin_id),
+            "kommentare": _termin_kommentare_public(db, termin_id, user),
+        },
+    )
+
+
+@app.patch("/termine/{termin_id}/kommentare/{kommentar_id}")
+def termin_kommentar_update(
+    termin_id: int,
+    kommentar_id: int,
+    payload: TerminKommentarPayload,
+    db: Annotated[Session, Depends(get_db)],
+    user: CurrentUser,
+):
+    text = payload.body.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Kommentar darf nicht leer sein.")
+    km = (
+        db.query(models.TerminKommentar)
+        .filter(
+            models.TerminKommentar.id == kommentar_id,
+            models.TerminKommentar.termin_id == termin_id,
+        )
+        .first()
+    )
+    if not km:
+        raise HTTPException(status_code=404, detail="Kommentar nicht gefunden.")
+    if not (user.is_admin or km.user_id == user.id):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung.")
+    km.body = text[:4000]
+    db.add(km)
+    db.commit()
+    return JSONResponse(
+        {
+            "ok": True,
+            "kommentare": _termin_kommentare_public(db, termin_id, user),
+        },
+    )
+
+
+@app.delete("/termine/{termin_id}/kommentare/{kommentar_id}")
+def termin_kommentar_delete(
+    termin_id: int,
+    kommentar_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    user: CurrentUser,
+):
+    km = (
+        db.query(models.TerminKommentar)
+        .filter(
+            models.TerminKommentar.id == kommentar_id,
+            models.TerminKommentar.termin_id == termin_id,
+        )
+        .first()
+    )
+    if not km:
+        raise HTTPException(status_code=404, detail="Kommentar nicht gefunden.")
+    if not (user.is_admin or km.user_id == user.id):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung.")
+    db.delete(km)
+    db.commit()
+    return JSONResponse(
+        {
+            "ok": True,
+            "kommentare": _termin_kommentare_public(db, termin_id, user),
         },
     )
 
