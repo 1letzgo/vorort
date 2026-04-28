@@ -70,56 +70,62 @@
   }
   .termin-comment-card__hdr {
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.45rem;
-    padding: 0.72rem 1rem;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 0.75rem;
+    padding: 0.65rem 1rem;
     background: var(--accent);
     color: #fff;
     border-bottom: none;
     font-size: 0.9rem;
     border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0;
   }
-  .termin-comment-card__hdr-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.35rem 0.85rem;
-  }
   .termin-comment-card__author {
+    flex: 1 1 auto;
+    min-width: 0;
     font-weight: 650;
     color: #fff !important;
-    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .termin-comment-card__hdr-tools {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+    max-width: 100%;
   }
   .termin-comment-card__meta {
     font-size: 0.82rem;
-    flex-shrink: 0;
-    margin-left: auto;
+    white-space: nowrap;
     color: rgba(255, 255, 255, 0.88) !important;
   }
   .termin-comment-card__toolbar {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    justify-content: flex-end;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
   }
-  .termin-comment-card__hdr .btn.btn-xs.btn-ghost {
+  .termin-comment-card__hdr .btn.btn-sm.btn-ghost {
     color: #fff !important;
     border-color: rgba(255, 255, 255, 0.45);
     background: rgba(255, 255, 255, 0.1);
   }
-  .termin-comment-card__hdr .btn.btn-xs.btn-ghost:hover {
+  .termin-comment-card__hdr .btn.btn-sm.btn-ghost:hover {
     background: rgba(255, 255, 255, 0.22);
     border-color: rgba(255, 255, 255, 0.85);
     color: #fff !important;
   }
-  .termin-comment-card__hdr .btn.btn-xs.btn-danger {
+  .termin-comment-card__hdr .btn.btn-sm.btn-danger {
     background: rgba(0, 0, 0, 0.28);
     border-color: rgba(255, 255, 255, 0.45);
     color: #fff !important;
   }
-  .termin-comment-card__hdr .btn.btn-xs.btn-danger:hover {
+  .termin-comment-card__hdr .btn.btn-sm.btn-danger:hover {
     background: rgba(0, 0, 0, 0.42);
     border-color: rgba(255, 255, 255, 0.75);
     color: #fff !important;
@@ -253,16 +259,16 @@
     {% for k in termin_kommentare %}
     <article class="card card--flush termin-comment-card">
       <header class="termin-comment-card__hdr">
-        <div class="termin-comment-card__hdr-row">
-          <span class="termin-comment-card__author">{{ k.author_name }}</span>
+        <span class="termin-comment-card__author">{{ k.author_name }}</span>
+        <div class="termin-comment-card__hdr-tools">
           <span class="termin-comment-card__meta muted">{{ k.created_display }}</span>
+          {% if k.can_edit %}
+          <div class="termin-comment-card__toolbar" role="toolbar" aria-label="Kommentar bearbeiten oder löschen">
+            <button type="button" class="btn btn-sm btn-ghost btn-ico termin-komm-edit" data-id="{{ k.id }}" aria-label="Bearbeiten" title="Bearbeiten">{{ ico.svg_pencil() }}</button>
+            <button type="button" class="btn btn-sm btn-danger btn-ico termin-komm-del" data-id="{{ k.id }}" aria-label="Löschen" title="Löschen">{{ ico.svg_trash() }}</button>
+          </div>
+          {% endif %}
         </div>
-        {% if k.can_edit %}
-        <div class="termin-comment-card__toolbar" role="toolbar" aria-label="Kommentar bearbeiten oder löschen">
-          <button type="button" class="btn btn-xs btn-ghost termin-komm-edit" data-id="{{ k.id }}">Bearbeiten</button>
-          <button type="button" class="btn btn-xs btn-danger termin-komm-del" data-id="{{ k.id }}">Löschen</button>
-        </div>
-        {% endif %}
       </header>
       <div class="termin-comment-card__body">
         <p class="termin-comment-card__text">{{ k.body }}</p>
@@ -310,32 +316,41 @@
     return d.innerHTML;
   }
 
+  var ICON_PENCIL =
+    '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>';
+  var ICON_TRASH =
+    '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
+
   function renderKommentare(items) {
     listEl.innerHTML = (items || []).map(function (k) {
-      var toolbar = "";
+      var hdrTools =
+        '<div class="termin-comment-card__hdr-tools">' +
+        '<span class="termin-comment-card__meta muted">' +
+        escapeHtml(k.created_display) +
+        '</span>';
       if (k.can_edit) {
-        toolbar =
+        hdrTools +=
           '<div class="termin-comment-card__toolbar" role="toolbar">' +
-          '<button type="button" class="btn btn-xs btn-ghost termin-komm-edit" data-id="' +
+          '<button type="button" class="btn btn-sm btn-ghost btn-ico termin-komm-edit" data-id="' +
           k.id +
-          '">Bearbeiten</button>' +
-          '<button type="button" class="btn btn-xs btn-danger termin-komm-del" data-id="' +
+          '" aria-label="Bearbeiten" title="Bearbeiten">' +
+          ICON_PENCIL +
+          '</button>' +
+          '<button type="button" class="btn btn-sm btn-danger btn-ico termin-komm-del" data-id="' +
           k.id +
-          '">Löschen</button>' +
-          "</div>";
+          '" aria-label="Löschen" title="Löschen">' +
+          ICON_TRASH +
+          '</button>' +
+          '</div>';
       }
+      hdrTools += '</div>';
       return (
         '<article class="card card--flush termin-comment-card">' +
         '<header class="termin-comment-card__hdr">' +
-        '<div class="termin-comment-card__hdr-row">' +
         '<span class="termin-comment-card__author">' +
         escapeHtml(k.author_name) +
         '</span>' +
-        '<span class="termin-comment-card__meta muted">' +
-        escapeHtml(k.created_display) +
-        "</span>" +
-        "</div>" +
-        toolbar +
+        hdrTools +
         '</header><div class="termin-comment-card__body">' +
         '<p class="termin-comment-card__text">' +
         escapeHtml(k.body || "") +
