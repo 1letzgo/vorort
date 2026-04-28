@@ -55,9 +55,6 @@
   .termin-card-footer-actions .termin-footer-actions > form {
     flex-shrink: 0;
   }
-  .termin-card-footer-actions .termin-footer-actions > a.btn {
-    flex-shrink: 0;
-  }
   .termin-card-footer-actions .termin-footer-actions .btn {
     white-space: nowrap;
   }
@@ -65,6 +62,12 @@
 {% endblock %}
 {% block body %}
 {{ app_header('Termine') }}
+
+<div class="page-toolbar" aria-label="Navigation">
+  <a href="/termine" class="btn btn-sm btn-ico btn-with-label" aria-label="Zur Terminliste">
+    {{ ico.svg_arrow_left() }}<span class="btn-text">Termine</span>
+  </a>
+</div>
 
 <article class="card card--flush termin-card-list">
   <header class="termin-card-list__header">
@@ -114,11 +117,8 @@
     </div>
   </div>
   </div>
-  <footer class="card-footer termin-card-footer-actions termin-card-list__footer" aria-label="Aktionen zum Termin">
+  <footer class="card-footer termin-card-footer-actions termin-card-list__footer" aria-label="Anmeldung und Verwaltung">
     <div class="termin-footer-actions">
-      <a href="/termine" class="btn btn-sm btn-ico btn-with-label" aria-label="Zur Terminliste">
-        {{ ico.svg_arrow_left() }}<span class="btn-text">Termine</span>
-      </a>
       {% if not termin_vergangen %}
       {% if row.ich_teilnehme %}
       <form method="post" action="/termine/{{ t.id }}/abmelden" style="margin:0;">
