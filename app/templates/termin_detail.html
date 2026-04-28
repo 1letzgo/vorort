@@ -7,23 +7,213 @@
 {% block title %}{{ t.title }} — Termin — Wahlkampf{% endblock %}
 {% block head %}
 <style>
-  .termin-card-list__header {
-    background: var(--accent);
-    color: #fff;
-    padding: 0.85rem 1.25rem;
+  .termin-card-list__shell {
+    padding: 1.15rem 1.2rem 1.1rem;
   }
-  .termin-card-list__title {
+  .termin-card-list .termin-card-list__body {
+    padding: 0;
+  }
+  .termin-card-list__title a {
+    color: var(--text) !important;
+    text-decoration: none !important;
+  }
+  .termin-card-list__title a:hover {
+    color: var(--accent) !important;
+    text-decoration: underline !important;
+  }
+  .termin-card-list__meta {
+    margin: 0.35rem 0 0;
+  }
+  .termin-card-list__media-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .termin-card-list__thumb {
+    flex-shrink: 0;
+  }
+  .termin-card-list__thumb img {
+    width: 140px;
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .termin-card-list__thumb--detail img {
+    width: min(100%, 280px);
+    max-width: 280px;
+  }
+  .termin-card-list__columns {
+    flex: 1;
+    min-width: min(100%, 200px);
+  }
+  .termin-card-list__columns > .ics-popup__panel:first-of-type {
+    margin-top: 0;
+  }
+  .termin-card-list__desc {
     margin: 0;
-    font-size: 1.12rem;
+    white-space: pre-wrap;
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+  .termin-panel-body {
+    margin: 0;
+    white-space: pre-wrap;
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+  .termin-card-list__footer {
+    margin-top: 1.1rem;
+    padding-top: 0.95rem;
+    border-top: 1px solid var(--border);
+  }
+  .ics-popup__head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    margin: 0 0 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .ics-popup__head-icon {
+    flex-shrink: 0;
+    width: 2.85rem;
+    height: 2.85rem;
+    border-radius: 12px;
+    background: linear-gradient(
+      145deg,
+      rgba(196, 30, 58, 0.14),
+      rgba(196, 30, 58, 0.06)
+    );
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ics-popup__head-icon .ico {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+  .ics-popup__h {
+    margin: 0;
+    font-size: 1.14rem;
     font-weight: 650;
-    line-height: 1.3;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: var(--text);
   }
-  .termin-card-list__body {
-    padding: 1.25rem;
+  .ics-popup__lead {
+    margin: 0.35rem 0 0;
+    font-size: 0.84rem;
+    color: var(--muted);
+    line-height: 1.45;
   }
-  .termin-card-list__footer.card-footer {
+  .ics-popup__panel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem 0.85rem 0.85rem;
+    margin-top: 0.65rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  }
+  .ics-popup__panel:first-of-type {
+    margin-top: 0;
+  }
+  .ics-popup__panel--accent {
+    border-color: rgba(196, 30, 58, 0.22);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.65),
+      0 0 0 1px rgba(196, 30, 58, 0.06);
+  }
+  .ics-popup__label {
+    margin: 0 0 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.055em;
+    color: var(--muted);
+  }
+  .termin-detail-comments {
+    margin-top: 1.15rem;
+  }
+  .termin-detail-comments__shell {
+    padding: 1.15rem 1.2rem 1.1rem;
+  }
+  .termin-detail-comments__shell > .ics-popup__head {
+    margin-bottom: 1rem;
+  }
+  .termin-comment-card .ics-popup__panel {
+    margin-top: 0;
+  }
+  .termin-kommentare-list .termin-comment-card {
+    margin-bottom: 0.75rem;
+  }
+  .termin-kommentare-list .termin-comment-card:last-child {
+    margin-bottom: 0;
+  }
+  .termin-comment-card__shell {
+    position: relative;
+    padding: 1rem 1.2rem 1.05rem;
+  }
+  .termin-comment-card__top {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem 0.75rem;
+    margin-bottom: 0.65rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .termin-comment-card__lead {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.35rem;
+  }
+  .termin-comment-card__author {
+    font-weight: 650;
+    color: var(--text);
+  }
+  .termin-comment-card__sep {
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .termin-comment-card__meta {
+    font-size: 0.82rem;
+    font-weight: 450;
+  }
+  .termin-comment-card__hdr-tools {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+  .termin-comment-card__toolbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+  .termin-comment-card__text {
     margin: 0;
-    border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .termin-comment-card__raw {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
   }
   .termin-card-footer-actions .termin-footer-actions {
     display: flex;
@@ -58,111 +248,6 @@
   }
   .termin-card-footer-actions .termin-footer-actions .btn {
     white-space: nowrap;
-  }
-  .termin-kommentare-block {
-    margin-top: 1.15rem;
-  }
-  .termin-kommentare-list .termin-comment-card {
-    margin-bottom: 0.75rem;
-  }
-  .termin-kommentare-list .termin-comment-card:last-child {
-    margin-bottom: 0;
-  }
-  .termin-comment-card__hdr {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem 0.75rem;
-    padding: 0.65rem 1rem;
-    background: var(--accent);
-    color: #fff;
-    border-bottom: none;
-    font-size: 0.9rem;
-    border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0;
-  }
-  .termin-comment-card__lead {
-    flex: 1 1 auto;
-    min-width: 0;
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: baseline;
-    gap: 0;
-    overflow: hidden;
-  }
-  .termin-comment-card__lead .termin-comment-card__author {
-    font-weight: 650;
-    color: #fff !important;
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .termin-comment-card__sep {
-    flex-shrink: 0;
-    padding: 0 0.2rem;
-    color: rgba(255, 255, 255, 0.65);
-    font-weight: 500;
-  }
-  .termin-comment-card__lead .termin-comment-card__meta {
-    flex-shrink: 0;
-    font-size: 0.82rem;
-    white-space: nowrap;
-    color: rgba(255, 255, 255, 0.88) !important;
-    font-weight: 450;
-  }
-  .termin-comment-card__hdr-tools {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 0.25rem;
-    flex-shrink: 0;
-  }
-  .termin-comment-card__toolbar {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 0.25rem;
-    flex-shrink: 0;
-  }
-  .termin-comment-card__hdr .btn.btn-sm.btn-ghost {
-    color: #fff !important;
-    border-color: rgba(255, 255, 255, 0.45);
-    background: rgba(255, 255, 255, 0.1);
-  }
-  .termin-comment-card__hdr .btn.btn-sm.btn-ghost:hover {
-    background: rgba(255, 255, 255, 0.22);
-    border-color: rgba(255, 255, 255, 0.85);
-    color: #fff !important;
-  }
-  .termin-comment-card__hdr .btn.btn-sm.btn-danger {
-    background: rgba(0, 0, 0, 0.28);
-    border-color: rgba(255, 255, 255, 0.45);
-    color: #fff !important;
-  }
-  .termin-comment-card__hdr .btn.btn-sm.btn-danger:hover {
-    background: rgba(0, 0, 0, 0.42);
-    border-color: rgba(255, 255, 255, 0.75);
-    color: #fff !important;
-  }
-  .termin-comment-card__body {
-    position: relative;
-    padding: 0.85rem 1rem;
-  }
-  .termin-comment-card__text {
-    margin: 0;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-  .termin-comment-card__raw {
-    position: absolute;
-    left: -9999px;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-    pointer-events: none;
   }
   button.termin-kommentar-open {
     margin-top: 0.75rem;
@@ -287,54 +372,62 @@
 </div>
 
 <article class="card card--flush termin-card-list">
-  <header class="termin-card-list__header">
-    <h1 class="termin-card-list__title">{{ t.title }}</h1>
-  </header>
-  <div class="termin-card-list__body">
-  <div style="display:flex; gap:1rem; align-items:flex-start; flex-wrap:wrap;">
-    {% if t.image_path %}
-    <div style="flex-shrink:0;">
-      <img src="/media/{{ t.image_path }}" alt="" style="width:min(100%, 280px); height:auto; border-radius:8px; border:1px solid var(--border);">
-    </div>
-    {% endif %}
-    <div style="flex:1; min-width:200px;">
-      <p class="muted" style="margin:0 0 .75rem;">
-        {{ t.starts_at.strftime('%d.%m.%Y') }} · {{ t.starts_at.strftime('%H:%M') }}
-        {% if t.ends_at %}– {{ t.ends_at.strftime('%H:%M') }}{% endif %}
-        {% if t.location %} · {{ t.location }}{% endif %}
-      </p>
-      {% if t.description %}
-      <div style="margin-bottom:1rem;">
-        <h2 style="margin:0 0 .35rem; font-size:1rem;">Beschreibung</h2>
-        <p style="margin:0; white-space:pre-wrap;">{{ t.description }}</p>
+  <div class="termin-card-list__shell">
+    <header class="ics-popup__head termin-card-list__head">
+      <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_calendar() }}</div>
+      <div class="termin-card-list__head-main">
+        <h1 class="ics-popup__h termin-card-list__title">{{ t.title }}</h1>
+        <p class="ics-popup__lead termin-card-list__meta">
+          {{ t.starts_at.strftime('%d.%m.%Y') }} · {{ t.starts_at.strftime('%H:%M') }}
+          {% if t.ends_at %}– {{ t.ends_at.strftime('%H:%M') }}{% endif %}
+          {% if t.location %} · {{ t.location }}{% endif %}
+        </p>
       </div>
-      {% endif %}
+    </header>
 
-      <div style="margin-bottom:1rem;">
-        <h2 style="margin:0 0 .35rem; font-size:1rem;">Vorbereitung</h2>
-        {% if t.vorbereitung %}
-        <p style="margin:0; white-space:pre-wrap;">{{ t.vorbereitung }}</p>
-        {% else %}
-        <p class="muted" style="margin:0; font-size:.9rem;">Keine Angaben.</p>
+    <div class="termin-card-list__body">
+      <div class="termin-card-list__media-row">
+        {% if t.image_path %}
+        <div class="termin-card-list__thumb termin-card-list__thumb--detail">
+          <img src="/media/{{ t.image_path }}" alt="">
+        </div>
         {% endif %}
-      </div>
+        <div class="termin-card-list__columns">
+          {% if t.description %}
+          <section class="ics-popup__panel ics-popup__panel--accent termin-card-list__panel-desc" aria-label="Beschreibung">
+            <h3 class="ics-popup__label">Beschreibung</h3>
+            <p class="termin-card-list__desc">{{ t.description }}</p>
+          </section>
+          {% endif %}
 
-      <div style="margin-bottom:1rem;">
-        <h2 style="margin:0 0 .35rem; font-size:1rem;">Nachbereitung</h2>
-        {% if t.nachbereitung %}
-        <p style="margin:0; white-space:pre-wrap;">{{ t.nachbereitung }}</p>
-        {% else %}
-        <p class="muted" style="margin:0; font-size:.9rem;">Keine Angaben.</p>
-        {% endif %}
-      </div>
+          <section class="ics-popup__panel" aria-label="Vorbereitung">
+            <h3 class="ics-popup__label">Vorbereitung</h3>
+            {% if t.vorbereitung %}
+            <p class="termin-panel-body">{{ t.vorbereitung }}</p>
+            {% else %}
+            <p class="muted termin-panel-body" style="font-size:.9rem;">Keine Angaben.</p>
+            {% endif %}
+          </section>
 
-      <div style="padding-top:.75rem; border-top:1px solid var(--border);">
-        {{ teilnehmer_liste(row) }}
+          <section class="ics-popup__panel" aria-label="Nachbereitung">
+            <h3 class="ics-popup__label">Nachbereitung</h3>
+            {% if t.nachbereitung %}
+            <p class="termin-panel-body">{{ t.nachbereitung }}</p>
+            {% else %}
+            <p class="muted termin-panel-body" style="font-size:.9rem;">Keine Angaben.</p>
+            {% endif %}
+          </section>
+
+          {% set _tn = row.teilnehmer|length + row.teilnehmer_extern|length %}
+          <section class="ics-popup__panel termin-card-list__panel-teilnehmer{% if not t.description %} ics-popup__panel--accent{% endif %}" aria-label="Teilnehmer">
+            <h3 class="ics-popup__label">Teilnehmer{% if _tn %} ({{ _tn }}){% endif %}</h3>
+            {{ teilnehmer_liste(row, with_heading=False) }}
+          </section>
+        </div>
       </div>
     </div>
-  </div>
-  </div>
-  <footer class="card-footer termin-card-footer-actions termin-card-list__footer" aria-label="Anmeldung und Verwaltung">
+
+    <footer class="termin-card-list__footer termin-card-footer-actions" aria-label="Anmeldung und Verwaltung">
     <div class="termin-footer-actions">
       {% if not termin_vergangen %}
       {% if row.ich_teilnehme %}
@@ -365,37 +458,51 @@
       {% endif %}
     </div>
   </footer>
+  </div>
 </article>
 
-<section class="termin-kommentare-block" aria-label="Kommentare zum Termin">
-  <div id="termin-kommentare-list" class="termin-kommentare-list">
-    {% for k in termin_kommentare %}
-    <article class="card card--flush termin-comment-card">
-      <header class="termin-comment-card__hdr">
-        <div class="termin-comment-card__lead">
-          <span class="termin-comment-card__author">{{ k.author_name }}</span>
-          <span class="termin-comment-card__sep" aria-hidden="true"> – </span>
-          <span class="termin-comment-card__meta muted">{{ k.created_display }}</span>
-        </div>
-        {% if k.can_edit %}
-        <div class="termin-comment-card__hdr-tools">
-          <div class="termin-comment-card__toolbar" role="toolbar" aria-label="Kommentar bearbeiten oder löschen">
-            <button type="button" class="btn btn-sm btn-ghost btn-ico termin-komm-edit" data-id="{{ k.id }}" aria-label="Bearbeiten" title="Bearbeiten">{{ ico.svg_pencil() }}</button>
-            <button type="button" class="btn btn-sm btn-danger btn-ico termin-komm-del" data-id="{{ k.id }}" aria-label="Löschen" title="Löschen">{{ ico.svg_trash() }}</button>
-          </div>
-        </div>
-        {% endif %}
-      </header>
-      <div class="termin-comment-card__body">
-        <p class="termin-comment-card__text">{{ k.body }}</p>
-        <textarea class="termin-comment-card__raw" readonly tabindex="-1" aria-hidden="true">{{ k.body }}</textarea>
+<section class="card card--flush termin-detail-comments" aria-label="Kommentare zum Termin">
+  <div class="termin-detail-comments__shell">
+    <header class="ics-popup__head termin-detail-comments__head">
+      <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_chat() }}</div>
+      <div>
+        <h2 class="ics-popup__h">Kommentare</h2>
+        <p class="ics-popup__lead">Diskussion zu diesem Termin — für alle mit Zugang sichtbar.</p>
       </div>
-    </article>
-    {% endfor %}
+    </header>
+
+    <div id="termin-kommentare-list" class="termin-kommentare-list">
+      {% for k in termin_kommentare %}
+      <article class="card card--flush termin-comment-card">
+        <div class="termin-comment-card__shell">
+          <header class="termin-comment-card__top">
+            <div class="termin-comment-card__lead">
+              <span class="termin-comment-card__author">{{ k.author_name }}</span>
+              <span class="termin-comment-card__sep" aria-hidden="true"> – </span>
+              <span class="termin-comment-card__meta muted">{{ k.created_display }}</span>
+            </div>
+            {% if k.can_edit %}
+            <div class="termin-comment-card__hdr-tools">
+              <div class="termin-comment-card__toolbar" role="toolbar" aria-label="Kommentar bearbeiten oder löschen">
+                <button type="button" class="btn btn-sm btn-ghost btn-ico termin-komm-edit" data-id="{{ k.id }}" aria-label="Bearbeiten" title="Bearbeiten">{{ ico.svg_pencil() }}</button>
+                <button type="button" class="btn btn-sm btn-danger btn-ico termin-komm-del" data-id="{{ k.id }}" aria-label="Löschen" title="Löschen">{{ ico.svg_trash() }}</button>
+              </div>
+            </div>
+            {% endif %}
+          </header>
+          <section class="ics-popup__panel ics-popup__panel--accent termin-comment-card__content" aria-label="Kommentartext">
+            <p class="termin-comment-card__text">{{ k.body }}</p>
+            <textarea class="termin-comment-card__raw" readonly tabindex="-1" aria-hidden="true">{{ k.body }}</textarea>
+          </section>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+
+    <button type="button" class="btn btn-sm btn-ico btn-with-label termin-kommentar-open" id="termin-kommentar-open" aria-expanded="false" aria-haspopup="dialog">
+      {{ ico.svg_chat() }}<span class="btn-text">Kommentieren</span>
+    </button>
   </div>
-  <button type="button" class="btn btn-sm btn-with-label termin-kommentar-open" id="termin-kommentar-open" aria-expanded="false" aria-haspopup="dialog">
-    Kommentieren
-  </button>
 </section>
 
 <dialog id="termin-kommentar-dialog" class="popup-dialog termin-kommentar-dialog" aria-labelledby="termin-kommentar-dialog-title" aria-modal="true">
@@ -475,7 +582,7 @@
       if (k.can_edit) {
         tools =
           '<div class="termin-comment-card__hdr-tools">' +
-          '<div class="termin-comment-card__toolbar" role="toolbar">' +
+          '<div class="termin-comment-card__toolbar" role="toolbar" aria-label="Kommentar bearbeiten oder löschen">' +
           '<button type="button" class="btn btn-sm btn-ghost btn-ico termin-komm-edit" data-id="' +
           k.id +
           '" aria-label="Bearbeiten" title="Bearbeiten">' +
@@ -490,15 +597,17 @@
       }
       return (
         '<article class="card card--flush termin-comment-card">' +
-        '<header class="termin-comment-card__hdr">' +
+        '<div class="termin-comment-card__shell">' +
+        '<header class="termin-comment-card__top">' +
         lead +
         tools +
-        '</header><div class="termin-comment-card__body">' +
+        '</header>' +
+        '<section class="ics-popup__panel ics-popup__panel--accent termin-comment-card__content" aria-label="Kommentartext">' +
         '<p class="termin-comment-card__text">' +
         escapeHtml(k.body || "") +
         '</p>' +
         '<textarea class="termin-comment-card__raw" readonly tabindex="-1" aria-hidden="true"></textarea>' +
-        "</div></article>"
+        "</section></div></article>"
       );
     }).join("");
     (items || []).forEach(function (k, idx) {
