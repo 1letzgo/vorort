@@ -171,27 +171,109 @@
   }
   dialog.termin-kommentar-dialog.popup-dialog {
     z-index: 10000;
-    border-top: 3px solid var(--accent);
+    border: none;
+    box-shadow:
+      0 4px 6px rgba(0, 0, 0, 0.04),
+      0 18px 48px rgba(0, 0, 0, 0.14);
+    padding: 0;
+    overflow: hidden;
+    max-width: min(100vw - 1.5rem, 420px);
   }
-  dialog.termin-kommentar-dialog.popup-dialog > h2 {
-    margin: 0 0 0.85rem;
-    padding-bottom: 0.55rem;
-    font-size: 1.05rem;
-    font-weight: 650;
-    line-height: 1.3;
-    color: var(--text);
+  dialog.termin-kommentar-dialog::backdrop {
+    background: rgba(26, 26, 26, 0.42);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+  }
+  .termin-kommentar-dialog .ics-popup__form {
+    padding: 1.15rem 1.2rem 1.1rem;
+  }
+  .termin-kommentar-dialog .ics-popup__head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    margin: 0 0 1rem;
+    padding-bottom: 1rem;
     border-bottom: 1px solid var(--border);
   }
-  .termin-kommentar-dialog.popup-dialog textarea#termin-kommentar-text {
-    min-height: 100px;
-    resize: vertical;
+  .termin-kommentar-dialog .ics-popup__head-icon {
+    flex-shrink: 0;
+    width: 2.85rem;
+    height: 2.85rem;
+    border-radius: 12px;
+    background: linear-gradient(
+      145deg,
+      rgba(196, 30, 58, 0.14),
+      rgba(196, 30, 58, 0.06)
+    );
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  .termin-kommentar-dialog-actions {
+  .termin-kommentar-dialog .ics-popup__head-icon .ico {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+  .termin-kommentar-dialog .ics-popup__h {
+    margin: 0;
+    font-size: 1.14rem;
+    font-weight: 650;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .termin-kommentar-dialog .ics-popup__lead {
+    margin: 0.35rem 0 0;
+    font-size: 0.84rem;
+    color: var(--muted);
+    line-height: 1.45;
+  }
+  .termin-kommentar-dialog .ics-popup__panel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem 0.85rem 0.85rem;
+    margin-top: 0.65rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  }
+  .termin-kommentar-dialog .ics-popup__panel--accent {
+    border-color: rgba(196, 30, 58, 0.22);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.65),
+      0 0 0 1px rgba(196, 30, 58, 0.06);
+    margin-top: 0;
+  }
+  .termin-kommentar-dialog .ics-popup__panel .ics-popup__label {
+    margin: 0 0 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.055em;
+    color: var(--muted);
+  }
+  .termin-kommentar-dialog .ics-popup__panel textarea#termin-kommentar-text {
+    min-height: 140px;
+    resize: vertical;
+    margin-top: 0;
+  }
+  .termin-kommentar-dialog .ics-popup__foot {
+    margin-top: 1.1rem;
+    padding-top: 0.95rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+  .termin-kommentar-popup-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
     justify-content: flex-end;
-    margin-top: 1rem;
+  }
+  .termin-kommentar-dialog #termin-kommentar-msg {
+    margin: 0;
+    font-size: 0.85rem;
   }
 </style>
 {% endblock %}
@@ -317,17 +399,33 @@
 </section>
 
 <dialog id="termin-kommentar-dialog" class="popup-dialog termin-kommentar-dialog" aria-labelledby="termin-kommentar-dialog-title" aria-modal="true">
-  <h2 id="termin-kommentar-dialog-title">Kommentar schreiben</h2>
-  <form id="termin-kommentar-form">
+  <form id="termin-kommentar-form" class="ics-popup__form">
     <input type="hidden" id="termin-kommentar-edit-id" value="">
-    <label for="termin-kommentar-text">Text</label>
-    <textarea id="termin-kommentar-text" name="body" rows="4" maxlength="4000" required placeholder="Dein Kommentar …"></textarea>
-    <div class="termin-kommentar-dialog-actions">
-      <button type="button" class="btn btn-ghost btn-sm" id="termin-kommentar-cancel">Abbrechen</button>
-      <button type="submit" class="btn btn-sm" id="termin-kommentar-submit">Absenden</button>
-    </div>
+    <header class="ics-popup__head">
+      <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_chat() }}</div>
+      <div>
+        <h2 id="termin-kommentar-dialog-title" class="ics-popup__h">Kommentar schreiben</h2>
+        <p class="ics-popup__lead" id="termin-kommentar-dialog-lead">Sichtbar für alle mit Zugang zum Termin.</p>
+      </div>
+    </header>
+
+    <section class="ics-popup__panel ics-popup__panel--accent" aria-label="Kommentartext">
+      <label for="termin-kommentar-text" class="ics-popup__label">Kommentar</label>
+      <textarea id="termin-kommentar-text" name="body" rows="5" maxlength="4000" required placeholder="Dein Kommentar …"></textarea>
+    </section>
+
+    <footer class="ics-popup__foot">
+      <div class="termin-kommentar-popup-actions">
+        <button type="button" class="btn btn-ghost btn-sm btn-ico btn-with-label" id="termin-kommentar-cancel" aria-label="Abbrechen">
+          {{ ico.svg_x() }}<span class="btn-text">Abbrechen</span>
+        </button>
+        <button type="submit" class="btn btn-sm btn-ico btn-with-label" id="termin-kommentar-submit" aria-label="Absenden">
+          {{ ico.svg_check() }}<span class="btn-text">Absenden</span>
+        </button>
+      </div>
+      <p class="muted" id="termin-kommentar-msg"></p>
+    </footer>
   </form>
-  <p class="muted" id="termin-kommentar-msg" style="margin:.65rem 0 0; font-size:.85rem;"></p>
 </dialog>
 
 <script>
@@ -341,8 +439,15 @@
   var msgEl = document.getElementById("termin-kommentar-msg");
   var openBtn = document.getElementById("termin-kommentar-open");
   var dlgTitle = document.getElementById("termin-kommentar-dialog-title");
+  var leadEl = document.getElementById("termin-kommentar-dialog-lead");
   var editIdInput = document.getElementById("termin-kommentar-edit-id");
   var submitBtn = document.getElementById("termin-kommentar-submit");
+  var submitBtnLabel = submitBtn ? submitBtn.querySelector(".btn-text") : null;
+
+  function setSubmitLabel(isNew) {
+    if (submitBtnLabel) submitBtnLabel.textContent = isNew ? "Absenden" : "Speichern";
+    if (submitBtn) submitBtn.setAttribute("aria-label", isNew ? "Absenden" : "Speichern");
+  }
 
   function escapeHtml(text) {
     var d = document.createElement("div");
@@ -411,7 +516,8 @@
     editIdInput.value = "";
     textarea.value = "";
     dlgTitle.textContent = "Kommentar schreiben";
-    submitBtn.textContent = "Absenden";
+    if (leadEl) leadEl.textContent = "Sichtbar für alle mit Zugang zum Termin.";
+    setSubmitLabel(true);
     showMsg("");
   }
 
@@ -479,7 +585,8 @@
       editIdInput.value = eb.getAttribute("data-id") || "";
       textarea.value = raw ? raw.value : "";
       dlgTitle.textContent = "Kommentar bearbeiten";
-      submitBtn.textContent = "Speichern";
+      if (leadEl) leadEl.textContent = "Änderungen sind für alle mit Zugang zum Termin sichtbar.";
+      setSubmitLabel(false);
       showMsg("");
       dlg.showModal();
       openBtn.setAttribute("aria-expanded", "true");
