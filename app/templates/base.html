@@ -48,7 +48,7 @@
       padding-bottom: max(3rem, calc(1.25rem + env(safe-area-inset-bottom, 0px)));
       padding-left: max(1rem, env(safe-area-inset-left, 0px));
     }
-    header {
+    header.site-header {
       position: fixed;
       left: 0;
       right: 0;
@@ -63,7 +63,7 @@
       background: var(--bg);
       box-shadow: 0 6px 14px rgba(0, 0, 0, 0.05);
     }
-    header h1 { font-size: 1.25rem; margin: 0; font-weight: 650; }
+    header.site-header h1 { font-size: 1.25rem; margin: 0; font-weight: 650; }
     .header-inner {
       max-width: 720px;
       margin-left: auto;
@@ -350,7 +350,7 @@
   <script>
     (function () {
       function syncWrapHeaderPad() {
-        var header = document.querySelector("header");
+        var header = document.querySelector("header.site-header");
         var wrap = document.querySelector(".wrap");
         if (!header || !wrap) return;
         var gapRem = 1.5;
@@ -361,7 +361,7 @@
         syncWrapHeaderPad();
         requestAnimationFrame(syncWrapHeaderPad);
         window.addEventListener("resize", syncWrapHeaderPad);
-        var header = document.querySelector("header");
+        var header = document.querySelector("header.site-header");
         if (header && typeof ResizeObserver !== "undefined") {
           new ResizeObserver(syncWrapHeaderPad).observe(header);
         }

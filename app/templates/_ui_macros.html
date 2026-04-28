@@ -1,7 +1,7 @@
 {% import '_icons.html' as ico %}
 
 {% macro app_header(title, show_menu=True) %}
-<header>
+<header class="site-header">
   <div class="header-inner">
     <h1>{{ title }}</h1>
     {% if show_menu %}
@@ -16,7 +16,7 @@
 {% endmacro %}
 
 {% macro app_header_toolbar(title) %}
-<header>
+<header class="site-header">
   <div class="header-inner">
     <h1>{{ title }}</h1>
     <nav class="header-toolbar">
