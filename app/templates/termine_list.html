@@ -14,19 +14,7 @@
     </div>
     {% endif %}
     <div style="flex:1; min-width:200px;">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:.75rem; flex-wrap:wrap; margin-bottom:.35rem;">
-        <h2 style="margin:0; font-size:1.15rem; flex:1; min-width:8rem;"><a href="/termine/{{ t.id }}">{{ t.title }}</a></h2>
-        {% if row.kann_verwalten %}
-        <div style="display:flex; gap:.5rem; flex-shrink:0; align-items:center;">
-          <a href="/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Termin bearbeiten">
-            {{ ico.svg_pencil() }}<span class="btn-text">Bearbeiten</span>
-          </a>
-          <a href="/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="Termin löschen">
-            {{ ico.svg_trash() }}<span class="btn-text">Löschen</span>
-          </a>
-        </div>
-        {% endif %}
-      </div>
+      <h2 style="margin:0 0 .35rem; font-size:1.15rem;"><a href="/termine/{{ t.id }}">{{ t.title }}</a></h2>
       <p class="muted" style="margin:0 0 .5rem;">
         {{ t.starts_at.strftime('%d.%m.%Y') }} · {{ t.starts_at.strftime('%H:%M') }}
         {% if t.ends_at %}– {{ t.ends_at.strftime('%H:%M') }}{% endif %}
@@ -63,6 +51,16 @@
       </div>
     </div>
   </div>
+  {% if row.kann_verwalten %}
+  <div style="margin-top:.75rem; padding-top:.75rem; border-top:1px solid var(--border); display:flex; flex-wrap:wrap; gap:.5rem; justify-content:flex-end;">
+    <a href="/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Termin bearbeiten">
+      {{ ico.svg_pencil() }}<span class="btn-text">Bearbeiten</span>
+    </a>
+    <a href="/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="Termin löschen">
+      {{ ico.svg_trash() }}<span class="btn-text">Löschen</span>
+    </a>
+  </div>
+  {% endif %}
 </article>
 {% endmacro %}
 
