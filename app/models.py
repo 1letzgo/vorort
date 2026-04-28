@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -71,3 +71,23 @@ class Termin(Base):
         back_populates="termin",
         cascade="all, delete-orphan",
     )
+
+
+class Plakat(Base):
+    """Plakat-Standort; User-IDs verweisen auf users (ohne FK, wie zuvor in separater DB)."""
+
+    __tablename__ = "plakate"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    hung_by_user_id: Mapped[int] = mapped_column(Integer, index=True)
+    hung_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    image_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    note: Mapped[str] = mapped_column(Text, default="")
+    removed_by_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    removed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    @property
+    def is_active(self) -> bool:
+        return self.removed_at is None

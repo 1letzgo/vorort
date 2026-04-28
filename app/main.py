@@ -26,15 +26,13 @@ from app.config import (
     UPLOAD_DIR,
 )
 from app.database import engine, get_db
-from app.db_migrate import run_sqlite_migrations
+from app.db_migrate import migrate_plakate_from_legacy_sqlite, run_sqlite_migrations
 from app.deps import AdminUser, CurrentUser
 from app.ics_service import (
     all_termine_for_feed,
     build_ics_calendar,
     termine_for_user_teilnahmen,
 )
-from app.plakate_db import PlakatBase, get_plakate_db, plakate_engine
-from app.plakate_models import Plakat
 from app.settings_store import (
     ensure_ics_token_for_ui,
     ensure_user_calendar_token,
@@ -59,16 +57,13 @@ ALLOWED_IMAGE = {"image/jpeg", "image/png", "image/webp"}
 EXT_MAP = {".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp"}
 USERNAME_PATTERN = re.compile(r"^[\w.-]+$", re.UNICODE)
 
-PlakatDB = Annotated[Session, Depends(get_plakate_db)]
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     models.Base.metadata.create_all(bind=engine)
     run_sqlite_migrations(engine)
+    migrate_plakate_from_legacy_sqlite(engine)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     (UPLOAD_DIR / "plakate").mkdir(parents=True, exist_ok=True)
-    PlakatBase.metadata.create_all(bind=plakate_engine)
     yield
 
 
@@ -189,8 +184,12 @@ def _user_display_names(db: Session, user_ids: set[int]) -> dict[int, str]:
     }
 
 
-def _plakate_list_payload(db: Session, pdb: Session) -> list[dict]:
-    rows = pdb.query(Plakat).order_by(Plakat.hung_at.desc()).all()
+def _plakate_list_payload(db: Session) -> list[dict]:
+    rows = (
+        db.query(models.Plakat)
+        .order_by(models.Plakat.hung_at.desc())
+        .all()
+    )
     ids: set[int] = set()
     for r in rows:
         ids.add(r.hung_by_user_id)
@@ -327,7 +326,6 @@ def sharepic_creator(request: Request, user: CurrentUser):
 def plakate_view(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
-    pdb: PlakatDB,
     user: CurrentUser,
 ):
     return templates.TemplateResponse(
@@ -335,7 +333,7 @@ def plakate_view(
         "plakate.html",
         {
             "user": user,
-            "plakate_initial": _plakate_list_payload(db, pdb),
+            "plakate_initial": _plakate_list_payload(db),
             "max_mb": MAX_UPLOAD_MB,
         },
     )
@@ -344,17 +342,15 @@ def plakate_view(
 @app.get("/plakate/api/list")
 def plakate_api_list(
     db: Annotated[Session, Depends(get_db)],
-    pdb: PlakatDB,
     _: CurrentUser,
 ):
-    return JSONResponse(_plakate_list_payload(db, pdb))
+    return JSONResponse(_plakate_list_payload(db))
 
 
 @app.post("/plakate/api/hinzufuegen")
 async def plakate_hinzufuegen(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
-    pdb: PlakatDB,
     user: CurrentUser,
     lat: Annotated[str, Form()],
     lng: Annotated[str, Form()],
@@ -368,14 +364,14 @@ async def plakate_hinzufuegen(
         raise HTTPException(status_code=400, detail="Koordinaten ungültig.")
     if not (-90 <= lat_f <= 90 and -180 <= lng_f <= 180):
         raise HTTPException(status_code=400, detail="Koordinaten außerhalb des gültigen Bereichs.")
-    p = Plakat(
+    p = models.Plakat(
         latitude=lat_f,
         longitude=lng_f,
         hung_by_user_id=user.id,
         note=note.strip(),
     )
-    pdb.add(p)
-    pdb.flush()
+    db.add(p)
+    db.flush()
     if foto and foto.filename:
         ext = _safe_ext(foto.filename, foto.content_type)
         if ext and foto.content_type in ALLOWED_IMAGE:
@@ -390,32 +386,31 @@ async def plakate_hinzufuegen(
                     size += len(chunk)
                     if size > max_b:
                         dest.unlink(missing_ok=True)
-                        pdb.rollback()
+                        db.rollback()
                         raise HTTPException(
                             status_code=400,
                             detail=f"Bild zu groß (max. {MAX_UPLOAD_MB} MB).",
                         )
                     f.write(chunk)
             p.image_path = rel
-            pdb.add(p)
+            db.add(p)
         elif foto.filename:
-            pdb.rollback()
+            db.rollback()
             raise HTTPException(
                 status_code=400,
                 detail="Nur JPEG-, PNG- oder WebP-Bilder erlaubt.",
             )
-    pdb.commit()
-    return JSONResponse({"ok": True, "plakate": _plakate_list_payload(db, pdb)})
+    db.commit()
+    return JSONResponse({"ok": True, "plakate": _plakate_list_payload(db)})
 
 
 @app.post("/plakate/api/abhaengen/{plakat_id}")
 def plakate_abhaengen(
     plakat_id: int,
     db: Annotated[Session, Depends(get_db)],
-    pdb: PlakatDB,
     user: CurrentUser,
 ):
-    p = pdb.get(Plakat, plakat_id)
+    p = db.get(models.Plakat, plakat_id)
     if not p or p.removed_at is not None:
         raise HTTPException(
             status_code=404,
@@ -423,9 +418,9 @@ def plakate_abhaengen(
         )
     p.removed_by_user_id = user.id
     p.removed_at = datetime.utcnow()
-    pdb.add(p)
-    pdb.commit()
-    return JSONResponse({"ok": True, "plakate": _plakate_list_payload(db, pdb)})
+    db.add(p)
+    db.commit()
+    return JSONResponse({"ok": True, "plakate": _plakate_list_payload(db)})
 
 
 @app.get("/registrierung", response_class=HTMLResponse)

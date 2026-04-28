@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.engine.url import make_url
+
+from app.config import BASE_DIR
 
 
 def run_sqlite_migrations(engine: Engine) -> None:
@@ -64,3 +70,107 @@ def run_sqlite_migrations(engine: Engine) -> None:
                         "ALTER TABLE termine ADD COLUMN externe_teilnehmer_json TEXT NOT NULL DEFAULT '[]'"
                     ),
                 )
+
+
+def _sqlite_main_path(engine: Engine) -> Path | None:
+    if engine.dialect.name != "sqlite":
+        return None
+    db = engine.url.database
+    if not db or db == ":memory:":
+        return None
+    p = Path(db)
+    if not p.is_absolute():
+        p = (BASE_DIR / p).resolve()
+    else:
+        p = p.resolve()
+    return p
+
+
+def _legacy_plakate_sqlite_files(main: Path) -> list[Path]:
+    """Kandidaten für die frühere plakate.db (Projektroot, optional PLAKATE_DATABASE_URL)."""
+    seen: set[Path] = set()
+    out: list[Path] = []
+    for candidate in (BASE_DIR / "plakate.db",):
+        if candidate.is_file():
+            r = candidate.resolve()
+            if r != main and r not in seen:
+                seen.add(r)
+                out.append(r)
+    raw = os.environ.get("PLAKATE_DATABASE_URL", "").strip()
+    if raw.startswith("sqlite:"):
+        try:
+            u = make_url(raw)
+            if u.database and u.database != ":memory:":
+                lp = Path(u.database)
+                if not lp.is_absolute():
+                    lp = (BASE_DIR / lp).resolve()
+                else:
+                    lp = lp.resolve()
+                if lp.is_file() and lp != main and lp not in seen:
+                    seen.add(lp)
+                    out.append(lp)
+        except Exception:
+            pass
+    return out
+
+
+def migrate_plakate_from_legacy_sqlite(engine: Engine) -> None:
+    """Einmalig Daten aus alter plakate.db in die Haupt-DB übernehmen (nur wenn plakate leer)."""
+    if engine.dialect.name != "sqlite":
+        return
+    main_path = _sqlite_main_path(engine)
+    if main_path is None:
+        return
+    insp = inspect(engine)
+    if not insp.has_table("plakate"):
+        return
+    with engine.connect() as conn:
+        n = conn.execute(text("SELECT COUNT(*) FROM plakate")).scalar_one()
+    if n > 0:
+        return
+    for legacy in _legacy_plakate_sqlite_files(main_path):
+        with engine.begin() as conn:
+            conn.execute(
+                text("ATTACH DATABASE :p AS legacy_plakate"),
+                {"p": str(legacy)},
+            )
+            try:
+                row = conn.execute(
+                    text(
+                        "SELECT 1 FROM legacy_plakate.sqlite_master "
+                        "WHERE type = 'table' AND name = 'plakate' LIMIT 1"
+                    )
+                ).first()
+                if not row:
+                    continue
+                conn.execute(
+                    text(
+                        """
+                        INSERT INTO plakate (
+                            id, latitude, longitude, hung_by_user_id, hung_at,
+                            image_path, note, removed_by_user_id, removed_at
+                        )
+                        SELECT
+                            id, latitude, longitude, hung_by_user_id, hung_at,
+                            image_path, note, removed_by_user_id, removed_at
+                        FROM legacy_plakate.plakate
+                        """
+                    )
+                )
+                try:
+                    conn.execute(
+                        text(
+                            """
+                            INSERT OR REPLACE INTO sqlite_sequence(name, seq)
+                            VALUES (
+                                'plakate',
+                                (SELECT COALESCE(MAX(id), 0) FROM plakate)
+                            )
+                            """
+                        )
+                    )
+                except Exception:
+                    pass
+                return
+            finally:
+                conn.execute(text("DETACH DATABASE legacy_plakate"))
