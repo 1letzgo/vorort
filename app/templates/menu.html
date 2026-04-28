@@ -2,6 +2,26 @@
 {% from '_ui_macros.html' import app_header %}
 {% import '_icons.html' as ico %}
 {% block title %}SPD vor Ort — Wahlkampf{% endblock %}
+{% block head %}
+<style>
+  .menu-page-footer {
+    margin-top: 1.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .menu-page-footer a {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .menu-page-footer a:hover {
+    text-decoration: underline;
+  }
+</style>
+{% endblock %}
 {% block body %}
 {{ app_header('SPD vor Ort', show_menu=False) }}
 
@@ -10,15 +30,29 @@
     <li><a href="/termine"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Termine</span></span></a></li>
     <li><a href="/plakate"><span class="menu-list__main">{{ ico.svg_map_pin() }}<span>Plakate</span></span></a></li>
     <li><a href="/sharepic"><span class="menu-list__main">{{ ico.svg_image() }}<span>Sharepic</span></span></a></li>
-    {% if user.is_admin %}
+  </ul>
+</div>
+
+{% if user.is_admin %}
+<div class="card card--flush">
+  <ul class="menu-list" role="list">
     <li>
       <a href="/admin/benutzer">
         <span class="menu-list__main">{{ ico.svg_cog() }}<span>Administration</span></span>
         {% if pending_count %}<span class="menu-pending-badge" aria-label="{{ pending_count }} ausstehend">{{ pending_count }}</span>{% endif %}
       </a>
     </li>
-    {% endif %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="card card--flush">
+  <ul class="menu-list" role="list">
     <li><a href="/logout" class="menu-link-logout"><span class="menu-list__main">{{ ico.svg_logout() }}<span>Ausloggen</span></span></a></li>
   </ul>
 </div>
+
+<footer class="menu-page-footer">
+  Made by Daniel G. · <a href="https://github.com/1letzgo/wahlkampf" rel="noopener noreferrer" target="_blank">GitHub</a>
+</footer>
 {% endblock %}
