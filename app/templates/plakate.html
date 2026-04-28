@@ -5,32 +5,69 @@
 {% block head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-  .plakate-section-card__header {
-    background: var(--accent);
-    color: #fff;
-    padding: 0.85rem 1.25rem;
+  .plakate-page .ics-popup__head,
+  .plakate-add-dialog .ics-popup__head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    margin: 0 0 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
   }
-  .plakate-section-card__title {
+  .plakate-page .ics-popup__head-icon,
+  .plakate-add-dialog .ics-popup__head-icon {
+    flex-shrink: 0;
+    width: 2.85rem;
+    height: 2.85rem;
+    border-radius: 12px;
+    background: linear-gradient(
+      145deg,
+      rgba(196, 30, 58, 0.14),
+      rgba(196, 30, 58, 0.06)
+    );
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .plakate-page .ics-popup__head-icon .ico,
+  .plakate-add-dialog .ics-popup__head-icon .ico {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+  .plakate-page .ics-popup__h,
+  .plakate-add-dialog .ics-popup__h {
     margin: 0;
-    font-size: 1.05rem;
+    font-size: 1.14rem;
     font-weight: 650;
-    line-height: 1.3;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: var(--text);
   }
-  .plakate-section-card__body--map {
+  .plakate-page .ics-popup__lead,
+  .plakate-add-dialog .ics-popup__lead {
+    margin: 0.35rem 0 0;
+    font-size: 0.84rem;
+    color: var(--muted);
+    line-height: 1.45;
+  }
+  .plakate-map-card__shell,
+  .plakate-table-card__shell {
+    padding: 1.15rem 1.2rem 1.1rem;
+  }
+  .plakate-map-card__map-area {
     overflow: hidden;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg);
   }
-  .plakate-section-card__body--table {
-    padding: 0;
-  }
-  .plakate-section-card__body--table .plakate-table-wrap {
-    margin-top: 0;
-  }
-  .plakate-map-card__footer.card-footer {
-    margin: 0;
-    border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px);
+  .plakate-page .ics-popup__foot {
+    margin-top: 1.1rem;
+    padding-top: 0.95rem;
+    border-top: 1px solid var(--border);
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    justify-content: flex-end;
     gap: 0.5rem;
   }
   #plakate-map {
@@ -40,8 +77,76 @@
     border-radius: 0;
     z-index: 1;
   }
-  .plakate-form .row-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: flex-end; margin-top: 1rem; }
-  .plakate-coords { font-size: 0.85rem; color: var(--muted); margin: 0 0 0.75rem; }
+  .plakate-add-dialog.popup-dialog {
+    z-index: 10000;
+    border: none;
+    box-shadow:
+      0 4px 6px rgba(0, 0, 0, 0.04),
+      0 18px 48px rgba(0, 0, 0, 0.14);
+    padding: 0;
+    overflow: hidden;
+    max-width: min(100vw - 1.5rem, 420px);
+  }
+  .plakate-add-dialog::backdrop {
+    background: rgba(26, 26, 26, 0.42);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+  }
+  .plakate-add-dialog .ics-popup__form {
+    padding: 1.15rem 1.2rem 1.1rem;
+  }
+  .plakate-add-dialog .ics-popup__panel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem 0.85rem 0.85rem;
+    margin-top: 0.65rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  }
+  .plakate-add-dialog .ics-popup__panel:first-of-type {
+    margin-top: 0;
+  }
+  .plakate-add-dialog .ics-popup__panel--accent {
+    border-color: rgba(196, 30, 58, 0.22);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.65),
+      0 0 0 1px rgba(196, 30, 58, 0.06);
+  }
+  .plakate-add-dialog .ics-popup__label {
+    margin: 0 0 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.055em;
+    color: var(--muted);
+  }
+  .plakate-add-dialog .ics-popup__foot {
+    margin-top: 1.1rem;
+    padding-top: 0.95rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+  .plakate-dialog-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+  .plakate-form-msg {
+    margin: 0;
+    font-size: 0.85rem;
+  }
+  .plakate-coords {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 0 0 0.75rem;
+  }
+  .plakate-add-dialog .plakate-coords {
+    margin-bottom: 0.65rem;
+  }
   .plakate-table-wrap { overflow-x: auto; }
   .plakate-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   .plakate-table th, .plakate-table td { padding: 0.5rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
@@ -63,7 +168,6 @@
     text-align: left;
   }
   button.plakate-focus-map:hover { color: var(--accent-dim); }
-  #plakate-add-dialog { z-index: 10000; }
   .leaflet-div-icon.plakate-user-loc {
     background: transparent !important;
     border: none !important;
@@ -73,59 +177,91 @@
 {% block body %}
 {{ app_header('Plakate') }}
 
-<div class="card card--flush plakate-section-card">
-  <div class="plakate-section-card__header">
-    <h2 class="plakate-section-card__title">Karte</h2>
+<div class="plakate-page">
+<div class="card card--flush plakate-map-card">
+  <div class="plakate-map-card__shell">
+    <header class="ics-popup__head">
+      <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_map_pin() }}</div>
+      <div>
+        <h2 class="ics-popup__h">Karte</h2>
+        <p class="ics-popup__lead">In die Karte tippen, um einen Standort zu melden — hier hängt das Plakat.</p>
+      </div>
+    </header>
+    <div class="plakate-map-card__map-area">
+      <div id="plakate-map" role="application" aria-label="Karte Plakat-Standorte"></div>
+    </div>
+    <footer class="ics-popup__foot" aria-label="Aktionen zur Karte">
+      <button type="button" class="btn btn-sm btn-ico btn-with-label" id="plakate-locate" aria-label="Mein Standort auf der Karte anzeigen">
+        {{ ico.svg_map_pin() }}<span class="btn-text">Mein Standort</span>
+      </button>
+    </footer>
   </div>
-  <div class="plakate-section-card__body plakate-section-card__body--map">
-    <div id="plakate-map" role="application" aria-label="Karte Plakat-Standorte"></div>
-  </div>
-  <footer class="card-footer plakate-map-card__footer" aria-label="Aktionen zur Karte">
-    <button type="button" class="btn btn-sm btn-ico btn-with-label" id="plakate-locate" aria-label="Mein Standort auf der Karte anzeigen">
-      {{ ico.svg_map_pin() }}<span class="btn-text">Mein Standort</span>
-    </button>
-  </footer>
 </div>
 
-<dialog id="plakate-add-dialog" class="popup-dialog" aria-labelledby="plakate-dialog-title" aria-modal="true">
-  <h2 id="plakate-dialog-title" style="margin-top:0; font-size:1.05rem;">Neues Plakat melden</h2>
-  <form id="plakate-add-form" class="plakate-form" enctype="multipart/form-data">
-    <input type="hidden" name="lat" id="plakate-lat" value="">
-    <input type="hidden" name="lng" id="plakate-lng" value="">
-    <p class="plakate-coords" id="plakate-coords-hint">Position wird gesetzt …</p>
-    <label for="plakate-note">Notiz (optional)</label>
-    <input id="plakate-note" name="note" type="text" maxlength="500" placeholder="z. B. Litfaßsäule, Hauswand …">
-    <label for="plakate-foto">Foto (optional, JPEG/PNG/WebP, max. {{ max_mb }} MB)</label>
-    <input id="plakate-foto" name="foto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
-    <div class="row-actions">
-      <button type="button" class="btn btn-ghost btn-sm" id="plakate-dialog-cancel">Abbrechen</button>
-      <button type="submit" class="btn" id="plakate-submit">Plakat hängt hier</button>
-    </div>
+<dialog id="plakate-add-dialog" class="popup-dialog plakate-add-dialog" aria-labelledby="plakate-dialog-title" aria-modal="true">
+  <form id="plakate-add-form" class="ics-popup__form" enctype="multipart/form-data">
+    <header class="ics-popup__head">
+      <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_image() }}</div>
+      <div>
+        <h2 id="plakate-dialog-title" class="ics-popup__h">Neues Plakat melden</h2>
+        <p class="ics-popup__lead">Position auf der Karte setzen, optional Notiz und Foto ergänzen.</p>
+      </div>
+    </header>
+
+    <section class="ics-popup__panel ics-popup__panel--accent" aria-label="Position und Notiz">
+      <input type="hidden" name="lat" id="plakate-lat" value="">
+      <input type="hidden" name="lng" id="plakate-lng" value="">
+      <p class="plakate-coords" id="plakate-coords-hint">Position wird gesetzt …</p>
+      <label for="plakate-note" class="ics-popup__label">Notiz (optional)</label>
+      <input id="plakate-note" name="note" type="text" maxlength="500" placeholder="z. B. Litfaßsäule, Hauswand …">
+    </section>
+
+    <section class="ics-popup__panel" aria-label="Foto">
+      <label for="plakate-foto" class="ics-popup__label">Foto</label>
+      <p class="muted" style="margin:-0.35rem 0 0.45rem; font-size:0.82rem;">Optional · JPEG/PNG/WebP, max. {{ max_mb }} MB</p>
+      <input id="plakate-foto" name="foto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+    </section>
+
+    <footer class="ics-popup__foot">
+      <div class="plakate-dialog-actions">
+        <button type="button" class="btn btn-ghost btn-sm btn-ico btn-with-label" id="plakate-dialog-cancel" aria-label="Abbrechen">
+          {{ ico.svg_x() }}<span class="btn-text">Abbrechen</span>
+        </button>
+        <button type="submit" class="btn btn-sm btn-ico btn-with-label" id="plakate-submit" aria-label="Plakat melden">
+          {{ ico.svg_check() }}<span class="btn-text">Plakat hängt hier</span>
+        </button>
+      </div>
+      <p class="muted plakate-form-msg" id="plakate-form-msg"></p>
+    </footer>
   </form>
-  <p class="muted" id="plakate-form-msg" style="margin:.75rem 0 0; font-size:.85rem;"></p>
 </dialog>
 
-<div class="card card--flush plakate-section-card">
-  <div class="plakate-section-card__header">
-    <h2 class="plakate-section-card__title">Standorte</h2>
+<div class="card card--flush plakate-table-card">
+  <div class="plakate-table-card__shell">
+    <header class="ics-popup__head">
+      <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_map_pin() }}</div>
+      <div>
+        <h2 class="ics-popup__h">Standorte</h2>
+        <p class="ics-popup__lead">Alle gemeldeten Plakate — Position antippen, um auf der Karte zu zoomen.</p>
+      </div>
+    </header>
+    <div class="plakate-table-wrap">
+      <table class="plakate-table" id="plakate-table">
+        <thead>
+          <tr>
+            <th>Foto</th>
+            <th>Position</th>
+            <th>Status</th>
+            <th>Aufgehängt</th>
+            <th>Abgehängt</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="plakate-tbody"></tbody>
+      </table>
+    </div>
   </div>
-  <div class="plakate-section-card__body plakate-section-card__body--table">
-  <div class="plakate-table-wrap">
-    <table class="plakate-table" id="plakate-table">
-      <thead>
-        <tr>
-          <th>Foto</th>
-          <th>Position</th>
-          <th>Status</th>
-          <th>Aufgehängt</th>
-          <th>Abgehängt</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="plakate-tbody"></tbody>
-    </table>
-  </div>
-  </div>
+</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
