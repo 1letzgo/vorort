@@ -111,9 +111,9 @@ def web_app_manifest(request: Request):
     scope = f"{prefix}/" if prefix else "/"
     icon_path = f"{prefix}/static/icon.svg" if prefix else "/static/icon.svg"
     body = {
-        "name": "Wahlkampf",
-        "short_name": "Wahlkampf",
-        "description": "Termine, Menü und Organisation im Wahlkampf.",
+        "name": "SPD vor Ort — Wahlkampf",
+        "short_name": "SPD vor Ort",
+        "description": "Termine, SPD vor Ort und Organisation im Wahlkampf.",
         "id": start_url,
         "start_url": start_url,
         "scope": scope,

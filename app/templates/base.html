@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#e8e4dc" media="(prefers-color-scheme: light)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Wahlkampf">
+  <meta name="apple-mobile-web-app-title" content="SPD vor Ort">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   {% set path_prefix = request.scope.get('root_path') or '' %}
   <link rel="manifest" href="{{ path_prefix }}/manifest.webmanifest">
@@ -76,7 +76,7 @@
       gap: 0.5rem;
       width: 100%;
       box-sizing: border-box;
-      /* Gleiche Zeilenhöhe wie mit Menü-Button (Menü-Seite blendet Toolbar aus) */
+      /* Gleiche Zeilenhöhe mit/ohne Header-Toolbar (SPD-vor-Ort-Seite blendet Toolbar aus) */
       min-height: 2.65rem;
     }
     .header-inner > h1 {
@@ -93,6 +93,10 @@
       justify-content: flex-end;
       flex: 1 1 auto;
       min-width: 0;
+    }
+    /* „SPD vor Ort“ im Header immer anzeigen (nicht wie reine Icon-Buttons ausblenden) */
+    .header-nav-spd .btn-text {
+      display: inline !important;
     }
     .btn {
       display: inline-flex;
