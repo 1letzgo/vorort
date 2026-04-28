@@ -456,13 +456,13 @@
 <p class="muted">Noch keine Termine — <a href="/termine/neu">ersten Termin anlegen</a>.</p>
 {% else %}
 <div class="termin-tablist" role="tablist" aria-label="Terminansicht">
-  <button type="button" class="termin-tab" id="tab-kommend" role="tab" aria-selected="true" aria-controls="termin-panel-kommend" data-tab="kommend">Kommende Termine</button>
-  <button type="button" class="termin-tab" id="tab-vergangen" role="tab" aria-selected="false" aria-controls="termin-panel-vergangen" data-tab="vergangen">Vergangene Termine{% if termin_past|length %} ({{ termin_past|length }}){% endif %}</button>
+  <button type="button" class="termin-tab" id="tab-kommend" role="tab" aria-selected="true" aria-controls="termin-panel-kommend" data-tab="kommend">Aktuelle Termine</button>
+  <button type="button" class="termin-tab" id="tab-vergangen" role="tab" aria-selected="false" aria-controls="termin-panel-vergangen" data-tab="vergangen">Archiv{% if termin_past|length %} ({{ termin_past|length }}){% endif %}</button>
 </div>
 
 <div id="termin-panel-kommend" class="termin-tab-panel" role="tabpanel" aria-labelledby="tab-kommend" tabindex="0">
   {% if not termin_upcoming %}
-  <p class="muted">Keine kommenden Termine — <a href="/termine/neu">Termin anlegen</a> oder unter „Vergangene Termine“ nachsehen.</p>
+  <p class="muted">Keine aktuellen Termine — <a href="/termine/neu">Termin anlegen</a> oder unter „Archiv“ nachsehen.</p>
   {% endif %}
   {% for row in termin_upcoming %}
   {{ termin_karte(row, vergangen=False) }}
@@ -471,7 +471,7 @@
 
 <div id="termin-panel-vergangen" class="termin-tab-panel" role="tabpanel" aria-labelledby="tab-vergangen" tabindex="0" hidden>
   {% if not termin_past %}
-  <p class="muted">Keine vergangenen Termine.</p>
+  <p class="muted">Keine Termine im Archiv.</p>
   {% endif %}
   {% for row in termin_past %}
   {{ termin_karte(row, vergangen=True) }}
