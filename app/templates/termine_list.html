@@ -23,17 +23,6 @@
         {% if t.ends_at %}– {{ t.ends_at.strftime('%H:%M') }}{% endif %}
         {% if t.location %} · {{ t.location }}{% endif %}
       </p>
-      <p class="muted termin-card-list__komment-hint" style="margin:0 0 .5rem;">
-        {{ ico.svg_chat() }}
-        {% set nk = row.kommentar_count|default(0) %}
-        {% if nk == 0 %}
-        <span>Keine Kommentare</span>
-        {% elif nk == 1 %}
-        <span>1 Kommentar</span>
-        {% else %}
-        <span>{{ nk }} Kommentare</span>
-        {% endif %}
-      </p>
       {% if t.description %}
       <p style="margin:0 0 .75rem; white-space:pre-wrap;">{{ t.description }}</p>
       {% endif %}
@@ -65,16 +54,23 @@
       {% else %}
       <span class="termin-footer-actions__hint muted">Termin vorbei — Anmeldung nicht mehr möglich.</span>
       {% endif %}
-      {% if row.kann_verwalten %}
-      <div class="termin-footer-actions__admin">
-        <a href="/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico" aria-label="Termin bearbeiten" title="Bearbeiten">
-          {{ ico.svg_pencil() }}
+      <div class="termin-footer-actions__tail">
+        {% set nk = row.kommentar_count|default(0) %}
+        <a href="/termine/{{ t.id }}" class="termin-footer-komment-bubble" title="Kommentare" aria-label="Kommentare: {{ nk }}">
+          {{ ico.svg_chat() }}
+          <span class="termin-footer-komment-bubble__n" aria-hidden="true">{{ nk }}</span>
         </a>
-        <a href="/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico" aria-label="Termin löschen" title="Löschen">
-          {{ ico.svg_trash() }}
-        </a>
+        {% if row.kann_verwalten %}
+        <div class="termin-footer-actions__admin">
+          <a href="/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico" aria-label="Termin bearbeiten" title="Bearbeiten">
+            {{ ico.svg_pencil() }}
+          </a>
+          <a href="/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico" aria-label="Termin löschen" title="Löschen">
+            {{ ico.svg_trash() }}
+          </a>
+        </div>
+        {% endif %}
       </div>
-      {% endif %}
     </div>
   </footer>
 </article>
@@ -103,18 +99,43 @@
   .termin-card-list__body {
     padding: 1.25rem;
   }
-  .termin-card-list__komment-hint {
+  .termin-footer-actions__tail {
     display: flex;
+    flex-direction: row;
     align-items: center;
-    gap: 0.35rem;
-    font-size: 0.88rem;
-    line-height: 1.35;
-  }
-  .termin-card-list__komment-hint .ico {
-    width: 1.08em;
-    height: 1.08em;
+    gap: 0.4rem;
+    margin-left: auto;
     flex-shrink: 0;
-    opacity: 0.88;
+  }
+  a.termin-footer-komment-bubble {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    padding: 0.32rem 0.5rem 0.32rem 0.4rem;
+    border-radius: 999px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text) !important;
+    text-decoration: none !important;
+    font-size: 0.78rem;
+    font-weight: 650;
+    line-height: 1;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+  a.termin-footer-komment-bubble:hover {
+    border-color: var(--accent);
+    color: var(--accent) !important;
+  }
+  a.termin-footer-komment-bubble .ico {
+    width: 1.05em;
+    height: 1.05em;
+    flex-shrink: 0;
+    opacity: 0.9;
+  }
+  .termin-footer-komment-bubble__n {
+    min-width: 1ch;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
   }
   .termin-card-list__footer.card-footer {
     margin: 0;
@@ -146,7 +167,6 @@
     flex-wrap: nowrap;
     align-items: center;
     gap: 0.4rem;
-    margin-left: auto;
     flex-shrink: 0;
   }
   .termin-card-footer-actions .termin-footer-actions > form {
