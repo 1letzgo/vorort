@@ -82,6 +82,17 @@
 {% set menu_title = (request.state.ortsverband_name or request.state.mandant_slug or 'Menü') %}
 {{ app_header(menu_title) }}
 
+<div class="card card--flush">
+  <ul class="menu-list" role="list">
+    <li class="menu-list-section">
+      <h2 class="menu-list-section__label" id="menu-kategorien-heading">Kategorien</h2>
+    </li>
+    <li><a href="{{ request.state.mandanten_prefix }}/termine"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Termine</span></span></a></li>
+    <li><a href="{{ request.state.mandanten_prefix }}/plakate"><span class="menu-list__main">{{ ico.svg_map_pin() }}<span>Plakate</span></span></a></li>
+    <li><a href="{{ request.state.mandanten_prefix }}/sharepic"><span class="menu-list__main">{{ ico.svg_image() }}<span>Sharepic</span></span></a></li>
+  </ul>
+</div>
+
 {% if my_ovs | length %}
 <div class="card card--flush">
   <ul class="menu-list" role="list">
@@ -112,17 +123,8 @@
 <div class="card card--flush">
   <ul class="menu-list" role="list">
     <li class="menu-list-section">
-      <h2 class="menu-list-section__label" id="menu-wahlkampf-heading">Termine · Plakate · Sharepic</h2>
+      <h2 class="menu-list-section__label" id="menu-verwaltung-heading">Verwaltung</h2>
     </li>
-    <li><a href="{{ request.state.mandanten_prefix }}/termine"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Termine</span></span></a></li>
-    <li><a href="{{ request.state.mandanten_prefix }}/plakate"><span class="menu-list__main">{{ ico.svg_map_pin() }}<span>Plakate</span></span></a></li>
-    <li><a href="{{ request.state.mandanten_prefix }}/sharepic"><span class="menu-list__main">{{ ico.svg_image() }}<span>Sharepic</span></span></a></li>
-  </ul>
-</div>
-
-{% if user.is_admin or (show_superadmin_link | default(false)) %}
-<div class="card card--flush">
-  <ul class="menu-list" role="list">
     {% if user.is_admin %}
     <li>
       <a href="{{ request.state.mandanten_prefix }}/admin/benutzer">
@@ -138,12 +140,6 @@
       </a>
     </li>
     {% endif %}
-  </ul>
-</div>
-{% endif %}
-
-<div class="card card--flush">
-  <ul class="menu-list" role="list">
     <li><a href="{{ request.state.mandanten_prefix }}/logout" class="menu-link-logout"><span class="menu-list__main">{{ ico.svg_logout() }}<span>Ausloggen</span></span></a></li>
   </ul>
 </div>
