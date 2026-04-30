@@ -103,7 +103,7 @@
     line-height: 1.35;
   }
   .sharepic-page .sharepic-bild-text-card textarea#sharepic-mid {
-    min-height: 4.5rem;
+    min-height: 3rem;
   }
   .sharepic-page .sharepic-bild-text-card .sharepic-label-spaced {
     margin-top: 0.85rem;
@@ -181,8 +181,8 @@
       <textarea id="sharepic-slogan" name="slogan" rows="3" maxlength="500">{{ sharepic_slogan_default }}</textarea>
 
       <label for="sharepic-mid" class="ics-popup__label sharepic-label-spaced">Text mittlerer Balken</label>
-      <p class="muted sharepic-hint" style="margin:-0.35rem 0 0.45rem;">Max. 3 Zeilen — roter Streifen zwischen Kopf und Bildfläche.</p>
-      <textarea id="sharepic-mid" name="mid" rows="3" maxlength="500" placeholder="z. B. Kurzbotschaft oder Claim"></textarea>
+      <p class="muted sharepic-hint" style="margin:-0.35rem 0 0.45rem;">Genau eine Zeile, höchstens 60 Zeichen.</p>
+      <textarea id="sharepic-mid" name="mid" rows="2" maxlength="60" placeholder="Kurze Botschaft im roten Streifen"></textarea>
 
       <label for="sharepic-text2" class="ics-popup__label sharepic-label-spaced">Text unten</label>
       <p class="muted sharepic-hint" style="margin:-0.35rem 0 0.45rem;">Max. 2 Zeilen</p>
@@ -219,7 +219,7 @@
   var SLOGAN_MAX_LINES = 3;
   var SLOGAN_RIGHT_PAD = 20;
   var SLOGAN_MAX_WIDTH_FRAC = 0.48;
-  var MID_MAX_LINES = 3;
+  var MID_MAX_LINES = 1;
   var TEXT2_LH = 50;
   var TEXT2 = {
     maxW: 680,
