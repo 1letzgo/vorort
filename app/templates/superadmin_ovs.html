@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_ui_macros.html' import app_header %}
+{% from '_ui_macros.html' import app_header with context %}
 {% block title %}Ortsverbände{% endblock %}
 {% block body %}
 {{ app_header('Ortsverbände', '/admin/ortsverbaende') }}

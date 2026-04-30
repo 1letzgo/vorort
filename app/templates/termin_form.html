@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_ui_macros.html' import app_header %}
+{% from '_ui_macros.html' import app_header with context %}
 {% import '_icons.html' as ico %}
 {% set mp = request.state.mandanten_prefix %}
 {% block title %}{% if termin %}Termin bearbeiten{% else %}Neuer Termin{% endif %} — Wahlkampf{% endblock %}
