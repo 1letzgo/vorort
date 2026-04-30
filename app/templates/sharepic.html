@@ -181,8 +181,8 @@
       <textarea id="sharepic-slogan" name="slogan" rows="3" maxlength="500">{{ sharepic_slogan_default }}</textarea>
 
       <label for="sharepic-mid" class="ics-popup__label sharepic-label-spaced">Text mittlerer Balken</label>
-      <p class="muted sharepic-hint" style="margin:-0.35rem 0 0.45rem;">Eine Zeile, maximal <strong id="sharepic-mid-maxlabel">60</strong> Zeichen. <span id="sharepic-mid-count" aria-live="polite">0</span>/<span class="sharepic-mid-maxnum">60</span></p>
-      <textarea id="sharepic-mid" name="mid" rows="2" maxlength="60" placeholder="Kurze Botschaft im roten Streifen" autocomplete="off"></textarea>
+      <p class="muted sharepic-hint" style="margin:-0.35rem 0 0.45rem;">Eine Zeile, maximal <strong id="sharepic-mid-maxlabel">30</strong> Zeichen. <span id="sharepic-mid-count" aria-live="polite">0</span>/<span class="sharepic-mid-maxnum">30</span></p>
+      <textarea id="sharepic-mid" name="mid" rows="2" maxlength="30" placeholder="Kurze Botschaft im roten Streifen" autocomplete="off"></textarea>
 
       <label for="sharepic-text2" class="ics-popup__label sharepic-label-spaced">Text unten</label>
       <p class="muted sharepic-hint" style="margin:-0.35rem 0 0.45rem;">Max. 2 Zeilen</p>
@@ -259,7 +259,7 @@
   var SLOGAN_RIGHT_PAD = 20;
   var SLOGAN_MAX_WIDTH_FRAC = 0.48;
   var MID_MAX_LINES = 1;
-  var MID_CHAR_LIMIT = 60;
+  var MID_CHAR_LIMIT = 30;
   var TEXT2_LH = 50;
   var TEXT2 = {
     maxW: 680,
@@ -470,7 +470,7 @@
     var fs = 26;
     var lh;
     var lines;
-    var y0 = L.ovTextTop;
+    var y0 = L.ovTextTop - 5;
     var headerAvail = L.headerBottom - y0 - 8;
     for (; fs >= 15; fs -= 2) {
       lh = Math.round(fs * 1.14);
@@ -554,7 +554,7 @@
     ctx.font = '700 ' + fs + 'px "Open Sans", system-ui, sans-serif';
     lines = textToLines(ctx, raw, maxW, SLOGAN_MAX_LINES);
     var blockH = lines.length * lh;
-    var y0 = Math.max(4, Math.round((L.headerBottom - blockH) / 2));
+    var y0 = Math.max(4, Math.round((L.headerBottom - blockH) / 2) - 10);
     for (var i = 0; i < lines.length; i++) {
       ctx.fillText(lines[i], xRight, y0 + i * lh);
     }
@@ -586,7 +586,7 @@
     ctx.textAlign = "center";
     var cx2 = W * 0.5;
     var block2 = lines2.length * TEXT2.lineHeight;
-    var y2 = L.footerTop + Math.floor((L.footerH - block2) / 2);
+    var y2 = L.footerTop + Math.floor((L.footerH - block2) / 2) - 5;
     for (var j = 0; j < lines2.length; j++) {
       ctx.fillText(lines2[j], cx2, y2 + j * TEXT2.lineHeight);
     }
