@@ -284,13 +284,34 @@ def _pending_approval_count(pdb: Session, mandant_slug: str, user: Authenticated
     )
 
 
-def _approved_user_ovs_menu_items(
+def _my_ovs_menu_items(
     pdb: Session,
     mandant_slug: str,
     user_id: int,
+    username: str,
 ) -> list[dict[str, str | bool]]:
-    """Freigegebene OV-Mitgliedschaften mit Anzeigenamen, sortiert für Menü / Wechsel."""
+    """OVs für Menü / Wechsel: normale Nutzer nur freigegebene Mitgliedschaften; Superadmin alle OVs."""
     ms = mandant_slug.strip().lower()
+    if is_superadmin_username(username):
+        rows = (
+            pdb.query(Ortsverband)
+            .order_by(func.lower(Ortsverband.display_name), Ortsverband.slug.asc())
+            .all()
+        )
+        out: list[dict[str, str | bool]] = []
+        for ov in rows:
+            slug = ov.slug.strip().lower()
+            dn = (ov.display_name or "").strip() or slug.replace("-", " ").replace("_", " ").title()
+            out.append(
+                {
+                    "slug": slug,
+                    "display_name": dn,
+                    "href": f"/m/{slug}/menu",
+                    "current": slug == ms,
+                    "is_admin": True,
+                },
+            )
+        return out
     rows = (
         pdb.query(OvMembership, Ortsverband)
         .join(Ortsverband, OvMembership.ov_slug == Ortsverband.slug)
@@ -301,11 +322,11 @@ def _approved_user_ovs_menu_items(
         .order_by(func.lower(Ortsverband.display_name), OvMembership.ov_slug.asc())
         .all()
     )
-    out: list[dict[str, str | bool]] = []
+    out_members: list[dict[str, str | bool]] = []
     for m, ov in rows:
         slug = ov.slug.strip().lower()
         dn = (ov.display_name or "").strip() or slug.replace("-", " ").replace("_", " ").title()
-        out.append(
+        out_members.append(
             {
                 "slug": slug,
                 "display_name": dn,
@@ -314,7 +335,7 @@ def _approved_user_ovs_menu_items(
                 "is_admin": bool(m.is_admin),
             },
         )
-    return out
+    return out_members
 
 
 def _user_display_names(pdb: Session, user_ids: set[int]) -> dict[int, str]:
@@ -560,7 +581,7 @@ def app_menu(
             "user": user,
             "pending_count": _pending_approval_count(pdb, mandant_slug, user),
             "show_superadmin_link": is_superadmin_username(user.username),
-            "my_ovs": _approved_user_ovs_menu_items(pdb, mandant_slug, user.id),
+            "my_ovs": _my_ovs_menu_items(pdb, mandant_slug, user.id, user.username),
         },
     )
 
