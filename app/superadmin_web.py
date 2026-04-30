@@ -24,7 +24,7 @@ from app.mandant_features import (
     merge_mandant_feature,
 )
 from app.platform_database import get_platform_db
-from app.platform_models import Ortsverband, OvMembership, PlatformUser
+from app.platform_models import Ortsverband, OvMembership, PlatformUser, Termin
 
 TEMPLATES_DIR = __import__("pathlib").Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -49,6 +49,69 @@ def _form_ov_slug_list(raw: Optional[List[str] | str]) -> List[str]:
         if s:
             out.append(s)
     return out
+
+
+def _termin_count_created_by(db: Session, user_id: int) -> int:
+    return (
+        db.query(Termin)
+        .filter(Termin.created_by_id == user_id)
+        .count()
+    )
+
+
+def _show_superadmin_delete_link(request: Request, pu: PlatformUser) -> bool:
+    if is_superadmin_username(pu.username):
+        return False
+    suid = request.session.get("user_id")
+    if suid is None:
+        return False
+    try:
+        return int(suid) != pu.id
+    except (TypeError, ValueError):
+        return False
+
+
+def _superadmin_user_delete_blocked(
+    request: Request,
+    db: Session,
+    pu: PlatformUser,
+    user_id: int,
+) -> Optional[str]:
+    if is_superadmin_username(pu.username):
+        return "Plattform-Superadmin-Konten können hier nicht gelöscht werden."
+    suid = request.session.get("user_id")
+    try:
+        if suid is not None and int(suid) == user_id:
+            return "Du kannst dein eigenes Konto hier nicht löschen."
+    except (TypeError, ValueError):
+        pass
+    n = _termin_count_created_by(db, user_id)
+    if n > 0:
+        return (
+            f"Dieser Nutzer ist noch als Ersteller von {n} Termin(en) eingetragen. "
+            "Löschen ist erst möglich, wenn keine Termine mehr auf dieses Konto verweisen."
+        )
+    return None
+
+
+def _superadmin_user_form_template_ctx(
+    request: Request,
+    pu: PlatformUser,
+    ovs: list,
+    mem_by_slug: dict,
+    *,
+    error: Optional[str] = None,
+    flash_ok: bool = False,
+) -> dict:
+    return {
+        "edit_user": pu,
+        "ovs": ovs,
+        "mem_by_slug": mem_by_slug,
+        "error": error,
+        "platform_superadmin": is_superadmin_username(pu.username),
+        "flash_ok": flash_ok,
+        "show_delete_link": _show_superadmin_delete_link(request, pu),
+    }
 
 
 def _sync_ov_memberships_superadmin(
@@ -92,7 +155,7 @@ def _sync_ov_memberships_superadmin(
 
 @router.get("/admin", include_in_schema=False)
 def superadmin_root():
-    return RedirectResponse("/admin/ortsverbaende", status_code=302)
+    return RedirectResponse("/admin/nutzer", status_code=302)
 
 
 @router.get("/admin/ortsverbaende", response_class=HTMLResponse)
@@ -274,10 +337,11 @@ def superadmin_user_list(
                 "memberships": mems,
             }
         )
+    flash_del = request.query_params.get("geloescht") == "1"
     return templates.TemplateResponse(
         request,
         "superadmin_users.html",
-        {"rows": rows},
+        {"rows": rows, "flash_geloescht": flash_del},
     )
 
 
@@ -302,14 +366,14 @@ def superadmin_user_edit_form(
     return templates.TemplateResponse(
         request,
         "superadmin_user_form.html",
-        {
-            "edit_user": pu,
-            "ovs": ovs,
-            "mem_by_slug": mem_by_slug,
-            "error": None,
-            "platform_superadmin": is_superadmin_username(pu.username),
-            "flash_ok": flash_ok,
-        },
+        _superadmin_user_form_template_ctx(
+            request,
+            pu,
+            ovs,
+            mem_by_slug,
+            error=None,
+            flash_ok=flash_ok,
+        ),
     )
 
 
@@ -336,14 +400,14 @@ def superadmin_user_edit_submit(
         return templates.TemplateResponse(
             request,
             "superadmin_user_form.html",
-            {
-                "edit_user": pu,
-                "ovs": ovs,
-                "mem_by_slug": mem_by_slug,
-                "error": "Anzeigename darf höchstens 120 Zeichen haben.",
-                "platform_superadmin": is_superadmin_username(pu.username),
-                "flash_ok": False,
-            },
+            _superadmin_user_form_template_ctx(
+                request,
+                pu,
+                ovs,
+                mem_by_slug,
+                error="Anzeigename darf höchstens 120 Zeichen haben.",
+                flash_ok=False,
+            ),
             status_code=400,
         )
 
@@ -354,14 +418,14 @@ def superadmin_user_edit_submit(
             return templates.TemplateResponse(
                 request,
                 "superadmin_user_form.html",
-                {
-                    "edit_user": pu,
-                    "ovs": ovs,
-                    "mem_by_slug": mem_by_slug,
-                    "error": "Neues Passwort bitte zweimal eingeben.",
-                    "platform_superadmin": is_superadmin_username(pu.username),
-                    "flash_ok": False,
-                },
+                _superadmin_user_form_template_ctx(
+                    request,
+                    pu,
+                    ovs,
+                    mem_by_slug,
+                    error="Neues Passwort bitte zweimal eingeben.",
+                    flash_ok=False,
+                ),
                 status_code=400,
             )
         if len(pw1) < PASSWORD_MIN_SUPERADMIN:
@@ -369,28 +433,28 @@ def superadmin_user_edit_submit(
             return templates.TemplateResponse(
                 request,
                 "superadmin_user_form.html",
-                {
-                    "edit_user": pu,
-                    "ovs": ovs,
-                    "mem_by_slug": mem_by_slug,
-                    "error": err,
-                    "platform_superadmin": is_superadmin_username(pu.username),
-                    "flash_ok": False,
-                },
+                _superadmin_user_form_template_ctx(
+                    request,
+                    pu,
+                    ovs,
+                    mem_by_slug,
+                    error=err,
+                    flash_ok=False,
+                ),
                 status_code=400,
             )
         if pw1 != pw2:
             return templates.TemplateResponse(
                 request,
                 "superadmin_user_form.html",
-                {
-                    "edit_user": pu,
-                    "ovs": ovs,
-                    "mem_by_slug": mem_by_slug,
-                    "error": "Die beiden Passwortfelder stimmen nicht überein.",
-                    "platform_superadmin": is_superadmin_username(pu.username),
-                    "flash_ok": False,
-                },
+                _superadmin_user_form_template_ctx(
+                    request,
+                    pu,
+                    ovs,
+                    mem_by_slug,
+                    error="Die beiden Passwortfelder stimmen nicht überein.",
+                    flash_ok=False,
+                ),
                 status_code=400,
             )
 
@@ -406,3 +470,62 @@ def superadmin_user_edit_submit(
     db.add(pu)
     db.commit()
     return RedirectResponse(f"/admin/nutzer/{user_id}/bearbeiten?gespeichert=1", status_code=302)
+
+
+@router.get("/admin/nutzer/{user_id}/loeschen", response_class=HTMLResponse)
+def superadmin_user_delete_form(
+    user_id: int,
+    request: Request,
+    db: Annotated[Session, Depends(get_platform_db)],
+    _: LetzgoSuperadmin,
+):
+    pu = db.get(PlatformUser, user_id)
+    if not pu:
+        raise HTTPException(status_code=404, detail="Nutzer nicht gefunden")
+    blocked = _superadmin_user_delete_blocked(request, db, pu, user_id)
+    return templates.TemplateResponse(
+        request,
+        "superadmin_user_loeschen.html",
+        {
+            "del_user": pu,
+            "blocked": blocked,
+            "error": None,
+        },
+    )
+
+
+@router.post("/admin/nutzer/{user_id}/loeschen")
+def superadmin_user_delete_submit(
+    user_id: int,
+    request: Request,
+    db: Annotated[Session, Depends(get_platform_db)],
+    _: LetzgoSuperadmin,
+    confirm_username: Annotated[str, Form()],
+):
+    pu = db.get(PlatformUser, user_id)
+    if not pu:
+        raise HTTPException(status_code=404, detail="Nutzer nicht gefunden")
+    blocked = _superadmin_user_delete_blocked(request, db, pu, user_id)
+    if blocked:
+        return templates.TemplateResponse(
+            request,
+            "superadmin_user_loeschen.html",
+            {"del_user": pu, "blocked": blocked, "error": None},
+            status_code=400,
+        )
+    expected = pu.username.strip().lower()
+    got = (confirm_username or "").strip().lower()
+    if got != expected:
+        return templates.TemplateResponse(
+            request,
+            "superadmin_user_loeschen.html",
+            {
+                "del_user": pu,
+                "blocked": None,
+                "error": f"Zur Bestätigung bitte exakt den Benutzernamen „{pu.username}“ eingeben.",
+            },
+            status_code=400,
+        )
+    db.delete(pu)
+    db.commit()
+    return RedirectResponse("/admin/nutzer?geloescht=1", status_code=302)

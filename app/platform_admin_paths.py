@@ -1,4 +1,4 @@
-"""Pfade unter /admin, die die Plattform (Superadmin) bedient — ohne /m/<slug>-Prefix."""
+"""Pfade unter /admin für Superadmin (Ortsverbände, Nutzer …) — ohne /m/<slug>-Prefix."""
 
 
 def is_platform_superadmin_scope_path(rel: str) -> bool:

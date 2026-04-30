@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from '_ui_macros.html' import app_header with context %}
+{% import '_icons.html' as ico %}
+{% block title %}Nutzer löschen — Nutzerverwaltung{% endblock %}
+{% block head %}
+{% include '_admin_shell_styles.html' %}
+{% endblock %}
+{% block body %}
+{{ app_header('Nutzer löschen') }}
+
+<div class="page-toolbar" aria-label="Navigation">
+  <a href="/admin/nutzer/{{ del_user.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Zurück zur Bearbeitung">
+    {{ ico.svg_arrow_left() }}<span class="btn-text">Zurück</span>
+  </a>
+  <a href="/admin/nutzer" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Zur Nutzerverwaltung">
+    {{ ico.svg_user_plus() }}<span class="btn-text">Nutzerverwaltung</span>
+  </a>
+</div>
+
+<div class="admin-page">
+  <div class="card card--flush admin-users-card">
+    <div class="admin-users-shell">
+      <header class="ics-popup__head">
+        <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_trash() }}</div>
+        <div>
+          <h2 class="ics-popup__h">Konto unwiderruflich löschen?</h2>
+          <p class="ics-popup__lead">
+            <strong>{{ del_user.display_name or del_user.username }}</strong>
+            · <code>{{ del_user.username }}</code>
+          </p>
+        </div>
+      </header>
+
+      {% if blocked %}
+      <div class="error" style="margin-bottom: 1rem;">{{ blocked }}</div>
+      <p style="margin: 0;">
+        <a href="/admin/nutzer/{{ del_user.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico btn-with-label">{{ ico.svg_arrow_left() }}<span class="btn-text">Zurück</span></a>
+      </p>
+      {% else %}
+      <div class="info" style="margin-bottom: 1rem;">
+        Das globale Konto wird aus der Datenbank entfernt. OV-Mitgliedschaften, Kommentare und Zusagen zu Terminen werden mitgelöscht (sofern die Datenbank dies vorsieht).
+      </div>
+
+      {% if error %}<div class="error" style="margin-bottom: 1rem;">{{ error }}</div>{% endif %}
+
+      <form method="post" action="/admin/nutzer/{{ del_user.id }}/loeschen">
+        <label for="confirm-username">Zur Bestätigung den Benutzernamen exakt eingeben</label>
+        <input id="confirm-username" name="confirm_username" type="text" required autocomplete="off" placeholder="{{ del_user.username }}">
+        <p style="margin-top: 1.25rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+          <button type="submit" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="Nutzer endgültig löschen">
+            {{ ico.svg_trash() }}<span class="btn-text">Endgültig löschen</span>
+          </button>
+          <a href="/admin/nutzer/{{ del_user.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Abbrechen">
+            {{ ico.svg_x() }}<span class="btn-text">Abbrechen</span>
+          </a>
+        </p>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

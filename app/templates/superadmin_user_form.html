@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from '_ui_macros.html' import app_header with context %}
 {% import '_icons.html' as ico %}
-{% block title %}Nutzer bearbeiten — Plattform{% endblock %}
+{% block title %}Nutzer bearbeiten — Nutzerverwaltung{% endblock %}
 {% block head %}
 {% include '_admin_shell_styles.html' %}
 {% include '_admin_data_table_styles.html' %}
@@ -26,14 +26,11 @@
 </style>
 {% endblock %}
 {% block body %}
-{{ app_header('Nutzer bearbeiten') }}
+{{ app_header('Nutzerverwaltung') }}
 
-<div class="page-toolbar" aria-label="Navigation Plattform">
-  <a href="/admin/nutzer" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Zur Nutzerliste">
-    {{ ico.svg_arrow_left() }}<span class="btn-text">Alle Nutzer</span>
-  </a>
-  <a href="/admin/ortsverbaende" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Ortsverbände">
-    {{ ico.svg_menu() }}<span class="btn-text">Ortsverbände</span>
+<div class="page-toolbar" aria-label="Navigation">
+  <a href="/admin/nutzer" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Zur Nutzerverwaltung">
+    {{ ico.svg_arrow_left() }}<span class="btn-text">Nutzerverwaltung</span>
   </a>
 </div>
 
@@ -46,9 +43,9 @@
           <h2 class="ics-popup__h"><code>{{ edit_user.username }}</code></h2>
           <p class="ics-popup__lead">
             {% if platform_superadmin %}
-            Plattform-Superadmin — OV-Zuordnung ist optional (Zugriff ohne Freigabe über Konfiguration).
+            Plattform-Superadmin — Zuordnung zu Mandanten ist optional (Zugriff ohne Freigabe über Konfiguration).
             {% else %}
-            Zuordnung zu Ortsverbänden gilt hier immer als <strong>freigegeben</strong>.
+            Hier gesetzte Mitgliedschaften gelten als <strong>freigegeben</strong>.
             {% endif %}
           </p>
         </div>
@@ -76,17 +73,17 @@
         </section>
 
         <section class="ics-popup__panel" style="margin-bottom: 1rem;">
-          <h3 class="ics-popup__label">Ortsverbände</h3>
-          <p class="muted" style="margin:0 0 0.5rem;">Mitglied · beim Superadmin immer freigegeben · optional OV-Administrator</p>
+          <h3 class="ics-popup__label">Mitgliedschaften</h3>
+          <p class="muted" style="margin:0 0 0.5rem;">Mitglied · durch Superadmin immer freigegeben · optional Mandanten-Administrator</p>
           {% if not ovs %}
-          <p class="muted">Keine Ortsverbände angelegt.</p>
+          <p class="muted">Keine Mandanten angelegt.</p>
           {% else %}
-          <table class="superadmin-ov-grid" aria-label="Ortsverbände zuordnen">
+          <table class="superadmin-ov-grid" aria-label="Mitgliedschaften zuordnen">
             <thead>
               <tr>
                 <th scope="col">OV</th>
                 <th scope="col" class="col-check">Mitglied</th>
-                <th scope="col" class="col-admin">OV-Admin</th>
+                <th scope="col" class="col-admin">Admin</th>
               </tr>
             </thead>
             <tbody>
@@ -107,11 +104,19 @@
           {% endif %}
         </section>
 
-        <div style="display:flex; flex-wrap:wrap; gap:0.5rem; justify-content:flex-end;">
+        <div style="display:flex; flex-wrap:wrap; gap:0.5rem; justify-content:flex-end; align-items:center;">
           <a href="/admin/nutzer" class="btn btn-ghost btn-sm btn-ico btn-with-label"><span class="btn-text">Abbrechen</span></a>
           <button type="submit" class="btn btn-sm btn-ico btn-with-label">{{ ico.svg_check() }}<span class="btn-text">Speichern</span></button>
         </div>
       </form>
+
+      {% if show_delete_link %}
+      <section class="ics-popup__panel" style="margin-top: 1.25rem; border-color: rgba(196, 30, 58, 0.25);">
+        <h3 class="ics-popup__label">Gefahrenbereich</h3>
+        <p class="muted" style="margin:0 0 0.65rem;">Konto dauerhaft entfernen — nicht rückgängig zu machen.</p>
+        <a href="/admin/nutzer/{{ edit_user.id }}/loeschen" class="btn btn-sm btn-danger btn-ico btn-with-label">{{ ico.svg_trash() }}<span class="btn-text">Nutzer löschen</span></a>
+      </section>
+      {% endif %}
     </div>
   </div>
 </div>

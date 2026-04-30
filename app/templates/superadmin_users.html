@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 {% from '_ui_macros.html' import app_header with context %}
 {% import '_icons.html' as ico %}
-{% block title %}Plattform — Nutzer{% endblock %}
+{% block title %}Nutzerverwaltung{% endblock %}
 {% block head %}
 {% include '_admin_shell_styles.html' %}
 {% include '_admin_data_table_styles.html' %}
 {% endblock %}
 {% block body %}
-{{ app_header('Plattform · Nutzer') }}
+{{ app_header('Nutzerverwaltung') }}
 
-<div class="page-toolbar" aria-label="Aktionen Plattform" style="flex-wrap: wrap;">
-  <a href="/admin/ortsverbaende" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Zu den Ortsverbänden">
-    {{ ico.svg_menu() }}<span class="btn-text">Ortsverbände</span>
+<div class="page-toolbar" aria-label="Aktionen" style="flex-wrap: wrap;">
+  <a href="/admin/ortsverbaende" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Ortsverbände verwalten">
+    {{ ico.svg_cog() }}<span class="btn-text">Ortsverbände</span>
   </a>
 </div>
 
@@ -21,15 +21,19 @@
       <header class="ics-popup__head">
         <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_user_plus() }}</div>
         <div>
-          <h2 class="ics-popup__h">Globale Nutzerkonten</h2>
+          <h2 class="ics-popup__h">Konten</h2>
           <p class="ics-popup__lead">
-            Passwort und OV-Zuordnungen. Über diese Oberfläche zugewiesene Verbände sind <strong>freigegeben</strong> — keine OV-Freigabe nötig.
+            Passwort und Mandanten-Zuordnung. Über diese Oberfläche zugewiesene Mitgliedschaften sind <strong>freigegeben</strong> — keine gesonderte Freigabe im OV nötig.
           </p>
         </div>
       </header>
 
+      {% if flash_geloescht %}
+      <div class="info" style="margin-bottom: 1rem;">Nutzer wurde gelöscht.</div>
+      {% endif %}
+
       {% if not rows %}
-      <p class="muted" style="margin: 0;">Keine Nutzer in der Plattformdatenbank.</p>
+      <p class="muted" style="margin: 0;">Keine Nutzer in der Datenbank.</p>
       {% else %}
       <div class="admin-users-table-wrap">
         <table class="admin-users-table">
@@ -41,7 +45,7 @@
           <thead>
             <tr>
               <th scope="col">Benutzer</th>
-              <th scope="col">Verbände</th>
+              <th scope="col">Mandanten</th>
               <th scope="col" class="admin-users-th-actions">Aktionen</th>
             </tr>
           </thead>
@@ -56,7 +60,7 @@
                 <br><span class="muted" style="font-size:0.8rem;">Plattform-Superadmin</span>
                 {% endif %}
               </td>
-              <td data-label="Verbände">
+              <td data-label="Mandanten">
                 {% if row.memberships %}
                   {% for m in row.memberships %}
                   <span style="white-space: nowrap;"><code>{{ m.ov_slug }}</code>{% if m.is_admin %} · Admin{% endif %}</span>{% if not loop.last %}<br>{% endif %}
@@ -66,9 +70,16 @@
                 {% endif %}
               </td>
               <td data-label="Aktionen" class="admin-users-td-actions">
+                <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">
                 <a href="/admin/nutzer/{{ u.id }}/bearbeiten" class="btn btn-sm btn-ico btn-with-label" aria-label="Nutzer {{ u.username }} bearbeiten">
                   {{ ico.svg_pencil() }}<span class="btn-text">Bearbeiten</span>
                 </a>
+                {% if not row.platform_superadmin %}
+                <a href="/admin/nutzer/{{ u.id }}/loeschen" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="Nutzer {{ u.username }} löschen">
+                  {{ ico.svg_trash() }}<span class="btn-text">Löschen</span>
+                </a>
+                {% endif %}
+                </div>
               </td>
             </tr>
             {% endfor %}

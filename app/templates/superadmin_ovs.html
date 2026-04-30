@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from '_ui_macros.html' import app_header with context %}
 {% import '_icons.html' as ico %}
-{% block title %}Plattform — Ortsverbände{% endblock %}
+{% block title %}Ortsverbände{% endblock %}
 {% block head %}
 {% include '_admin_shell_styles.html' %}
 {% include '_admin_data_table_styles.html' %}
@@ -22,9 +22,9 @@
 {% block body %}
 {{ app_header('Ortsverbände') }}
 
-<div class="page-toolbar" aria-label="Aktionen Plattform">
-  <a href="/admin/nutzer" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Plattformnutzer verwalten">
-    {{ ico.svg_user_plus() }}<span class="btn-text">Nutzer</span>
+<div class="page-toolbar" aria-label="Aktionen Ortsverbände">
+  <a href="/admin/nutzer" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Nutzerverwaltung">
+    {{ ico.svg_user_plus() }}<span class="btn-text">Nutzerverwaltung</span>
   </a>
   <a href="/admin/ortsverbaende/neu" class="btn btn-sm btn-ico btn-with-label" aria-label="Neuer Ortsverband">
     {{ ico.svg_plus() }}<span class="btn-text">Neuer Ortsverband</span>
@@ -37,7 +37,7 @@
       <header class="ics-popup__head">
         <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_cog() }}</div>
         <div>
-          <h2 class="ics-popup__h">Plattform · Ortsverbände</h2>
+          <h2 class="ics-popup__h">Ortsverbände</h2>
           <p class="ics-popup__lead">
             Registrierte Mandanten: für jeden Slug eigene SQLite-Datenbank und Upload-Ordner auf dem Server.
           </p>
@@ -49,7 +49,7 @@
       {% endif %}
       {% if flash_warn %}
       <div class="error" style="margin-bottom: 1rem;">
-        Plattform-Eintrag wurde entfernt; der Mandantenordner konnte nicht gelöscht werden: {{ flash_warn }}
+        Der Verwaltungseintrag wurde entfernt; der Mandantenordner konnte nicht gelöscht werden: {{ flash_warn }}
       </div>
       {% endif %}
 

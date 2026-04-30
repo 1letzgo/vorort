@@ -304,28 +304,9 @@ def _my_ovs_menu_items(
     user_id: int,
     username: str,
 ) -> list[dict[str, str | bool]]:
-    """OVs für Menü / Wechsel: normale Nutzer nur freigegebene Mitgliedschaften; Superadmin alle OVs."""
+    """OVs für Menü / Wechsel: nur freigegebene Mitgliedschaften — auch für Plattform-Superadmins."""
     ms = mandant_slug.strip().lower()
-    if is_superadmin_username(username):
-        rows = (
-            pdb.query(Ortsverband)
-            .order_by(func.lower(Ortsverband.display_name), Ortsverband.slug.asc())
-            .all()
-        )
-        out: list[dict[str, str | bool]] = []
-        for ov in rows:
-            slug = ov.slug.strip().lower()
-            dn = (ov.display_name or "").strip() or slug.replace("-", " ").replace("_", " ").title()
-            out.append(
-                {
-                    "slug": slug,
-                    "display_name": dn,
-                    "href": f"/m/{slug}/menu",
-                    "current": slug == ms,
-                    "is_admin": True,
-                },
-            )
-        return out
+    sup = is_superadmin_username(username)
     rows = (
         pdb.query(OvMembership, Ortsverband)
         .join(Ortsverband, OvMembership.ov_slug == Ortsverband.slug)
@@ -346,7 +327,7 @@ def _my_ovs_menu_items(
                 "display_name": dn,
                 "href": f"/m/{slug}/menu",
                 "current": slug == ms,
-                "is_admin": bool(m.is_admin),
+                "is_admin": bool(m.is_admin or sup),
             },
         )
     return out_members
@@ -1307,11 +1288,6 @@ def _termin_list_rows(pdb: Session, mandant_slug: str, user: AuthenticatedUser) 
 
 
 def _approved_ov_slugs_for_user_feeds(pdb: Session, user: AuthenticatedUser) -> list[str]:
-    if is_superadmin_username(user.username):
-        return [
-            r.slug.strip().lower()
-            for r in pdb.query(Ortsverband).order_by(Ortsverband.slug.asc()).all()
-        ]
     rows = (
         pdb.query(OvMembership.ov_slug)
         .filter(
