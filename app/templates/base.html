@@ -343,7 +343,7 @@
       margin-bottom: 1rem;
     }
     label { display: block; font-weight: 600; margin: .75rem 0 .35rem; font-size: .9rem; }
-    input[type="text"], input[type="password"], input[type="date"], input[type="file"], textarea {
+    input[type="text"], input[type="password"], input[type="date"], input[type="file"], textarea, select {
       width: 100%;
       padding: .55rem .65rem;
       border: 1px solid var(--border);
@@ -353,6 +353,9 @@
       font-size: max(16px, 1rem);
       background: #fff;
       color: var(--text);
+    }
+    select {
+      cursor: pointer;
     }
     input[type="file"] { padding: .4rem; }
     textarea { min-height: 100px; resize: vertical; }
