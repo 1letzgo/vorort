@@ -1313,6 +1313,29 @@ def _ov_display_labels_for_slugs(pdb: Session, slugs: list[str]) -> dict[str, st
     }
 
 
+def _termin_neu_ov_options_with_hrefs(
+    pdb: Session,
+    slugs: list[str],
+    current_mandant_slug: str,
+) -> list[dict[str, str]]:
+    labels = _ov_display_labels_for_slugs(pdb, slugs)
+    opts: list[dict[str, str]] = []
+    for s in slugs:
+        sl = s.strip().lower()
+        opts.append(
+            {
+                "slug": sl,
+                "display_name": labels.get(sl, sl),
+                "neu_href": f"/m/{sl}/termine/neu",
+            }
+        )
+    cur = current_mandant_slug.strip().lower()
+    opts.sort(
+        key=lambda o: (0 if o["slug"] == cur else 1, o["display_name"].lower(), o["slug"]),
+    )
+    return opts
+
+
 def _can_manage_termin_cross_ov(pdb: Session, user: AuthenticatedUser, termin: Termin) -> bool:
     if is_superadmin_username(user.username):
         return True
@@ -1433,6 +1456,7 @@ def termine_list(
             "show_neuer_termin_button": True,
             "ics_my_label": "Meine Zusagen",
             "ics_all_label": "Alle Termine",
+            "termin_neu_ov_options": [],
         },
     )
 
@@ -1448,6 +1472,7 @@ def termine_list_alle(
     if len(slugs) <= 1:
         return RedirectResponse(f"{_mp(request)}/termine", status_code=302)
     termin_rows = _termin_list_rows_multi(pdb, slugs, user)
+    termin_neu_ov_options = _termin_neu_ov_options_with_hrefs(pdb, slugs, mandant_slug)
     termin_upcoming, termin_past = _split_termine_upcoming_past(termin_rows)
     my_token = ensure_user_calendar_token(pdb, user.platform_user)
     base = str(request.base_url).rstrip("/")
@@ -1467,6 +1492,7 @@ def termine_list_alle(
             "show_neuer_termin_button": False,
             "ics_my_label": "Meine Zusagen (alle Verbände)",
             "ics_all_label": "Alle Termine (alle Verbände)",
+            "termin_neu_ov_options": termin_neu_ov_options,
         },
     )
 
