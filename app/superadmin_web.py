@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import func
+from sqlalchemy import delete, func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 from starlette.templating import Jinja2Templates
@@ -25,7 +25,14 @@ from app.mandant_features import (
     merge_mandant_feature,
 )
 from app.platform_database import get_platform_db
-from app.platform_models import Ortsverband, OvMembership, PlatformUser
+from app.platform_models import (
+    Ortsverband,
+    OvMembership,
+    PlatformUser,
+    Termin,
+    TerminKommentar,
+    TerminTeilnahme,
+)
 
 TEMPLATES_DIR = __import__("pathlib").Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -62,6 +69,22 @@ def _show_superadmin_delete_link(request: Request, pu: PlatformUser) -> bool:
         return int(suid) != pu.id
     except (TypeError, ValueError):
         return False
+
+
+def _purge_dependencies_before_platform_user_delete(db: Session, user_id: int) -> None:
+    """Bereinigt Zeilen, die auf dieses Nutzerkonto zeigen.
+
+    Ältere platform.db-Dateien können ohne durchgängige ON DELETE CASCADE/SET NULL
+    angelegt sein — dann schlägt ``DELETE FROM platform_users`` trotz aktuellem ORM fehl.
+    """
+    db.execute(delete(TerminKommentar).where(TerminKommentar.user_id == user_id))
+    db.execute(delete(TerminTeilnahme).where(TerminTeilnahme.user_id == user_id))
+    db.execute(delete(OvMembership).where(OvMembership.user_id == user_id))
+    db.execute(
+        update(Termin)
+        .where(Termin.created_by_id == user_id)
+        .values(created_by_id=None),
+    )
 
 
 def _superadmin_user_delete_blocked(
@@ -514,6 +537,7 @@ def superadmin_user_delete_submit(
             status_code=400,
         )
     try:
+        _purge_dependencies_before_platform_user_delete(db, user_id)
         db.delete(pu)
         db.commit()
     except IntegrityError:

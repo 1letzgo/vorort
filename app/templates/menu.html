@@ -125,7 +125,16 @@
       </a>
     </li>
     {% endif %}
-    {% if show_superadmin_link | default(false) %}
+    <li><a href="{{ request.state.mandanten_prefix }}/logout" class="menu-link-logout"><span class="menu-list__main">{{ ico.svg_logout() }}<span>Ausloggen</span></span></a></li>
+  </ul>
+</div>
+
+{% if show_superadmin_link | default(false) %}
+<div class="card card--flush">
+  <ul class="menu-list" role="list">
+    <li class="menu-list-section">
+      <h2 class="menu-list-section__label" id="menu-plattform-heading">Plattform</h2>
+    </li>
     <li>
       <a href="/admin/ortsverbaende">
         <span class="menu-list__main">{{ ico.svg_menu() }}<span>Ortsverbände</span></span>
@@ -136,10 +145,9 @@
         <span class="menu-list__main">{{ ico.svg_user_plus() }}<span>Nutzerverwaltung</span></span>
       </a>
     </li>
-    {% endif %}
-    <li><a href="{{ request.state.mandanten_prefix }}/logout" class="menu-link-logout"><span class="menu-list__main">{{ ico.svg_logout() }}<span>Ausloggen</span></span></a></li>
   </ul>
 </div>
+{% endif %}
 
 <footer class="menu-page-footer">
   Made by Daniel G. · <a href="https://github.com/1letzgo/wahlkampf" rel="noopener noreferrer" target="_blank">GitHub</a>
