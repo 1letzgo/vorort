@@ -21,6 +21,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from pydantic import BaseModel, Field
 
 from app.platform_models import (
+    TEILNAHME_STATUS_ABGESAGT,
+    TEILNAHME_STATUS_ZUGESAGT,
     MandantAppSetting,
     MandantPlakat,
     Ortsverband,
@@ -1207,6 +1209,11 @@ def _termin_kommentar_counts_by_termin(pdb: Session, termin_ids: list[int]) -> d
     return {int(tid): int(c) for tid, c in q}
 
 
+def _teilnahme_status_val(tn: TerminTeilnahme) -> str:
+    s = getattr(tn, "teilnahme_status", None) or TEILNAHME_STATUS_ZUGESAGT
+    return s if s in (TEILNAHME_STATUS_ZUGESAGT, TEILNAHME_STATUS_ABGESAGT) else TEILNAHME_STATUS_ZUGESAGT
+
+
 def _termin_row_from_instance(
     pdb: Session,
     t: Termin,
@@ -1214,13 +1221,25 @@ def _termin_row_from_instance(
     *,
     kommentar_count: int = 0,
 ) -> dict:
-    uids = {tn.user_id for tn in t.teilnahmen}
-    names_map = _user_display_names(pdb, uids)
+    zugesagt = [
+        tn for tn in t.teilnahmen if _teilnahme_status_val(tn) == TEILNAHME_STATUS_ZUGESAGT
+    ]
+    abgesagt = [
+        tn for tn in t.teilnahmen if _teilnahme_status_val(tn) == TEILNAHME_STATUS_ABGESAGT
+    ]
+    uids_z = {tn.user_id for tn in zugesagt}
+    uids_a = {tn.user_id for tn in abgesagt}
+    names_map = _user_display_names(pdb, uids_z | uids_a)
     names = sorted(
-        {(names_map.get(tn.user_id, "Unbekannt")).strip() for tn in t.teilnahmen},
+        {(names_map.get(tn.user_id, "Unbekannt")).strip() for tn in zugesagt},
         key=str.lower,
     )
-    ich = any(tn.user_id == user.id for tn in t.teilnahmen)
+    names_absagen = sorted(
+        {(names_map.get(tn.user_id, "Unbekannt")).strip() for tn in abgesagt},
+        key=str.lower,
+    )
+    ich = user.id in uids_z
+    ich_abgesagt = user.id in uids_a
     kann = _can_manage_termin(user, t)
     extern_labels = externe_teilnehmer_labels(
         externe_teilnehmer_decode(t.externe_teilnehmer_json),
@@ -1229,8 +1248,10 @@ def _termin_row_from_instance(
     return {
         "termin": t,
         "teilnehmer": names,
+        "teilnehmer_abgesagt": names_absagen,
         "teilnehmer_extern": teilnehmer_extern,
         "ich_teilnehme": ich,
+        "ich_abgesagt": ich_abgesagt,
         "kann_verwalten": kann,
         "kommentar_count": kommentar_count,
     }
@@ -1764,9 +1785,16 @@ def termin_teilnehmen(
     )
     if not exists:
         pdb.add(
-            TerminTeilnahme(termin_id=termin_id, user_id=user.id),
+            TerminTeilnahme(
+                termin_id=termin_id,
+                user_id=user.id,
+                teilnahme_status=TEILNAHME_STATUS_ZUGESAGT,
+            ),
         )
-        pdb.commit()
+    else:
+        exists.teilnahme_status = TEILNAHME_STATUS_ZUGESAGT
+        pdb.add(exists)
+    pdb.commit()
     if return_to == "list":
         return RedirectResponse(f"{_mp(request)}/termine", status_code=302)
     return RedirectResponse(f"{_mp(request)}/termine/{termin_id}", status_code=302)
@@ -1782,14 +1810,31 @@ def termin_abmelden(
     user: CurrentUser,
     return_to: Annotated[str | None, Form()] = None,
 ):
+    ms = mandant_slug.strip().lower()
+    t = (
+        pdb.query(Termin)
+        .filter(Termin.id == termin_id, Termin.mandant_slug == ms)
+        .first()
+    )
+    if not t:
+        raise HTTPException(status_code=404, detail="Termin nicht gefunden")
     row = (
         pdb.query(TerminTeilnahme)
         .filter_by(termin_id=termin_id, user_id=user.id)
         .first()
     )
     if row:
-        pdb.delete(row)
-        pdb.commit()
+        row.teilnahme_status = TEILNAHME_STATUS_ABGESAGT
+        pdb.add(row)
+    else:
+        pdb.add(
+            TerminTeilnahme(
+                termin_id=termin_id,
+                user_id=user.id,
+                teilnahme_status=TEILNAHME_STATUS_ABGESAGT,
+            ),
+        )
+    pdb.commit()
     if return_to == "list":
         return RedirectResponse(f"{_mp(request)}/termine", status_code=302)
     return RedirectResponse(f"{_mp(request)}/termine/{termin_id}", status_code=302)

@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 from icalendar import Calendar, Event
 from sqlalchemy.orm import Session
 
-from app.platform_models import Termin, TerminTeilnahme
+from app.platform_models import TEILNAHME_STATUS_ZUGESAGT, Termin, TerminTeilnahme
 from app.termin_extern import externe_teilnehmer_decode, externe_teilnehmer_labels
 
 TZ = ZoneInfo("Europe/Berlin")
@@ -83,7 +83,11 @@ def termine_for_user_teilnahmen(db: Session, user_id: int, mandant_slug: str) ->
     return (
         db.query(Termin)
         .join(TerminTeilnahme, TerminTeilnahme.termin_id == Termin.id)
-        .filter(TerminTeilnahme.user_id == user_id, Termin.mandant_slug == ms)
+        .filter(
+            TerminTeilnahme.user_id == user_id,
+            TerminTeilnahme.teilnahme_status == TEILNAHME_STATUS_ZUGESAGT,
+            Termin.mandant_slug == ms,
+        )
         .order_by(Termin.starts_at.asc())
         .all()
     )
@@ -98,7 +102,11 @@ def termine_zugesagt_multi_mandanten(
     return (
         db.query(Termin)
         .join(TerminTeilnahme, TerminTeilnahme.termin_id == Termin.id)
-        .filter(TerminTeilnahme.user_id == user_id, Termin.mandant_slug.in_(slugs))
+        .filter(
+            TerminTeilnahme.user_id == user_id,
+            TerminTeilnahme.teilnahme_status == TEILNAHME_STATUS_ZUGESAGT,
+            Termin.mandant_slug.in_(slugs),
+        )
         .order_by(Termin.starts_at.asc())
         .all()
     )

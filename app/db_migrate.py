@@ -85,6 +85,25 @@ def migrate_termine_created_by_nullable_sqlite(engine: Engine) -> None:
         conn.execute(text("PRAGMA foreign_keys=ON"))
 
 
+def migrate_termin_teilnahme_status_sqlite(engine: Engine) -> None:
+    """Spalte teilnahme_status: zugesagt vs. abgesagt (bestehende Zeilen = Zusage)."""
+    if engine.dialect.name != "sqlite":
+        return
+    insp = inspect(engine)
+    if not insp.has_table("termin_teilnahmen"):
+        return
+    cols = {c["name"] for c in insp.get_columns("termin_teilnahmen")}
+    if "teilnahme_status" in cols:
+        return
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE termin_teilnahmen ADD COLUMN teilnahme_status "
+                "VARCHAR(16) NOT NULL DEFAULT 'zugesagt'"
+            ),
+        )
+
+
 def migrate_legacy_flat_into_mandant(slug: str) -> None:
     """Kopiert alt `./wahlkampf.db` und `./uploads` nach `mandanten/<slug>/`, falls Ziel noch leer."""
     slug = slug.strip().lower()
@@ -150,3 +169,4 @@ def run_platform_sqlite_migrations(engine: Engine) -> None:
                     ),
                 )
     migrate_termine_created_by_nullable_sqlite(engine)
+    migrate_termin_teilnahme_status_sqlite(engine)

@@ -99,6 +99,10 @@ class Termin(PlatformBase):
     )
 
 
+TEILNAHME_STATUS_ZUGESAGT = "zugesagt"
+TEILNAHME_STATUS_ABGESAGT = "abgesagt"
+
+
 class TerminTeilnahme(PlatformBase):
     __tablename__ = "termin_teilnahmen"
     __table_args__ = (
@@ -108,6 +112,10 @@ class TerminTeilnahme(PlatformBase):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     termin_id: Mapped[int] = mapped_column(ForeignKey("termine.id", ondelete="CASCADE"))
     user_id: Mapped[int] = mapped_column(ForeignKey("platform_users.id", ondelete="CASCADE"))
+    teilnahme_status: Mapped[str] = mapped_column(
+        String(16),
+        default=TEILNAHME_STATUS_ZUGESAGT,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     termin: Mapped["Termin"] = relationship(back_populates="teilnahmen")

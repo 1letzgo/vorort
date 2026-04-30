@@ -17,6 +17,7 @@ from app.platform_models import (
     Ortsverband,
     OvMembership,
     PlatformUser,
+    TEILNAHME_STATUS_ZUGESAGT,
     Termin,
     TerminKommentar,
     TerminTeilnahme,
@@ -138,6 +139,7 @@ def migrate_legacy_into_platform_if_needed(db_platform: Session) -> None:
                             id=int(r["id"]),
                             termin_id=int(r["termin_id"]),
                             user_id=int(r["user_id"]),
+                            teilnahme_status=TEILNAHME_STATUS_ZUGESAGT,
                             created_at=_parse_dt(r.get("created_at")) or datetime.utcnow(),
                         )
                     )
