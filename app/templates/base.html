@@ -246,6 +246,13 @@
       }
       .lbl-short { display: inline !important; }
       .lbl-full { display: none !important; }
+      /* Termin-Karten-Footer: Icon-only-Zusage wie Nachbar-Buttons (btn-with-label), keine XL-Touch-Ziele */
+      .termin-footer-actions__signup .btn-sm.btn-ico:not(.btn-xs),
+      .termin-footer-actions__signup .termin-zusage-badge.btn-sm.btn-ico {
+        padding: 0.42rem 0.7rem;
+        min-width: unset;
+        min-height: unset;
+      }
     }
     @media (min-width: 641px) {
       .lbl-short { display: none !important; }
