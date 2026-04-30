@@ -34,6 +34,19 @@
   </ul>
 </div>
 
+{% if my_ovs | length %}
+<div class="card card--flush">
+  <ul class="menu-list" role="list">
+    <li>
+      <a href="{{ request.state.mandanten_prefix }}/meine-orte">
+        <span class="menu-list__main">{{ ico.svg_menu() }}<span>Meine Ortsverbände</span></span>
+        {% if my_ovs | length > 1 %}<span class="muted" style="white-space:nowrap; font-size:0.75rem;">{{ my_ovs | length }}</span>{% endif %}
+      </a>
+    </li>
+  </ul>
+</div>
+{% endif %}
+
 {% if user.is_admin or (show_superadmin_link | default(false)) %}
 <div class="card card--flush">
   <ul class="menu-list" role="list">
