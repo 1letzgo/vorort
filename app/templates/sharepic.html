@@ -210,7 +210,9 @@
   maskImg.crossOrigin = "anonymous";
   /*
    * Layout aus sharepic-mask.png (Referenz 1080×1350), skaliert auf Canvas W×H.
-   * Y: Kopf rot 0–187, Lücke 188–238, Mittelbalken 239–352, Foto 353–1161, Fuß 1162+
+   * Y: Kopf rot 0–187, Lücke 188–238, Mittelbalken 239–352, Fuß ab 1162.
+   * Foto: unter dem Kopfband (ab 188) bis vor den Fuß — nicht erst unter dem Mittelbalken;
+   *       Mittelbalken und Fuß kommen aus der Maske (undeckend) darüber.
    * X: Schwerpunkt Buchstabe „P“ im weißen SPD-Schriftzug ≈ 190 px (Maske).
    */
   var MASK_REF_W = 1080;
@@ -218,7 +220,7 @@
   var MASK_HEADER_END_Y = 188;
   var MASK_MID_BAR_TOP_Y = 239;
   var MASK_MID_BAR_LAST_RED_ROW = 352;
-  var MASK_PHOTO_START_Y = 353;
+  var MASK_PHOTO_START_Y = MASK_HEADER_END_Y;
   var MASK_FOOTER_TOP_Y = 1162;
   var MASK_SPD_P_CENTER_X = 190.07;
   var MASK_OV_TEXT_TOP_Y = 114;
