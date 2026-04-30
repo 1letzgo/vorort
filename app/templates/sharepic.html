@@ -102,8 +102,8 @@
     font-size: 16px;
     line-height: 1.35;
   }
-  .sharepic-page .sharepic-bild-text-card textarea#sharepic-text2 {
-    min-height: 3.2rem;
+  .sharepic-page .sharepic-bild-text-card textarea#sharepic-slogan {
+    min-height: 5rem;
   }
   .sharepic-page .sharepic-bild-text-card .sharepic-label-spaced {
     margin-top: 0.85rem;
@@ -159,7 +159,7 @@
       <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_image() }}</div>
       <div>
         <h2 class="ics-popup__h">Bild &amp; Text</h2>
-        <p class="ics-popup__lead">Eigenes Foto wählen, Ausschnitt anpassen — Slogan oben kommt automatisch vom Ortsverband.</p>
+        <p class="ics-popup__lead">Eigenes Foto wählen und Slogan sowie Fußtext setzen — Slogan erscheint oben rechts neben dem SPD-Logo.</p>
       </div>
     </header>
 
@@ -174,10 +174,9 @@
     </section>
 
     <section class="ics-popup__panel" aria-label="Texte">
-      <p class="ics-popup__label" style="margin-bottom:0.35rem;">Slogan (automatisch)</p>
-      <p class="muted sharepic-hint" style="margin:0 0 0.85rem;">
-        Im roten Balken unter dem Kopf: <strong>Für {{ sharepic_ov_display_name }}.</strong> und <strong>Für Dich.</strong>
-      </p>
+      <label for="sharepic-slogan" class="ics-popup__label">Slogan (oben rechts)</label>
+      <p class="muted sharepic-hint" style="margin:-0.35rem 0 0.45rem;">Max. 3 Zeilen — im roten Kopfband rechts neben dem Logo (Open Sans, fett).</p>
+      <textarea id="sharepic-slogan" name="slogan" rows="3" maxlength="500">{{ sharepic_slogan_default }}</textarea>
 
       <label for="sharepic-text2" class="ics-popup__label sharepic-label-spaced">Text unten</label>
       <p class="muted sharepic-hint" style="margin:-0.35rem 0 0.45rem;">Max. 2 Zeilen</p>
@@ -198,17 +197,18 @@
 (function () {
   var pathPrefix = {{ path_prefix | tojson }};
   var MASK_SRC = pathPrefix + {{ mask_src_suffix | tojson }};
-  var OV_DISPLAY_NAME = {{ sharepic_ov_display_name | tojson }};
   var W = 768;
   var H = 1024;
-  /* Maske sharepic-mask2.png (Anteile der Höhe): Slogan ~13–22 %, Foto ~22–82 %, Fuß ~82–100 % */
-  var SLOGAN_TOP = Math.round(H * 0.13);
-  var SLOGAN_BOTTOM = Math.round(H * 0.22);
+  /* Maske sharepic-mask2.png: Kopf ~0–11 % (Slogan rechts), Foto ~22–82 %, Fuß ~82–100 % */
+  var HEADER_BOTTOM = Math.round(H * 0.11);
   var PHOTO_TOP = Math.round(H * 0.22);
   var PHOTO_BOTTOM = Math.round(H * 0.82);
   var PHOTO = { x: 0, y: PHOTO_TOP, w: W, h: PHOTO_BOTTOM - PHOTO_TOP };
   var FOOTER_TOP = Math.round(H * 0.82);
   var FOOTER_H = H - FOOTER_TOP;
+  var SLOGAN_MAX_LINES = 3;
+  var SLOGAN_RIGHT_PAD = 20;
+  var SLOGAN_MAX_WIDTH_FRAC = 0.48;
   var TEXT2_LH = 50;
   var TEXT2 = {
     maxW: 680,
@@ -390,30 +390,37 @@
     ctx.restore();
   }
 
-  function drawAutoSlogan(ctx) {
-    var name = (OV_DISPLAY_NAME && String(OV_DISPLAY_NAME).trim()) || "";
-    var line1 = "Für " + name + ".";
-    var line2 = "Für Dich.";
-    var maxW = 680;
-    var cx = W * 0.5;
-    var bandMid = (SLOGAN_TOP + SLOGAN_BOTTOM) / 2;
-    var fs = 38;
-    var lh;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+  function drawHeaderSlogan(ctx) {
+    var raw = document.getElementById("sharepic-slogan").value;
+    var maxW = W * SLOGAN_MAX_WIDTH_FRAC;
+    var xRight = W - SLOGAN_RIGHT_PAD;
     ctx.fillStyle = FILL;
-    for (; fs >= 18; fs -= 2) {
-      lh = Math.round(fs * 1.12);
-      ctx.font = '700 ' + fs + 'px "Open Sans", system-ui, sans-serif';
-      if (ctx.measureText(line1).width <= maxW && ctx.measureText(line2).width <= maxW) {
-        break;
-      }
-    }
-    lh = Math.round(fs * 1.12);
-    ctx.font = '700 ' + fs + 'px "Open Sans", system-ui, sans-serif';
-    ctx.fillText(line1, cx, bandMid - lh * 0.5);
-    ctx.fillText(line2, cx, bandMid + lh * 0.5);
+    ctx.textAlign = "right";
     ctx.textBaseline = "top";
+    var fs = 34;
+    var lh;
+    var lines;
+    for (; fs >= 17; fs -= 2) {
+      lh = Math.round(fs * 1.1);
+      ctx.font = '700 ' + fs + 'px "Open Sans", system-ui, sans-serif';
+      lines = textToLines(ctx, raw, maxW, SLOGAN_MAX_LINES);
+      var blockH = lines.length * lh;
+      var ok = blockH <= HEADER_BOTTOM - 10;
+      if (ok) {
+        for (var w = 0; w < lines.length && ok; w++) {
+          if (ctx.measureText(lines[w]).width > maxW) ok = false;
+        }
+      }
+      if (ok) break;
+    }
+    lh = Math.round(fs * 1.1);
+    ctx.font = '700 ' + fs + 'px "Open Sans", system-ui, sans-serif';
+    lines = textToLines(ctx, raw, maxW, SLOGAN_MAX_LINES);
+    var blockH = lines.length * lh;
+    var y0 = Math.max(4, Math.round((HEADER_BOTTOM - blockH) / 2));
+    for (var i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], xRight, y0 + i * lh);
+    }
     ctx.textAlign = "left";
   }
 
@@ -427,7 +434,7 @@
     if (maskImg.complete && maskImg.naturalWidth) {
       ctx.drawImage(maskImg, 0, 0, W, H);
     }
-    drawAutoSlogan(ctx);
+    drawHeaderSlogan(ctx);
 
     ctx.font = FONT;
     ctx.fillStyle = FILL;
@@ -601,11 +608,17 @@
     touchPanActive = false;
   });
 
+  var taSlogan = document.getElementById("sharepic-slogan");
   var ta2 = document.getElementById("sharepic-text2");
+  taSlogan.addEventListener("input", function () {
+    limitLines(taSlogan, SLOGAN_MAX_LINES);
+    scheduleRedraw();
+  });
   ta2.addEventListener("input", function () {
     limitLines(ta2, 2);
     scheduleRedraw();
   });
+  limitLines(taSlogan, SLOGAN_MAX_LINES);
   limitLines(ta2, 2);
 
   document.getElementById("sharepic-download").addEventListener("click", function () {
