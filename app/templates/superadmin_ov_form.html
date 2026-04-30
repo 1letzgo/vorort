@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from '_ui_macros.html' import app_header %}
+{% block title %}{% if is_new %}Neuer OV{% else %}OV bearbeiten{% endif %}{% endblock %}
+{% block body %}
+{{ app_header('Ortsverband', '/admin/ortsverbaende') }}
+<div class="card" style="max-width: 520px; margin: 0 auto;">
+  <h2 style="margin-top:0;">{% if is_new %}Ortsverband anlegen{% else %}„{{ ov.display_name }}“ bearbeiten{% endif %}</h2>
+  {% if error %}<p style="color:var(--accent);">{{ error }}</p>{% endif %}
+  {% if is_new %}
+  <form method="post" action="/admin/ortsverbaende/neu" enctype="multipart/form-data">
+    <label class="muted">Slug (URL: /m/<strong>slug</strong>/…)</label>
+    <input name="slug" required pattern="[a-z0-9][a-z0-9_-]{1,79}" placeholder="z. B. westerstede"
+      style="width:100%; padding:.5rem; margin:.35rem 0 1rem; border:1px solid var(--border); border-radius:var(--radius); box-sizing:border-box;">
+    <label class="muted">Anzeigename (oben rechts in der OV-Ansicht)</label>
+    <input name="display_name" required maxlength="200"
+      style="width:100%; padding:.5rem; margin:.35rem 0 1rem; border:1px solid var(--border); border-radius:var(--radius); box-sizing:border-box;">
+    <label class="muted">Sharepic-Maske (PNG, optional — Standard wird kopiert)</label>
+    <input type="file" name="mask" accept="image/png,.png" style="margin:.35rem 0 1rem;">
+    <button type="submit" class="btn">Anlegen</button>
+    <a href="/admin/ortsverbaende" class="btn btn-ghost" style="margin-left:.5rem;">Abbrechen</a>
+  </form>
+  {% else %}
+  <form method="post" action="/admin/ortsverbaende/{{ ov.slug }}/bearbeiten" enctype="multipart/form-data">
+    <p class="muted">Slug: <code>{{ ov.slug }}</code></p>
+    <label class="muted">Anzeigename</label>
+    <input name="display_name" value="{{ ov.display_name }}" required maxlength="200"
+      style="width:100%; padding:.5rem; margin:.35rem 0 1rem; border:1px solid var(--border); border-radius:var(--radius); box-sizing:border-box;">
+    <label class="muted">Neue Sharepic-Maske (PNG)</label>
+    <input type="file" name="mask" accept="image/png,.png" style="margin:.35rem 0 1rem;">
+    <button type="submit" class="btn">Speichern</button>
+    <a href="/admin/ortsverbaende" class="btn btn-ghost" style="margin-left:.5rem;">Zurück</a>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -259,27 +259,27 @@
               <td data-label="Aktionen" class="admin-users-td-actions">
                 <div>
                   {% if not u.is_approved %}
-                  <form method="post" action="/admin/benutzer/{{ u.id }}/freigeben" style="margin:0;">
+                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/freigeben" style="margin:0;">
                     <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Nutzer {{ u.display_name or u.username }} freigeben">
                       {{ ico.svg_check() }}<span class="btn-text">Freigeben</span>
                     </button>
                   </form>
                   {% endif %}
                   {% if not u.is_admin %}
-                  <form method="post" action="/admin/benutzer/{{ u.id }}/admin-ernennen" style="margin:0;">
+                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/admin-ernennen" style="margin:0;">
                     <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Nutzer {{ u.display_name or u.username }} zum Admin machen">
                       {{ ico.svg_user_plus() }}<span class="btn-text">Admin</span>
                     </button>
                   </form>
                   {% elif admin_count > 1 %}
-                  <form method="post" action="/admin/benutzer/{{ u.id }}/admin-entfernen" style="margin:0;">
+                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/admin-entfernen" style="margin:0;">
                     <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Admin-Rechte von {{ u.display_name or u.username }} entfernen">
                       {{ ico.svg_minus_circle() }}<span class="btn-text">Kein Admin</span>
                     </button>
                   </form>
                   {% endif %}
                   {% if u.id != user.id and (not u.is_admin or admin_count > 1) %}
-                  <form method="post" action="/admin/benutzer/{{ u.id }}/loeschen" style="margin:0;" onsubmit="return confirm('Diesen Nutzer wirklich löschen?');">
+                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/loeschen" style="margin:0;" onsubmit="return confirm('Diesen Nutzer wirklich löschen?');">
                     <button type="submit" class="btn btn-danger btn-sm btn-ico btn-with-label" aria-label="Nutzer {{ u.display_name or u.username }} löschen">
                       {{ ico.svg_trash() }}<span class="btn-text">Löschen</span>
                     </button>

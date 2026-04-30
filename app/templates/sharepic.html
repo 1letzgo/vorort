@@ -133,7 +133,6 @@
 </style>
 {% endblock %}
 {% block body %}
-{% set path_prefix = request.scope.get('root_path') or '' %}
 {{ app_header('Sharepic') }}
 
 <div class="sharepic-page">
@@ -197,7 +196,7 @@
 <script>
 (function () {
   var pathPrefix = {{ path_prefix | tojson }};
-  var MASK_SRC = pathPrefix + "/static/sharepic-mask.png";
+  var MASK_SRC = pathPrefix + {{ mask_src_suffix | tojson }};
   var W = 768;
   var H = 1024;
   var PHOTO = { x: 0, y: 144, w: 768, h: 735 };

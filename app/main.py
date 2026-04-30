@@ -7,9 +7,9 @@ from datetime import date, datetime, time
 from pathlib import Path
 from typing import Annotated, List, Optional
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.exception_handlers import http_exception_handler
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from sqlalchemy import func
@@ -19,26 +19,22 @@ from pydantic import BaseModel, Field
 
 from app import models
 from app.auth import hash_password, verify_password
-from app.config import (
-    ICS_TOKEN,
-    MAX_UPLOAD_MB,
-    SECRET_KEY,
-    SESSION_COOKIE,
-    UPLOAD_DIR,
-)
-from app.database import engine, get_db
-from app.db_migrate import migrate_plakate_from_legacy_sqlite, run_sqlite_migrations
+from app.config import ICS_TOKEN, MAX_UPLOAD_MB, SECRET_KEY, SESSION_COOKIE, upload_dir_for_slug
+from app.database import get_db
 from app.deps import AdminUser, CurrentUser
 from app.ics_service import (
     all_termine_for_feed,
     build_ics_calendar,
     termine_for_user_teilnahmen,
 )
+from app.platform_bootstrap import bootstrap_platform
 from app.settings_store import (
     ensure_ics_token_for_ui,
     ensure_user_calendar_token,
     verify_ics_token,
 )
+from app.superadmin_web import router as superadmin_router
+from app.tenant_assets import sharepic_mask_src_suffix
 from app.termin_extern import (
     EXTERNE_TEILNEHMER_KEYS,
     EXTERNE_TEILNEHMER_OPTIONS,
@@ -51,12 +47,13 @@ TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_IMAGE = {"image/jpeg", "image/png", "image/webp"}
 EXT_MAP = {".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp"}
 USERNAME_PATTERN = re.compile(r"^[\w.-]+$", re.UNICODE)
+
+tenant_router = APIRouter(prefix="/m/{mandant_slug}")
 
 
 class TerminKommentarPayload(BaseModel):
@@ -65,11 +62,7 @@ class TerminKommentarPayload(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    models.Base.metadata.create_all(bind=engine)
-    run_sqlite_migrations(engine)
-    migrate_plakate_from_legacy_sqlite(engine)
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    (UPLOAD_DIR / "plakate").mkdir(parents=True, exist_ok=True)
+    bootstrap_platform()
     yield
 
 
@@ -77,14 +70,58 @@ app = FastAPI(title="Wahlkampf", lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie=SESSION_COOKIE)
 
 
+@app.middleware("http")
+async def mandanten_kontext(request: Request, call_next):
+    request.state.mandanten_prefix = ""
+    request.state.ortsverband_name = ""
+    path = request.url.path
+    rp = (request.scope.get("root_path") or "").rstrip("/")
+    if rp and path.startswith(rp):
+        path = path[len(rp) :] or "/"
+    parts = [p for p in path.strip("/").split("/") if p]
+    if len(parts) >= 2 and parts[0] == "m":
+        slug = parts[1].lower()
+        request.state.mandanten_prefix = f"/m/{slug}"
+        from sqlalchemy.orm import sessionmaker
+
+        from app.platform_database import platform_engine
+        from app.platform_models import Ortsverband
+
+        SessionP = sessionmaker(autocommit=False, autoflush=False, bind=platform_engine())
+        pdb = SessionP()
+        try:
+            ov = pdb.get(Ortsverband, slug)
+            if ov:
+                request.state.ortsverband_name = (ov.display_name or "").strip() or slug
+        finally:
+            pdb.close()
+    response = await call_next(request)
+    return response
+
+
 @app.exception_handler(HTTPException)
 async def http_exc(request: Request, exc: HTTPException):
     accept = request.headers.get("accept") or ""
     wants_html = "text/html" in accept or accept.startswith("*/*")
     if exc.status_code == 401 and wants_html:
+        path = request.url.path
+        rp = (request.scope.get("root_path") or "").rstrip("/")
+        if rp and path.startswith(rp):
+            path = path[len(rp) :] or "/"
+        if path.startswith("/admin"):
+            return RedirectResponse("/admin/login", status_code=302)
         if exc.detail == "Konto noch nicht freigegeben.":
-            return RedirectResponse("/login?pending=1", status_code=302)
-        return RedirectResponse("/login", status_code=302)
+            slug = request.session.get("mandant_slug")
+            if slug:
+                return RedirectResponse(
+                    f"/m/{slug}/login?pending=1",
+                    status_code=302,
+                )
+            return RedirectResponse("/", status_code=302)
+        slug = request.session.get("mandant_slug")
+        if slug:
+            return RedirectResponse(f"/m/{slug}/login", status_code=302)
+        return RedirectResponse("/", status_code=302)
     if exc.status_code == 403 and wants_html:
         msg = exc.detail if isinstance(exc.detail, str) else "Keine Berechtigung."
         return templates.TemplateResponse(
@@ -96,8 +133,19 @@ async def http_exc(request: Request, exc: HTTPException):
     return await http_exception_handler(request, exc)
 
 
-app.mount("/media", StaticFiles(directory=str(UPLOAD_DIR)), name="media")
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+def _mp(request: Request) -> str:
+    slug = request.path_params.get("mandant_slug")
+    if slug:
+        return f"/m/{slug.strip().lower()}"
+    return request.state.mandanten_prefix or ""
+
+
+def _upload_root(request: Request) -> Path:
+    slug = request.path_params["mandant_slug"].strip().lower()
+    return upload_dir_for_slug(slug)
 
 
 def _app_path_prefix(request: Request) -> str:
@@ -108,7 +156,7 @@ def _app_path_prefix(request: Request) -> str:
 @app.get("/manifest.webmanifest", include_in_schema=False)
 def web_app_manifest(request: Request):
     prefix = _app_path_prefix(request)
-    start_url = f"{prefix}/menu" if prefix else "/menu"
+    start_url = f"{prefix}/" if prefix else "/"
     scope = f"{prefix}/" if prefix else "/"
     icon_path = f"{prefix}/static/icon.svg" if prefix else "/static/icon.svg"
     body = {
@@ -143,10 +191,10 @@ def _can_manage_termin(user: models.User, termin: models.Termin) -> bool:
     return bool(user.is_admin or termin.created_by_id == user.id)
 
 
-def _unlink_upload(rel: Optional[str]) -> None:
+def _unlink_upload(rel: Optional[str], upload_root: Path) -> None:
     if not rel:
         return
-    p = UPLOAD_DIR / rel
+    p = upload_root / rel
     try:
         p.unlink(missing_ok=True)
     except OSError:
@@ -219,7 +267,8 @@ def _termin_kommentare_public(
     return out
 
 
-def _plakate_list_payload(db: Session) -> list[dict]:
+def _plakate_list_payload(db: Session, request: Request) -> list[dict]:
+    mp = _mp(request)
     rows = (
         db.query(models.Plakat)
         .order_by(models.Plakat.hung_at.desc())
@@ -242,7 +291,7 @@ def _plakate_list_payload(db: Session) -> list[dict]:
                 "hung_by_id": r.hung_by_user_id,
                 "hung_by_name": names.get(r.hung_by_user_id, "Unbekannt"),
                 "hung_at": r.hung_at.isoformat(),
-                "image_url": f"/media/{r.image_path}" if r.image_path else None,
+                "image_url": f"{mp}/media/{r.image_path}" if r.image_path else None,
                 "note": (r.note or "").strip(),
                 "removed_by_id": r.removed_by_user_id,
                 "removed_by_name": names.get(r.removed_by_user_id)
@@ -254,14 +303,23 @@ def _plakate_list_payload(db: Session) -> list[dict]:
     return out
 
 
-@app.get("/", response_class=HTMLResponse)
-def root(request: Request):
-    if request.session.get("user_id"):
-        return RedirectResponse("/menu", status_code=302)
-    return templates.TemplateResponse(request, "home.html", {})
 
 
-@app.get("/login", response_class=HTMLResponse)
+@tenant_router.get("/media/{resource_path:path}", include_in_schema=False)
+def serve_tenant_media(mandant_slug: str, resource_path: str):
+    root = upload_dir_for_slug(mandant_slug).resolve()
+    candidate = (root / resource_path).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not candidate.is_file():
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(candidate)
+
+
+
+@tenant_router.get("/login", response_class=HTMLResponse)
 def login_form(request: Request):
     info = None
     if request.query_params.get("pending") == "1":
@@ -283,8 +341,9 @@ def login_form(request: Request):
     )
 
 
-@app.post("/login", response_class=HTMLResponse)
+@tenant_router.post("/login", response_class=HTMLResponse)
 def login_submit(
+    mandant_slug: str,
     request: Request,
     db: Annotated[Session, Depends(get_db)],
     username: Annotated[str, Form()],
@@ -328,11 +387,13 @@ def login_submit(
                     "info": "Dein Konto ist noch nicht freigegeben. Bitte warte auf einen Administrator.",
                 },
             )
+    ms = mandant_slug.strip().lower()
     request.session["user_id"] = user.id
-    return RedirectResponse("/menu", status_code=302)
+    request.session["mandant_slug"] = ms
+    return RedirectResponse(f"/m/{ms}/menu", status_code=302)
 
 
-@app.get("/menu", response_class=HTMLResponse)
+@tenant_router.get("/menu", response_class=HTMLResponse)
 def app_menu(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
@@ -348,16 +409,20 @@ def app_menu(
     )
 
 
-@app.get("/sharepic", response_class=HTMLResponse)
-def sharepic_creator(request: Request, user: CurrentUser):
+@tenant_router.get("/sharepic", response_class=HTMLResponse)
+def sharepic_creator(mandant_slug: str, request: Request, user: CurrentUser):
     return templates.TemplateResponse(
         request,
         "sharepic.html",
-        {"user": user},
+        {
+            "user": user,
+            "path_prefix": _app_path_prefix(request),
+            "mask_src_suffix": sharepic_mask_src_suffix(mandant_slug),
+        },
     )
 
 
-@app.get("/plakate", response_class=HTMLResponse)
+@tenant_router.get("/plakate", response_class=HTMLResponse)
 def plakate_view(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
@@ -368,21 +433,22 @@ def plakate_view(
         "plakate.html",
         {
             "user": user,
-            "plakate_initial": _plakate_list_payload(db),
+            "plakate_initial": _plakate_list_payload(db, request),
             "max_mb": MAX_UPLOAD_MB,
         },
     )
 
 
-@app.get("/plakate/api/list")
+@tenant_router.get("/plakate/api/list")
 def plakate_api_list(
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     _: CurrentUser,
 ):
-    return JSONResponse(_plakate_list_payload(db))
+    return JSONResponse(_plakate_list_payload(db, request))
 
 
-@app.post("/plakate/api/hinzufuegen")
+@tenant_router.post("/plakate/api/hinzufuegen")
 async def plakate_hinzufuegen(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
@@ -413,7 +479,7 @@ async def plakate_hinzufuegen(
             max_b = MAX_UPLOAD_MB * 1024 * 1024
             dest_name = f"{p.id}_{uuid.uuid4().hex}{ext}"
             rel = f"plakate/{dest_name}"
-            dest = UPLOAD_DIR / rel
+            dest = _upload_root(request) / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
             size = 0
             with dest.open("wb") as f:
@@ -436,10 +502,10 @@ async def plakate_hinzufuegen(
                 detail="Nur JPEG-, PNG- oder WebP-Bilder erlaubt.",
             )
     db.commit()
-    return JSONResponse({"ok": True, "plakate": _plakate_list_payload(db)})
+    return JSONResponse({"ok": True, "plakate": _plakate_list_payload(db, request)})
 
 
-@app.post("/plakate/api/abhaengen/{plakat_id}")
+@tenant_router.post("/plakate/api/abhaengen/{plakat_id}")
 def plakate_abhaengen(
     plakat_id: int,
     db: Annotated[Session, Depends(get_db)],
@@ -455,10 +521,10 @@ def plakate_abhaengen(
     p.removed_at = datetime.utcnow()
     db.add(p)
     db.commit()
-    return JSONResponse({"ok": True, "plakate": _plakate_list_payload(db)})
+    return JSONResponse({"ok": True, "plakate": _plakate_list_payload(db, request)})
 
 
-@app.get("/registrierung", response_class=HTMLResponse)
+@tenant_router.get("/registrierung", response_class=HTMLResponse)
 def registrierung_form(request: Request):
     return templates.TemplateResponse(
         request,
@@ -471,7 +537,7 @@ def registrierung_form(request: Request):
     )
 
 
-@app.post("/registrierung", response_class=HTMLResponse)
+@tenant_router.post("/registrierung", response_class=HTMLResponse)
 def registrierung_submit(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
@@ -542,8 +608,8 @@ def registrierung_submit(
         db.merge(models.AppSetting(key="founder_done", value="1"))
     db.commit()
     if is_first_user:
-        return RedirectResponse("/login?registered=first", status_code=302)
-    return RedirectResponse("/login?registered=1", status_code=302)
+        return RedirectResponse(f"{_mp(request)}/login?registered=first", status_code=302)
+    return RedirectResponse(f"{_mp(request)}/login?registered=1", status_code=302)
 
 
 def _admin_count(db: Session) -> int:
@@ -552,7 +618,7 @@ def _admin_count(db: Session) -> int:
     )
 
 
-@app.get("/admin/benutzer", response_class=HTMLResponse)
+@tenant_router.get("/admin/benutzer", response_class=HTMLResponse)
 def admin_benutzer_list(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
@@ -572,7 +638,7 @@ def admin_benutzer_list(
     )
 
 
-@app.post("/admin/benutzer/{uid}/freigeben")
+@tenant_router.post("/admin/benutzer/{uid}/freigeben")
 def admin_benutzer_freigeben(
     uid: int,
     db: Annotated[Session, Depends(get_db)],
@@ -582,10 +648,10 @@ def admin_benutzer_freigeben(
     if u and not u.is_approved:
         u.is_approved = True
         db.commit()
-    return RedirectResponse("/admin/benutzer", status_code=302)
+    return RedirectResponse(f"{_mp(request)}/admin/benutzer", status_code=302)
 
 
-@app.post("/admin/benutzer/{uid}/admin-ernennen")
+@tenant_router.post("/admin/benutzer/{uid}/admin-ernennen")
 def admin_benutzer_admin_ernennen(
     uid: int,
     db: Annotated[Session, Depends(get_db)],
@@ -596,10 +662,10 @@ def admin_benutzer_admin_ernennen(
         u.is_admin = True
         u.is_approved = True
         db.commit()
-    return RedirectResponse("/admin/benutzer", status_code=302)
+    return RedirectResponse(f"{_mp(request)}/admin/benutzer", status_code=302)
 
 
-@app.post("/admin/benutzer/{uid}/admin-entfernen")
+@tenant_router.post("/admin/benutzer/{uid}/admin-entfernen")
 def admin_benutzer_admin_entfernen(
     uid: int,
     db: Annotated[Session, Depends(get_db)],
@@ -607,7 +673,7 @@ def admin_benutzer_admin_entfernen(
 ):
     u = db.get(models.User, uid)
     if not u or not u.is_admin:
-        return RedirectResponse("/admin/benutzer", status_code=302)
+        return RedirectResponse(f"{_mp(request)}/admin/benutzer", status_code=302)
     if _admin_count(db) <= 1:
         raise HTTPException(
             status_code=403,
@@ -615,10 +681,10 @@ def admin_benutzer_admin_entfernen(
         )
     u.is_admin = False
     db.commit()
-    return RedirectResponse("/admin/benutzer", status_code=302)
+    return RedirectResponse(f"{_mp(request)}/admin/benutzer", status_code=302)
 
 
-@app.post("/admin/benutzer/{uid}/loeschen")
+@tenant_router.post("/admin/benutzer/{uid}/loeschen")
 def admin_benutzer_loeschen(
     uid: int,
     db: Annotated[Session, Depends(get_db)],
@@ -631,7 +697,7 @@ def admin_benutzer_loeschen(
         )
     u = db.get(models.User, uid)
     if not u:
-        return RedirectResponse("/admin/benutzer", status_code=302)
+        return RedirectResponse(f"{_mp(request)}/admin/benutzer", status_code=302)
     if u.is_admin and _admin_count(db) <= 1:
         raise HTTPException(
             status_code=403,
@@ -645,13 +711,15 @@ def admin_benutzer_loeschen(
     )
     db.delete(u)
     db.commit()
-    return RedirectResponse("/admin/benutzer", status_code=302)
+    return RedirectResponse(f"{_mp(request)}/admin/benutzer", status_code=302)
 
 
-@app.get("/logout")
+@tenant_router.get("/logout")
 def logout(request: Request):
-    request.session.clear()
-    return RedirectResponse("/login", status_code=302)
+    request.session.pop("user_id", None)
+    request.session.pop("mandant_slug", None)
+    slug = request.path_params["mandant_slug"].strip().lower()
+    return RedirectResponse(f"/m/{slug}/login", status_code=302)
 
 
 def _termin_kommentar_counts_by_termin(db: Session, termin_ids: list[int]) -> dict[int, int]:
@@ -775,7 +843,7 @@ def _split_termine_upcoming_past(rows: list[dict]) -> tuple[list[dict], list[dic
     return upcoming, past
 
 
-@app.get("/termine", response_class=HTMLResponse)
+@tenant_router.get("/termine", response_class=HTMLResponse)
 def termine_list(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
@@ -786,8 +854,9 @@ def termine_list(
     token = ensure_ics_token_for_ui(db, ICS_TOKEN)
     base = str(request.base_url).rstrip("/")
     my_token = ensure_user_calendar_token(db, user)
-    feed_url_my = f"{base}/calendar/me.ics?t={my_token}"
-    feed_url_all = f"{base}/calendar.ics?t={token}"
+    mp = _mp(request)
+    feed_url_my = f"{base}{mp}/calendar/me.ics?t={my_token}"
+    feed_url_all = f"{base}{mp}/calendar.ics?t={token}"
     return templates.TemplateResponse(
         request,
         "termine_list.html",
@@ -801,7 +870,7 @@ def termine_list(
     )
 
 
-@app.get("/termine/neu", response_class=HTMLResponse)
+@tenant_router.get("/termine/neu", response_class=HTMLResponse)
 def termin_new_form(request: Request, user: CurrentUser):
     return templates.TemplateResponse(
         request,
@@ -810,7 +879,7 @@ def termin_new_form(request: Request, user: CurrentUser):
     )
 
 
-@app.post("/termine/neu", response_class=HTMLResponse)
+@tenant_router.post("/termine/neu", response_class=HTMLResponse)
 async def termin_create(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
@@ -865,7 +934,7 @@ async def termin_create(
         if ext and bild.content_type in ALLOWED_IMAGE:
             max_b = MAX_UPLOAD_MB * 1024 * 1024
             dest_name = f"{t.id}_{uuid.uuid4().hex}{ext}"
-            dest = UPLOAD_DIR / dest_name
+            dest = _upload_root(request) / dest_name
             size = 0
             with dest.open("wb") as f:
                 while chunk := await bild.read(1024 * 1024):
@@ -888,10 +957,10 @@ async def termin_create(
             db.add(t)
 
     db.commit()
-    return RedirectResponse(f"/termine/{t.id}", status_code=302)
+    return RedirectResponse(f"{_mp(request)}/termine/{t.id}", status_code=302)
 
 
-@app.get("/termine/{termin_id}", response_class=HTMLResponse)
+@tenant_router.get("/termine/{termin_id}", response_class=HTMLResponse)
 def termin_detail(
     termin_id: int,
     request: Request,
@@ -915,7 +984,7 @@ def termin_detail(
     )
 
 
-@app.post("/termine/{termin_id}/kommentare")
+@tenant_router.post("/termine/{termin_id}/kommentare")
 def termin_kommentar_create(
     termin_id: int,
     payload: TerminKommentarPayload,
@@ -943,7 +1012,7 @@ def termin_kommentar_create(
     )
 
 
-@app.patch("/termine/{termin_id}/kommentare/{kommentar_id}")
+@tenant_router.patch("/termine/{termin_id}/kommentare/{kommentar_id}")
 def termin_kommentar_update(
     termin_id: int,
     kommentar_id: int,
@@ -977,7 +1046,7 @@ def termin_kommentar_update(
     )
 
 
-@app.delete("/termine/{termin_id}/kommentare/{kommentar_id}")
+@tenant_router.delete("/termine/{termin_id}/kommentare/{kommentar_id}")
 def termin_kommentar_delete(
     termin_id: int,
     kommentar_id: int,
@@ -1006,7 +1075,7 @@ def termin_kommentar_delete(
     )
 
 
-@app.post("/termine/{termin_id}/teilnehmen")
+@tenant_router.post("/termine/{termin_id}/teilnehmen")
 def termin_teilnehmen(
     termin_id: int,
     db: Annotated[Session, Depends(get_db)],
@@ -1027,12 +1096,12 @@ def termin_teilnehmen(
         )
         db.commit()
     if return_to == "list":
-        return RedirectResponse("/termine", status_code=302)
-    return RedirectResponse(f"/termine/{termin_id}", status_code=302)
+        return RedirectResponse(f"{_mp(request)}/termine", status_code=302)
+    return RedirectResponse(f"{_mp(request)}/termine/{termin_id}", status_code=302)
 
 
-@app.post("/termine/{termin_id}/abmelden")
-@app.post("/termine/{termin_id}/absagen")
+@tenant_router.post("/termine/{termin_id}/abmelden")
+@tenant_router.post("/termine/{termin_id}/absagen")
 def termin_abmelden(
     termin_id: int,
     db: Annotated[Session, Depends(get_db)],
@@ -1048,11 +1117,11 @@ def termin_abmelden(
         db.delete(row)
         db.commit()
     if return_to == "list":
-        return RedirectResponse("/termine", status_code=302)
-    return RedirectResponse(f"/termine/{termin_id}", status_code=302)
+        return RedirectResponse(f"{_mp(request)}/termine", status_code=302)
+    return RedirectResponse(f"{_mp(request)}/termine/{termin_id}", status_code=302)
 
 
-@app.get("/termine/{termin_id}/bearbeiten", response_class=HTMLResponse)
+@tenant_router.get("/termine/{termin_id}/bearbeiten", response_class=HTMLResponse)
 def termin_edit_form(
     termin_id: int,
     request: Request,
@@ -1074,7 +1143,7 @@ def termin_edit_form(
     )
 
 
-@app.post("/termine/{termin_id}/bearbeiten", response_class=HTMLResponse)
+@tenant_router.post("/termine/{termin_id}/bearbeiten", response_class=HTMLResponse)
 async def termin_edit_save(
     termin_id: int,
     request: Request,
@@ -1131,7 +1200,7 @@ async def termin_edit_save(
     )
 
     if bild_entfernen == "1":
-        _unlink_upload(t.image_path)
+        _unlink_upload(t.image_path, _upload_root(request))
         t.image_path = None
 
     if bild and bild.filename:
@@ -1139,7 +1208,7 @@ async def termin_edit_save(
         if ext and bild.content_type in ALLOWED_IMAGE:
             max_b = MAX_UPLOAD_MB * 1024 * 1024
             dest_name = f"{t.id}_{uuid.uuid4().hex}{ext}"
-            dest = UPLOAD_DIR / dest_name
+            dest = _upload_root(request) / dest_name
             size = 0
             with dest.open("wb") as f:
                 while chunk := await bild.read(1024 * 1024):
@@ -1160,15 +1229,15 @@ async def termin_edit_save(
                             status_code=400,
                         )
                     f.write(chunk)
-            _unlink_upload(t.image_path)
+            _unlink_upload(t.image_path, _upload_root(request))
             t.image_path = dest_name
 
     db.add(t)
     db.commit()
-    return RedirectResponse(f"/termine/{termin_id}", status_code=302)
+    return RedirectResponse(f"{_mp(request)}/termine/{termin_id}", status_code=302)
 
 
-@app.get("/termine/{termin_id}/loeschen", response_class=HTMLResponse)
+@tenant_router.get("/termine/{termin_id}/loeschen", response_class=HTMLResponse)
 def termin_delete_confirm(
     termin_id: int,
     request: Request,
@@ -1190,9 +1259,10 @@ def termin_delete_confirm(
     )
 
 
-@app.post("/termine/{termin_id}/loeschen")
+@tenant_router.post("/termine/{termin_id}/loeschen")
 def termin_delete_do(
     termin_id: int,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     user: CurrentUser,
 ):
@@ -1204,10 +1274,10 @@ def termin_delete_do(
             status_code=403,
             detail="Du darfst diesen Termin nicht löschen.",
         )
-    _unlink_upload(t.image_path)
+    _unlink_upload(t.image_path, _upload_root(request))
     db.delete(t)
     db.commit()
-    return RedirectResponse("/termine", status_code=302)
+    return RedirectResponse(f"{_mp(request)}/termine", status_code=302)
 
 
 _TIME_RE = re.compile(r"^\s*(\d{1,2}):(\d{2})\s*$")
@@ -1228,7 +1298,7 @@ def _combine(d: date, hhmm: str) -> datetime:
     return datetime(d.year, d.month, d.day, h, mi, 0)
 
 
-@app.get("/calendar.ics")
+@tenant_router.get("/calendar.ics")
 def calendar_ics(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
@@ -1248,7 +1318,7 @@ def calendar_ics(
     )
 
 
-@app.get("/calendar/me.ics")
+@tenant_router.get("/calendar/me.ics")
 def calendar_ics_me(
     db: Annotated[Session, Depends(get_db)],
     t: Optional[str] = None,
@@ -1273,3 +1343,26 @@ def calendar_ics_me(
             "Cache-Control": "no-store",
         },
     )
+
+
+app.include_router(tenant_router)
+app.include_router(superadmin_router)
+
+
+@app.get("/", response_class=HTMLResponse)
+def root(request: Request):
+    if request.session.get("user_id") and request.session.get("mandant_slug"):
+        slug = request.session["mandant_slug"]
+        return RedirectResponse(f"/m/{slug}/menu", status_code=302)
+    from sqlalchemy.orm import sessionmaker
+
+    from app.platform_database import platform_engine
+    from app.platform_models import Ortsverband
+
+    SessionP = sessionmaker(autocommit=False, autoflush=False, bind=platform_engine())
+    pdb = SessionP()
+    try:
+        ovs = pdb.query(Ortsverband).order_by(Ortsverband.slug.asc()).all()
+    finally:
+        pdb.close()
+    return templates.TemplateResponse(request, "home.html", {"ovs": ovs})

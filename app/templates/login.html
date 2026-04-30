@@ -8,7 +8,7 @@
   <h2 style="margin-top:0;">Anmelden</h2>
   {% if error %}<div class="error">{{ error }}</div>{% endif %}
   {% if info %}<div class="info">{{ info }}</div>{% endif %}
-  <form method="post" action="/login">
+  <form method="post" action="{{ request.state.mandanten_prefix }}/login">
     <label for="username">Benutzername</label>
     <input id="username" name="username" type="text" autocomplete="username" required placeholder="Dein Benutzername aus der Registrierung">
     <label for="password">Passwort</label>
@@ -19,6 +19,6 @@
       </button>
     </p>
   </form>
-  <p class="muted" style="margin-bottom:0;">Noch kein Konto? <a href="/registrierung">Registrieren</a></p>
+  <p class="muted" style="margin-bottom:0;">Noch kein Konto? <a href="{{ request.state.mandanten_prefix }}/registrierung">Registrieren</a></p>
 </div>
 {% endblock %}

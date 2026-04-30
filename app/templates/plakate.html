@@ -268,6 +268,7 @@
 <script>
 (function () {
   var initial = {{ plakate_initial | tojson }};
+  var MP = {{ request.state.mandanten_prefix | tojson }};
   var dialog = document.getElementById("plakate-add-dialog");
 
   function deDt(iso) {
@@ -525,7 +526,7 @@
     if (!btn) return;
     var rid = btn.getAttribute("data-id");
     if (!rid || !confirm("Dieses Plakat als abgehängt melden?")) return;
-    fetch("/plakate/api/abhaengen/" + rid, {
+    fetch(MP + "/plakate/api/abhaengen/" + rid, {
       method: "POST",
       credentials: "same-origin",
       headers: { Accept: "application/json" },
@@ -562,7 +563,7 @@
     var fd = new FormData(e.target);
     var msg = document.getElementById("plakate-form-msg");
     msg.textContent = "Speichern…";
-    fetch("/plakate/api/hinzufuegen", {
+    fetch(MP + "/plakate/api/hinzufuegen", {
       method: "POST",
       body: fd,
       credentials: "same-origin",

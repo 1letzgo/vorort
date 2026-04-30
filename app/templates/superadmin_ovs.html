@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from '_ui_macros.html' import app_header %}
+{% block title %}Ortsverbände{% endblock %}
+{% block body %}
+{{ app_header('Ortsverbände', '/admin/ortsverbaende') }}
+<div class="card card--flush" style="max-width: 720px; margin: 0 auto;">
+  <div style="display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; justify-content:space-between; padding:1rem 1.1rem; border-bottom:1px solid var(--border);">
+    <h2 style="margin:0; font-size:1.1rem;">Alle Ortsverbände</h2>
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+      <a class="btn btn-sm" href="/admin/ortsverbaende/neu">Neuer Ortsverband</a>
+      <a class="btn btn-sm btn-ghost" href="/admin/logout">Abmelden</a>
+    </div>
+  </div>
+  <div style="padding:1rem 1.1rem;">
+    {% if not ovs %}
+    <p class="muted">Noch keine Einträge.</p>
+    {% else %}
+    <table style="width:100%; border-collapse:collapse; font-size:.92rem;">
+      <thead>
+        <tr style="text-align:left; border-bottom:1px solid var(--border);">
+          <th style="padding:.45rem 0;">Slug (URL)</th>
+          <th style="padding:.45rem 0;">Anzeigename</th>
+          <th style="padding:.45rem 0; width:9rem;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in ovs %}
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:.55rem 0;"><code>{{ o.slug }}</code></td>
+          <td style="padding:.55rem 0;">{{ o.display_name }}</td>
+          <td style="padding:.55rem 0;">
+            <a href="/m/{{ o.slug }}/login" class="btn btn-sm btn-ghost">Zum OV</a>
+            <a href="/admin/ortsverbaende/{{ o.slug }}/bearbeiten" class="btn btn-sm">Bearbeiten</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

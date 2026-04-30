@@ -3,11 +3,32 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL", f"sqlite:///{BASE_DIR / 'wahlkampf.db'}"
+# Plattform: Superadmin + Register der Ortsverbände
+PLATFORM_DATABASE_PATH = Path(
+    os.environ.get("PLATFORM_DATABASE_PATH", str(BASE_DIR / "platform.db"))
 )
+
+# Mandanten: je OV eigener Ordner mit SQLite + uploads/
+MANDANTEN_ROOT = Path(os.environ.get("MANDANTEN_ROOT", str(BASE_DIR / "mandanten")))
+# Fallback Slug nur für Migration / ICS ohne Session (ein OV pro öffentlicher ICS-URL)
+DEFAULT_MANDANT_SLUG = os.environ.get("DEFAULT_MANDANT_SLUG", "westerstede").strip().lower()
+
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-change-me-in-production")
 SESSION_COOKIE = "wahlkampf_session"
 ICS_TOKEN = os.environ.get("ICS_TOKEN", "")
-UPLOAD_DIR = Path(os.environ.get("UPLOAD_DIR", str(BASE_DIR / "uploads")))
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "8"))
+
+# Bootstrap Superadmin „letzgo“ beim ersten Start, wenn gesetzt
+SUPERADMIN_INITIAL_PASSWORD = os.environ.get("SUPERADMIN_INITIAL_PASSWORD", "").strip()
+
+
+def mandant_dir(slug: str) -> Path:
+    return MANDANTEN_ROOT / slug.strip().lower()
+
+
+def sqlite_database_path(slug: str) -> Path:
+    return mandant_dir(slug) / "wahlkampf.db"
+
+
+def upload_dir_for_slug(slug: str) -> Path:
+    return mandant_dir(slug) / "uploads"

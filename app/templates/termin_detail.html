@@ -366,7 +366,7 @@
 {{ app_header('Termine') }}
 
 <div class="page-toolbar" aria-label="Navigation">
-  <a href="/termine" class="btn btn-sm btn-ico btn-with-label" aria-label="Zur Terminliste">
+  <a href="{{ request.state.mandanten_prefix }}/termine" class="btn btn-sm btn-ico btn-with-label" aria-label="Zur Terminliste">
     {{ ico.svg_arrow_left() }}<span class="btn-text">Termine</span>
   </a>
 </div>
@@ -389,7 +389,7 @@
       <div class="termin-card-list__media-row">
         {% if t.image_path %}
         <div class="termin-card-list__thumb termin-card-list__thumb--detail">
-          <img src="/media/{{ t.image_path }}" alt="">
+          <img src="{{ request.state.mandanten_prefix }}/media/{{ t.image_path }}" alt="">
         </div>
         {% endif %}
         <div class="termin-card-list__columns">
@@ -431,13 +431,13 @@
     <div class="termin-footer-actions">
       {% if not termin_vergangen %}
       {% if row.ich_teilnehme %}
-      <form method="post" action="/termine/{{ t.id }}/abmelden" style="margin:0;">
+      <form method="post" action="{{ request.state.mandanten_prefix }}/termine/{{ t.id }}/abmelden" style="margin:0;">
         <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Abmelden">
           {{ ico.svg_logout() }}<span class="btn-text">Abmelden</span>
         </button>
       </form>
       {% else %}
-      <form method="post" action="/termine/{{ t.id }}/teilnehmen" style="margin:0;">
+      <form method="post" action="{{ request.state.mandanten_prefix }}/termine/{{ t.id }}/teilnehmen" style="margin:0;">
         <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Am Termin teilnehmen">
           {{ ico.svg_check() }}<span class="btn-text">Teilnehmen</span>
         </button>
@@ -448,10 +448,10 @@
       {% endif %}
       {% if row.kann_verwalten %}
       <div class="termin-footer-actions__admin">
-        <a href="/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico" aria-label="Termin bearbeiten" title="Bearbeiten">
+        <a href="{{ request.state.mandanten_prefix }}/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico" aria-label="Termin bearbeiten" title="Bearbeiten">
           {{ ico.svg_pencil() }}
         </a>
-        <a href="/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico" aria-label="Termin löschen" title="Löschen">
+        <a href="{{ request.state.mandanten_prefix }}/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico" aria-label="Termin löschen" title="Löschen">
           {{ ico.svg_trash() }}
         </a>
       </div>
@@ -538,6 +538,7 @@
 <script>
 (function () {
   var pathPrefix = {{ path_prefix | tojson }};
+  var tenantBase = {{ request.state.mandanten_prefix | tojson }};
   var terminId = {{ t.id }};
   var listEl = document.getElementById("termin-kommentare-list");
   var dlg = document.getElementById("termin-kommentar-dialog");
@@ -708,7 +709,7 @@
     if (!cid || !confirm("Diesen Kommentar wirklich löschen?")) return;
     apiJson(
       "DELETE",
-      (pathPrefix || "") + "/termine/" + terminId + "/kommentare/" + cid,
+      (pathPrefix || "") + tenantBase + "/termine/" + terminId + "/kommentare/" + cid,
     )
       .then(function (j) {
         renderKommentare(j.kommentare);
@@ -731,6 +732,7 @@
     var editId = (editIdInput.value || "").trim();
     var url =
       (pathPrefix || "") +
+      tenantBase +
       "/termine/" +
       terminId +
       "/kommentare" +

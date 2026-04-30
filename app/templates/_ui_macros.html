@@ -1,20 +1,36 @@
-{% macro app_header(title) %}
+{% macro app_header(title, brand_href=None) %}
 <header class="site-header">
   <div class="header-inner">
-    <a href="/menu" class="header-brand">SPD vor Ort</a>
+    {% if brand_href is none %}
+      {% set bh = (request.state.mandanten_prefix | default('', true)) ~ '/menu' %}
+    {% else %}
+      {% set bh = brand_href %}
+    {% endif %}
+    <a href="{{ bh }}" class="header-brand">SPD vor Ort</a>
     <div class="header-toolbar-spacer" aria-hidden="true"></div>
+    {% if request.state.ortsverband_name %}
+    <span class="header-ov-name" title="Ortsverband">{{ request.state.ortsverband_name }}</span>
+    {% endif %}
     <h1 class="header-page-title">{{ title }}</h1>
   </div>
 </header>
 {% endmacro %}
 
-{% macro app_header_toolbar(title) %}
+{% macro app_header_toolbar(title, brand_href=None) %}
 <header class="site-header">
   <div class="header-inner">
-    <a href="/menu" class="header-brand">SPD vor Ort</a>
+    {% if brand_href is none %}
+      {% set bh = (request.state.mandanten_prefix | default('', true)) ~ '/menu' %}
+    {% else %}
+      {% set bh = brand_href %}
+    {% endif %}
+    <a href="{{ bh }}" class="header-brand">SPD vor Ort</a>
     <nav class="header-toolbar" aria-label="Seitenaktionen">
       {{ caller() }}
     </nav>
+    {% if request.state.ortsverband_name %}
+    <span class="header-ov-name" title="Ortsverband">{{ request.state.ortsverband_name }}</span>
+    {% endif %}
     <h1 class="header-page-title">{{ title }}</h1>
   </div>
 </header>
