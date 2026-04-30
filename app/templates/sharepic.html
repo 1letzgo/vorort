@@ -337,16 +337,21 @@
   }
 
   function clampPan() {
-    if (photoZoom <= 1) {
+    if (!userImg || !userImg.naturalWidth || !userImg.naturalHeight) {
       photoPanX = 0;
       photoPanY = 0;
       return;
     }
     var P = layoutSharepic().photoRect;
-    var dw = P.w * photoZoom;
+    var iw = userImg.naturalWidth;
+    var ih = userImg.naturalHeight;
     var dh = P.h * photoZoom;
+    var dw = (iw / ih) * dh;
     var maxPX = Math.max(0, (dw - P.w) / 2);
     var maxPY = Math.max(0, (dh - P.h) / 2);
+    if (photoZoom <= 1) {
+      photoPanY = 0;
+    }
     photoPanX = Math.max(-maxPX, Math.min(maxPX, photoPanX));
     photoPanY = Math.max(-maxPY, Math.min(maxPY, photoPanY));
   }
@@ -428,26 +433,16 @@
     return out.slice(0, maxLines);
   }
 
+  /**
+   * Foto auf volle Höhe der Maske-Fotozone skaliert (100 % Höhe bei Zoom 100 %).
+   * Quelle immer komplett (kein Cover-Crop oben/unten); seitlich wird bei Bedarf beschnitten.
+   */
   function drawCoverPanZoom(img, rx, ry, rw, rh, zoom, panX, panY) {
     if (!img || !img.naturalWidth || !img.naturalHeight) return;
     var iw = img.naturalWidth;
     var ih = img.naturalHeight;
-    var ir = iw / ih;
-    var r = rw / rh;
-    var sw, sh, sx, sy;
-    if (ir > r) {
-      sh = ih;
-      sw = sh * r;
-      sx = (iw - sw) / 2;
-      sy = 0;
-    } else {
-      sw = iw;
-      sh = sw / r;
-      sx = 0;
-      sy = (ih - sh) / 2;
-    }
-    var dw = rw * zoom;
     var dh = rh * zoom;
+    var dw = (iw / ih) * dh;
     var cx = rx + rw * 0.5 + panX;
     var cy = ry + rh * 0.5 + panY;
     var dx = cx - dw * 0.5;
@@ -456,7 +451,7 @@
     ctx.beginPath();
     ctx.rect(rx, ry, rw, rh);
     ctx.clip();
-    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    ctx.drawImage(img, 0, 0, iw, ih, dx, dy, dw, dh);
     ctx.restore();
   }
 
