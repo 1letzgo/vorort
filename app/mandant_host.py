@@ -2,12 +2,22 @@
 
 from __future__ import annotations
 
+from starlette.requests import Request
+
 from app.config import MANDANT_HOST_BASE_DOMAIN, MANDANT_HOST_IS_RAW_SLUG
 from app.ov_services import validate_ov_slug
 
 _RESERVED_SUBDOMAINS = frozenset(
     {"www", "admin", "api", "static", "mail", "ftp", "cdn"},
 )
+
+
+def incoming_hostname(request: Request) -> str:
+    """Host wie vom Browser (Proxy: erstes X-Forwarded-Host)."""
+    xfh = (request.headers.get("x-forwarded-host") or "").strip()
+    if xfh:
+        return xfh.split(",")[0].strip().split(":")[0].lower()
+    return (request.headers.get("host") or "").strip().split(":")[0].lower()
 
 
 def _host_without_port(host_header: str) -> str:
@@ -52,14 +62,26 @@ def mandant_slug_from_host(host_header: str | None) -> str | None:
     return None
 
 
-def _header_host(scope: dict) -> str | None:
+def _decode_header_value(v: bytes) -> str:
+    try:
+        return v.decode("latin-1")
+    except UnicodeDecodeError:
+        return v.decode("utf-8", errors="replace")
+
+
+def effective_forwarded_host(scope: dict) -> str | None:
+    """Öffentlicher Host: X-Forwarded-Host (erster Eintrag), sonst Host (für Reverse-Proxy)."""
+    xfh: str | None = None
+    host: str | None = None
     for k, v in scope.get("headers") or []:
-        if k.lower() == b"host":
-            try:
-                return v.decode("latin-1")
-            except UnicodeDecodeError:
-                return v.decode("utf-8", errors="replace")
-    return None
+        lk = k.lower()
+        if lk == b"x-forwarded-host":
+            xfh = _decode_header_value(v).strip()
+        elif lk == b"host":
+            host = _decode_header_value(v).strip()
+    if xfh:
+        return xfh.split(",")[0].strip()
+    return host
 
 
 def _rewrite_rel_path(rel: str, slug: str) -> str:
@@ -86,7 +108,7 @@ def should_skip_host_rewrite(rel: str) -> bool:
 def apply_mandant_host_path_rewrite(scope: dict) -> None:
     if not (MANDANT_HOST_BASE_DOMAIN or MANDANT_HOST_IS_RAW_SLUG):
         return
-    slug = mandant_slug_from_host(_header_host(scope))
+    slug = mandant_slug_from_host(effective_forwarded_host(scope))
     if not slug:
         return
 

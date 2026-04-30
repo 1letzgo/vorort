@@ -30,6 +30,24 @@ MANDANT_HOST_IS_RAW_SLUG = os.environ.get("MANDANT_HOST_IS_RAW_SLUG", "").strip(
     "yes",
 )
 
+
+def _parse_public_site_hosts(raw: str) -> frozenset[str]:
+    out: set[str] = set()
+    for part in raw.replace(";", ",").split(","):
+        h = part.strip().lower().split(":")[0]
+        if h:
+            out.add(h)
+    return frozenset(out)
+
+
+# Öffentliche Domain(n), die auf einen festen Mandanten zeigen (Pfad „/“ → /m/<slug>/).
+# Beispiel: PUBLIC_SITE_HOSTS=wahlkampf.spd-wst.de,wahlkamp.spd-wst.de PUBLIC_SITE_MANDANT_SLUG=westerstede
+PUBLIC_SITE_HOSTS = _parse_public_site_hosts(
+    os.environ.get("PUBLIC_SITE_HOSTS", ""),
+)
+PUBLIC_SITE_MANDANT_SLUG = os.environ.get("PUBLIC_SITE_MANDANT_SLUG", "").strip().lower()
+
+
 def mandant_dir(slug: str) -> Path:
     return MANDANTEN_ROOT / slug.strip().lower()
 

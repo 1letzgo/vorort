@@ -19,7 +19,16 @@ from pydantic import BaseModel, Field
 
 from app import models
 from app.auth import hash_password, verify_password
-from app.config import ICS_TOKEN, MAX_UPLOAD_MB, SECRET_KEY, SESSION_COOKIE, SUPERADMIN_USERNAME, upload_dir_for_slug
+from app.config import (
+    ICS_TOKEN,
+    MAX_UPLOAD_MB,
+    PUBLIC_SITE_HOSTS,
+    PUBLIC_SITE_MANDANT_SLUG,
+    SECRET_KEY,
+    SESSION_COOKIE,
+    SUPERADMIN_USERNAME,
+    upload_dir_for_slug,
+)
 from app.database import get_db
 from app.deps import AdminUser, CurrentUser
 from app.ics_service import (
@@ -27,7 +36,7 @@ from app.ics_service import (
     build_ics_calendar,
     termine_for_user_teilnahmen,
 )
-from app.mandant_host import apply_mandant_host_path_rewrite
+from app.mandant_host import apply_mandant_host_path_rewrite, incoming_hostname
 from app.platform_bootstrap import bootstrap_platform
 from app.settings_store import (
     ensure_ics_token_for_ui,
@@ -1374,6 +1383,12 @@ def root(request: Request):
     if request.session.get("user_id") and request.session.get("mandant_slug"):
         slug = request.session["mandant_slug"]
         return RedirectResponse(f"/m/{slug}/menu", status_code=302)
+    if PUBLIC_SITE_HOSTS and PUBLIC_SITE_MANDANT_SLUG:
+        if incoming_hostname(request) in PUBLIC_SITE_HOSTS:
+            dest = f"/m/{PUBLIC_SITE_MANDANT_SLUG}/"
+            if request.url.query:
+                dest = f"{dest}?{request.url.query}"
+            return RedirectResponse(dest, status_code=302)
     from sqlalchemy.orm import sessionmaker
 
     from app.platform_database import platform_engine
