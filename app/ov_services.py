@@ -85,17 +85,20 @@ def register_ortsverband(db_platform: Session, slug: str, display_name: str) -> 
     provision_ortsverband_storage(slug)
 
 
-def save_uploaded_sharepic_mask(slug: str, upload_file) -> None:
-    """PNG aus Superadmin-Upload speichern."""
-    from fastapi import UploadFile
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
-    assert isinstance(upload_file, UploadFile)
+
+def save_uploaded_sharepic_mask(slug: str, data: bytes) -> None:
+    """PNG aus Superadmin-Upload speichern (Rohbytes)."""
+    if len(data) > 8 * 1024 * 1024:
+        raise ValueError("Datei zu groß (max. 8 MB).")
+    if len(data) < len(PNG_SIGNATURE) or not data.startswith(PNG_SIGNATURE):
+        raise ValueError("Nur gültige PNG-Dateien sind erlaubt.")
+
     ud = upload_dir_for_slug(slug)
     ud.mkdir(parents=True, exist_ok=True)
     dest = ud / "sharepic-mask.png"
-    if upload_file.content_type not in ("image/png", "application/octet-stream"):
-        raise ValueError("Nur PNG erlaubt.")
-    data = upload_file.file.read()
-    if len(data) > 8 * 1024 * 1024:
-        raise ValueError("Datei zu groß (max. 8 MB).")
-    dest.write_bytes(data)
+    try:
+        dest.write_bytes(data)
+    except OSError as e:
+        raise ValueError(f"Speichern fehlgeschlagen: {e}") from e

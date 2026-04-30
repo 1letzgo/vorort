@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Optional
+from typing import Annotated
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -65,7 +65,7 @@ async def superadmin_ov_new_submit(
     _: LetzgoSuperadmin,
     slug: Annotated[str, Form()],
     display_name: Annotated[str, Form()],
-    mask: Annotated[Optional[UploadFile], File()] = None,
+    mask: UploadFile | None = File(None),
 ):
     err = validate_ov_slug(slug)
     if err:
@@ -84,9 +84,10 @@ async def superadmin_ov_new_submit(
             status_code=400,
         )
     register_ortsverband(db, s, display_name)
-    if mask and mask.filename:
+    if mask is not None and getattr(mask, "filename", None) and str(mask.filename).strip():
         try:
-            save_uploaded_sharepic_mask(s, mask)
+            body = await mask.read()
+            save_uploaded_sharepic_mask(s, body)
         except ValueError as e:
             return templates.TemplateResponse(
                 request,
@@ -121,7 +122,7 @@ async def superadmin_ov_edit_submit(
     db: Annotated[Session, Depends(get_platform_db)],
     _: LetzgoSuperadmin,
     display_name: Annotated[str, Form()],
-    mask: Annotated[Optional[UploadFile], File()] = None,
+    mask: UploadFile | None = File(None),
 ):
     ov = db.get(Ortsverband, slug.strip().lower())
     if not ov:
@@ -129,9 +130,10 @@ async def superadmin_ov_edit_submit(
     ov.display_name = " ".join(display_name.split()).strip() or ov.slug
     db.add(ov)
     db.commit()
-    if mask and mask.filename:
+    if mask is not None and getattr(mask, "filename", None) and str(mask.filename).strip():
         try:
-            save_uploaded_sharepic_mask(ov.slug, mask)
+            body = await mask.read()
+            save_uploaded_sharepic_mask(ov.slug, body)
         except ValueError as e:
             return templates.TemplateResponse(
                 request,
