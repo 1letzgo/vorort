@@ -13,9 +13,10 @@
     var action = form.action || '';
     if (action.indexOf('/teilnehmen') === -1 && action.indexOf('/absagen') === -1) return;
     ev.preventDefault();
+    var body = new URLSearchParams(new FormData(form));
     fetch(form.action, {
       method: 'POST',
-      body: new FormData(form),
+      body: body,
       headers: { Accept: 'application/json' },
       credentials: 'same-origin',
     })
