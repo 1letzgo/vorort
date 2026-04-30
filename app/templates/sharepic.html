@@ -429,20 +429,22 @@
   }
 
   function drawCoverPanZoom(img, rx, ry, rw, rh, zoom, panX, panY) {
-    if (!img || !img.naturalWidth) return;
-    var ir = img.width / img.height;
+    if (!img || !img.naturalWidth || !img.naturalHeight) return;
+    var iw = img.naturalWidth;
+    var ih = img.naturalHeight;
+    var ir = iw / ih;
     var r = rw / rh;
     var sw, sh, sx, sy;
     if (ir > r) {
-      sh = img.height;
+      sh = ih;
       sw = sh * r;
-      sx = (img.width - sw) / 2;
+      sx = (iw - sw) / 2;
       sy = 0;
     } else {
-      sw = img.width;
+      sw = iw;
       sh = sw / r;
       sx = 0;
-      sy = (img.height - sh) / 2;
+      sy = (ih - sh) / 2;
     }
     var dw = rw * zoom;
     var dh = rh * zoom;
