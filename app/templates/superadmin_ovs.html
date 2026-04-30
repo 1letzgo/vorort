@@ -1,51 +1,100 @@
 {% extends "base.html" %}
 {% from '_ui_macros.html' import app_header with context %}
-{% block title %}Ortsverbände{% endblock %}
+{% import '_icons.html' as ico %}
+{% block title %}Superadmin — Ortsverbände{% endblock %}
+{% block head %}
+{% include '_admin_shell_styles.html' %}
+{% include '_admin_data_table_styles.html' %}
+<style>
+  @media (min-width: 640px) {
+    .superadmin-ovs-table .admin-users-col-name {
+      width: 26%;
+    }
+    .superadmin-ovs-table .admin-users-col-status {
+      width: 38%;
+    }
+    .superadmin-ovs-table .admin-users-col-actions {
+      width: 36%;
+    }
+  }
+</style>
+{% endblock %}
 {% block body %}
-{{ app_header('Ortsverbände', '/admin/ortsverbaende') }}
-<div class="card card--flush" style="max-width: 720px; margin: 0 auto;">
-  <div style="display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; justify-content:space-between; padding:1rem 1.1rem; border-bottom:1px solid var(--border);">
-    <h2 style="margin:0; font-size:1.1rem;">Alle Ortsverbände</h2>
-    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
-      <a class="btn btn-sm" href="/admin/ortsverbaende/neu">Neuer Ortsverband</a>
-      <a class="btn btn-sm btn-ghost" href="{% if request.state.hide_mandant_path_prefix %}/menu{% elif request.session.get('mandant_slug') %}/m/{{ request.session['mandant_slug'] }}/menu{% else %}/{% endif %}">Zum OV-Menü</a>
+{{ app_header('Ortsverbände') }}
+
+<div class="page-toolbar" aria-label="Aktionen Superadmin">
+  <a href="/admin/ortsverbaende/neu" class="btn btn-sm btn-ico btn-with-label" aria-label="Neuer Ortsverband">
+    {{ ico.svg_plus() }}<span class="btn-text">Neuer Ortsverband</span>
+  </a>
+  <a href="{% if request.state.hide_mandant_path_prefix %}/menu{% elif request.session.get('mandant_slug') %}/m/{{ request.session['mandant_slug'] }}/menu{% else %}/{% endif %}" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Zum OV-Menü">
+    {{ ico.svg_menu() }}<span class="btn-text">OV-Menü</span>
+  </a>
+</div>
+
+<div class="admin-page">
+  <div class="card card--flush admin-users-card">
+    <div class="admin-users-shell">
+      <header class="ics-popup__head">
+        <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_cog() }}</div>
+        <div>
+          <h2 class="ics-popup__h">Plattform · Ortsverbände</h2>
+          <p class="ics-popup__lead">
+            Registrierte Mandanten: für jeden Slug eigene SQLite-Datenbank und Upload-Ordner auf dem Server.
+          </p>
+        </div>
+      </header>
+
+      {% if flash_ok %}
+      <div class="info" style="margin-bottom: 1rem;">Ortsverband wurde gelöscht.</div>
+      {% endif %}
+      {% if flash_warn %}
+      <div class="error" style="margin-bottom: 1rem;">
+        Plattform-Eintrag wurde entfernt; der Mandantenordner konnte nicht gelöscht werden: {{ flash_warn }}
+      </div>
+      {% endif %}
+
+      {% if not ovs %}
+      <p class="muted" style="margin: 0;">Noch keine Einträge.</p>
+      {% else %}
+      <div class="admin-users-table-wrap">
+        <table class="admin-users-table superadmin-ovs-table">
+          <colgroup>
+            <col class="admin-users-col-name">
+            <col class="admin-users-col-status">
+            <col class="admin-users-col-actions">
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">Slug (URL)</th>
+              <th scope="col">Anzeigename</th>
+              <th scope="col" class="admin-users-th-actions">Aktionen</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in ovs %}
+            <tr>
+              <td data-label="Slug (URL)"><code>{{ o.slug }}</code></td>
+              <td data-label="Anzeigename">{{ o.display_name }}</td>
+              <td data-label="Aktionen" class="admin-users-td-actions">
+                <div>
+                  <a href="/m/{{ o.slug }}/login" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Zum OV {{ o.slug }}">
+                    {{ ico.svg_login() }}<span class="btn-text">Zum OV</span>
+                  </a>
+                  <a href="/admin/ortsverbaende/{{ o.slug }}/bearbeiten" class="btn btn-sm btn-ico btn-with-label" aria-label="OV {{ o.slug }} bearbeiten">
+                    {{ ico.svg_pencil() }}<span class="btn-text">Bearbeiten</span>
+                  </a>
+                  <a href="/admin/ortsverbaende/{{ o.slug }}/loeschen" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="OV {{ o.slug }} löschen">
+                    {{ ico.svg_trash() }}<span class="btn-text">Löschen</span>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
     </div>
-  </div>
-  <div style="padding:1rem 1.1rem;">
-    {% if flash_ok %}
-    <p style="margin:0 0 .75rem; padding:.6rem .75rem; background:var(--panel); border-radius:var(--radius); font-size:.92rem;">Ortsverband wurde gelöscht.</p>
-    {% endif %}
-    {% if flash_warn %}
-    <p style="margin:0 0 .75rem; padding:.6rem .75rem; border:1px solid var(--accent); border-radius:var(--radius); font-size:.92rem; color:var(--accent);">
-      Plattform-Eintrag wurde entfernt; Mandantenordner konnte nicht gelöscht werden: {{ flash_warn }}
-    </p>
-    {% endif %}
-    {% if not ovs %}
-    <p class="muted">Noch keine Einträge.</p>
-    {% else %}
-    <table style="width:100%; border-collapse:collapse; font-size:.92rem;">
-      <thead>
-        <tr style="text-align:left; border-bottom:1px solid var(--border);">
-          <th style="padding:.45rem 0;">Slug (URL)</th>
-          <th style="padding:.45rem 0;">Anzeigename</th>
-          <th style="padding:.45rem 0; width:11rem;"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for o in ovs %}
-        <tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:.55rem 0;"><code>{{ o.slug }}</code></td>
-          <td style="padding:.55rem 0;">{{ o.display_name }}</td>
-          <td style="padding:.55rem 0;">
-            <a href="/m/{{ o.slug }}/login" class="btn btn-sm btn-ghost">Zum OV</a>
-            <a href="/admin/ortsverbaende/{{ o.slug }}/bearbeiten" class="btn btn-sm">Bearbeiten</a>
-            <a href="/admin/ortsverbaende/{{ o.slug }}/loeschen" class="btn btn-sm btn-danger">Löschen</a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% endif %}
   </div>
 </div>
 {% endblock %}

@@ -1,39 +1,72 @@
 {% extends "base.html" %}
-{% from '_ui_macros.html' import app_header with context %}
-{% block title %}{% if is_new %}Neuer OV{% else %}OV bearbeiten{% endif %}{% endblock %}
+{% from '_ui_macros.html' import app_header_toolbar with context %}
+{% import '_icons.html' as ico %}
+{% block title %}{% if is_new %}Neuer Ortsverband{% else %}OV bearbeiten{% endif %} — Wahlkampf{% endblock %}
+{% block head %}
+{% include '_admin_shell_styles.html' %}
+{% endblock %}
 {% block body %}
-{{ app_header('Ortsverband', '/admin/ortsverbaende') }}
-<div class="card" style="max-width: 520px; margin: 0 auto;">
-  <h2 style="margin-top:0;">{% if is_new %}Ortsverband anlegen{% else %}„{{ ov.display_name }}“ bearbeiten{% endif %}</h2>
-  {% if error %}<p style="color:var(--accent);">{{ error }}</p>{% endif %}
-  {% if is_new %}
-  <form method="post" action="/admin/ortsverbaende/neu" enctype="multipart/form-data">
-    <label class="muted">Slug (URL: /m/<strong>slug</strong>/…)</label>
-    <input name="slug" required pattern="[a-z0-9][a-z0-9_-]{1,79}" placeholder="z. B. westerstede"
-      style="width:100%; padding:.5rem; margin:.35rem 0 1rem; border:1px solid var(--border); border-radius:var(--radius); box-sizing:border-box;">
-    <label class="muted">Anzeigename (oben rechts in der OV-Ansicht)</label>
-    <input name="display_name" required maxlength="200"
-      style="width:100%; padding:.5rem; margin:.35rem 0 1rem; border:1px solid var(--border); border-radius:var(--radius); box-sizing:border-box;">
-    <label class="muted">Sharepic-Maske (PNG, optional — Standard wird kopiert)</label>
-    <input type="file" name="mask" accept="image/png,.png" style="margin:.35rem 0 1rem;">
-    <button type="submit" class="btn">Anlegen</button>
-    <a href="/admin/ortsverbaende" class="btn btn-ghost" style="margin-left:.5rem;">Abbrechen</a>
-  </form>
-  {% else %}
-  <form method="post" action="/admin/ortsverbaende/{{ ov.slug }}/bearbeiten" enctype="multipart/form-data">
-    <p class="muted">Slug: <code>{{ ov.slug }}</code></p>
-    <label class="muted">Anzeigename</label>
-    <input name="display_name" value="{{ ov.display_name }}" required maxlength="200"
-      style="width:100%; padding:.5rem; margin:.35rem 0 1rem; border:1px solid var(--border); border-radius:var(--radius); box-sizing:border-box;">
-    <label class="muted">Neue Sharepic-Maske (PNG)</label>
-    <input type="file" name="mask" accept="image/png,.png" style="margin:.35rem 0 1rem;">
-    <button type="submit" class="btn">Speichern</button>
-    <a href="/admin/ortsverbaende" class="btn btn-ghost" style="margin-left:.5rem;">Zurück</a>
-  </form>
-  <p style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border);" class="muted">
-    <a href="/admin/ortsverbaende/{{ ov.slug }}/loeschen" class="btn btn-sm btn-danger">Ortsverband löschen…</a>
-    <span style="display:block; margin-top:.5rem; font-size:.85rem;">Entfernt Plattform-Eintrag, SQLite und alle Uploads dieses OV.</span>
-  </p>
-  {% endif %}
+{% call app_header_toolbar('Neuer Ortsverband' if is_new else 'Ortsverband bearbeiten') %}
+  <a href="/admin/ortsverbaende" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Zurück zur Liste">
+    {{ ico.svg_x() }}<span class="btn-text">{% if is_new %}Abbrechen{% else %}Zurück{% endif %}</span>
+  </a>
+{% endcall %}
+
+<div class="admin-page">
+  <div class="card card--flush admin-users-card">
+    <div class="admin-users-shell">
+      <header class="ics-popup__head">
+        <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_cog() }}</div>
+        <div>
+          <h2 class="ics-popup__h">{% if is_new %}Ortsverband anlegen{% else %}„{{ ov.display_name }}“{% endif %}</h2>
+          <p class="ics-popup__lead">
+            {% if is_new %}
+            Slug wird zur URL unter <code>/m/&lt;slug&gt;/…</code>. Anlage legt Mandanten-Ordner und Datenbank an.
+            {% else %}
+            Slug <code>{{ ov.slug }}</code> ist fest; Anzeigename und Sharepic-Maske können geändert werden.
+            {% endif %}
+          </p>
+        </div>
+      </header>
+
+      {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+      {% if is_new %}
+      <form method="post" action="/admin/ortsverbaende/neu" enctype="multipart/form-data">
+        <label for="ov-slug">Slug (URL-Pfad)</label>
+        <input id="ov-slug" name="slug" type="text" required pattern="[a-z0-9][a-z0-9_-]{1,79}" placeholder="z. B. westerstede" autocomplete="off">
+        <label for="ov-display">Anzeigename</label>
+        <input id="ov-display" name="display_name" type="text" required maxlength="200" placeholder="Name im OV-Header">
+        <label for="ov-mask">Sharepic-Maske (PNG, optional)</label>
+        <input id="ov-mask" type="file" name="mask" accept="image/png,.png">
+        <p class="muted" style="margin-top: 0.35rem;">Ohne Upload wird die Standardmaske aus der App kopiert.</p>
+        <p style="margin-top: 1.25rem;">
+          <button type="submit" class="btn btn-ico btn-with-label" aria-label="Ortsverband anlegen">
+            {{ ico.svg_check() }}<span class="btn-text">Anlegen</span>
+          </button>
+        </p>
+      </form>
+      {% else %}
+      <form method="post" action="/admin/ortsverbaende/{{ ov.slug }}/bearbeiten" enctype="multipart/form-data">
+        <label for="ov-display-edit">Anzeigename</label>
+        <input id="ov-display-edit" name="display_name" type="text" value="{{ ov.display_name }}" required maxlength="200">
+        <label for="ov-mask-edit">Neue Sharepic-Maske (PNG)</label>
+        <input id="ov-mask-edit" type="file" name="mask" accept="image/png,.png">
+        <p style="margin-top: 1.25rem;">
+          <button type="submit" class="btn btn-ico btn-with-label" aria-label="Änderungen speichern">
+            {{ ico.svg_check() }}<span class="btn-text">Speichern</span>
+          </button>
+        </p>
+      </form>
+
+      <footer style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+        <p class="muted" style="margin: 0 0 0.65rem; font-size: 0.84rem;">Unwiderruflich: Plattform-Eintrag, SQLite und alle Uploads dieses OV.</p>
+        <a href="/admin/ortsverbaende/{{ ov.slug }}/loeschen" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="Ortsverband löschen">
+          {{ ico.svg_trash() }}<span class="btn-text">Ortsverband löschen…</span>
+        </a>
+      </footer>
+      {% endif %}
+    </div>
+  </div>
 </div>
 {% endblock %}
