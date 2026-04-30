@@ -20,20 +20,22 @@
   .menu-page-footer a:hover {
     text-decoration: underline;
   }
-  .menu-my-ovs {
-    margin-bottom: 1rem;
-  }
-  .menu-my-ovs__title {
-    margin: 0 0 0.65rem;
-    font-size: 0.94rem;
+  .menu-my-ovs__caption {
+    margin: 0;
+    padding: 0.72rem 1.25rem;
+    font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 0.03em;
-    color: var(--text);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--border) 35%, transparent);
   }
   .menu-my-ovs__grid {
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem 0.85rem;
   }
   .menu-ov-card {
     display: flex;
@@ -128,8 +130,8 @@
 {{ app_header(menu_title) }}
 
 {% if my_ovs | length %}
-<section class="menu-my-ovs" aria-labelledby="menu-my-ovs-heading">
-  <h2 class="menu-my-ovs__title" id="menu-my-ovs-heading">Meine Verbände</h2>
+<div class="card card--flush menu-my-ovs" aria-labelledby="menu-my-ovs-heading">
+  <h2 class="menu-my-ovs__caption" id="menu-my-ovs-heading">Meine Verbände</h2>
   <div class="menu-my-ovs__grid">
     {% for o in my_ovs %}
     <a
@@ -149,7 +151,7 @@
     </a>
     {% endfor %}
   </div>
-</section>
+</div>
 {% endif %}
 
 <div class="card card--flush">
