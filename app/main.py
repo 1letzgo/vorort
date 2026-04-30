@@ -44,8 +44,10 @@ from app.config import (
 from app.deps import AdminUser, AuthenticatedUser, CurrentUser
 from app.ics_service import (
     all_termine_for_feed,
+    all_termine_multi_mandanten,
     build_ics_calendar,
     termine_for_user_teilnahmen,
+    termine_zugesagt_multi_mandanten,
 )
 from app.mandant_host import apply_mandant_host_path_rewrite
 from app.platform_bootstrap import bootstrap_platform
@@ -1256,6 +1258,96 @@ def _termin_list_rows(pdb: Session, mandant_slug: str, user: AuthenticatedUser) 
     ]
 
 
+def _approved_ov_slugs_for_user_feeds(pdb: Session, user: AuthenticatedUser) -> list[str]:
+    if is_superadmin_username(user.username):
+        return [
+            r.slug.strip().lower()
+            for r in pdb.query(Ortsverband).order_by(Ortsverband.slug.asc()).all()
+        ]
+    rows = (
+        pdb.query(OvMembership.ov_slug)
+        .filter(
+            OvMembership.user_id == user.id,
+            OvMembership.is_approved.is_(True),
+        )
+        .all()
+    )
+    return sorted({str(r[0]).strip().lower() for r in rows})
+
+
+def _ov_display_labels_for_slugs(pdb: Session, slugs: list[str]) -> dict[str, str]:
+    if not slugs:
+        return {}
+    ovs = pdb.query(Ortsverband).filter(Ortsverband.slug.in_(slugs)).all()
+    return {
+        o.slug.strip().lower(): ((o.display_name or "").strip() or o.slug)
+        for o in ovs
+    }
+
+
+def _can_manage_termin_cross_ov(pdb: Session, user: AuthenticatedUser, termin: Termin) -> bool:
+    if is_superadmin_username(user.username):
+        return True
+    ms_t = termin.mandant_slug.strip().lower()
+    mem = (
+        pdb.query(OvMembership)
+        .filter(
+            OvMembership.user_id == user.id,
+            OvMembership.ov_slug == ms_t,
+            OvMembership.is_approved.is_(True),
+        )
+        .first()
+    )
+    if not mem:
+        return False
+    if termin.created_by_id == user.id:
+        return True
+    return bool(mem.is_admin)
+
+
+def _termin_row_cross_ov(
+    pdb: Session,
+    t: Termin,
+    user: AuthenticatedUser,
+    *,
+    kommentar_count: int,
+    ov_labels: dict[str, str],
+) -> dict:
+    ms = t.mandant_slug.strip().lower()
+    mp_row = f"/m/{ms}"
+    dn = ov_labels.get(ms, ms)
+    row = _termin_row_from_instance(pdb, t, user, kommentar_count=kommentar_count)
+    row["mandanten_prefix"] = mp_row
+    row["ov_display_name"] = dn
+    row["kann_verwalten"] = _can_manage_termin_cross_ov(pdb, user, t)
+    return row
+
+
+def _termin_list_rows_multi(pdb: Session, mandant_slugs: list[str], user: AuthenticatedUser) -> list[dict]:
+    if not mandant_slugs:
+        return []
+    labels = _ov_display_labels_for_slugs(pdb, mandant_slugs)
+    rows = (
+        pdb.query(Termin)
+        .options(selectinload(Termin.teilnahmen))
+        .filter(Termin.mandant_slug.in_(mandant_slugs))
+        .order_by(Termin.starts_at.asc())
+        .all()
+    )
+    ids = [t.id for t in rows]
+    counts = _termin_kommentar_counts_by_termin(pdb, ids)
+    return [
+        _termin_row_cross_ov(
+            pdb,
+            t,
+            user,
+            kommentar_count=counts.get(t.id, 0),
+            ov_labels=labels,
+        )
+        for t in rows
+    ]
+
+
 def _termin_detail_row(
     pdb: Session, mandant_slug: str, user: AuthenticatedUser, termin_id: int
 ) -> dict | None:
@@ -1309,6 +1401,44 @@ def termine_list(
             "termin_past": termin_past,
             "feed_url_my": feed_url_my,
             "feed_url_all": feed_url_all,
+            "page_title": "Termine",
+            "show_neuer_termin_button": True,
+            "ics_my_label": "Meine Zusagen",
+            "ics_all_label": "Alle Termine",
+        },
+    )
+
+
+@tenant_router.get("/termine/alle", response_class=HTMLResponse)
+def termine_list_alle(
+    mandant_slug: str,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    user: CurrentUser,
+):
+    slugs = _approved_ov_slugs_for_user_feeds(pdb, user)
+    if len(slugs) <= 1:
+        return RedirectResponse(f"{_mp(request)}/termine", status_code=302)
+    termin_rows = _termin_list_rows_multi(pdb, slugs, user)
+    termin_upcoming, termin_past = _split_termine_upcoming_past(termin_rows)
+    my_token = ensure_user_calendar_token(pdb, user.platform_user)
+    base = str(request.base_url).rstrip("/")
+    mp = _mp(request)
+    feed_url_my = f"{base}{mp}/calendar/zusagen-alle.ics?t={my_token}"
+    feed_url_all = f"{base}{mp}/calendar/termine-alle.ics?t={my_token}"
+    return templates.TemplateResponse(
+        request,
+        "termine_list.html",
+        {
+            "user": user,
+            "termin_upcoming": termin_upcoming,
+            "termin_past": termin_past,
+            "feed_url_my": feed_url_my,
+            "feed_url_all": feed_url_all,
+            "page_title": "Alle Termine",
+            "show_neuer_termin_button": False,
+            "ics_my_label": "Meine Zusagen (alle Verbände)",
+            "ics_all_label": "Alle Termine (alle Verbände)",
         },
     )
 
@@ -1829,6 +1959,76 @@ def calendar_ics_me(
         media_type="text/calendar; charset=utf-8",
         headers={
             "Content-Disposition": 'attachment; filename="meine-termine.ics"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@tenant_router.get("/calendar/zusagen-alle.ics")
+def calendar_ics_zusagen_alle(
+    mandant_slug: str,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    t: Optional[str] = None,
+):
+    """Persönlicher Feed: Zusagen über alle freigegebenen Verbände des Nutzers."""
+    if not t:
+        raise HTTPException(status_code=404, detail="Not found")
+    owner = (
+        pdb.query(PlatformUser)
+        .filter(PlatformUser.calendar_token == t)
+        .first()
+    )
+    if not owner:
+        raise HTTPException(status_code=404, detail="Not found")
+    au = AuthenticatedUser(owner, mandant_slug, None)
+    slugs = _approved_ov_slugs_for_user_feeds(pdb, au)
+    termine = termine_zugesagt_multi_mandanten(pdb, owner.id, slugs)
+    labels = _ov_display_labels_for_slugs(pdb, slugs)
+    body = build_ics_calendar(
+        termine,
+        cal_name="Meine Zusagen — alle Verbände",
+        ov_labels_for_mandant_slug=labels,
+    )
+    return Response(
+        content=body,
+        media_type="text/calendar; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="meine-zusagen-alle.ics"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@tenant_router.get("/calendar/termine-alle.ics")
+def calendar_ics_termine_alle(
+    mandant_slug: str,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    t: Optional[str] = None,
+):
+    """Persönlicher Feed: alle Termine in allen freigegebenen Verbänden des Nutzers."""
+    if not t:
+        raise HTTPException(status_code=404, detail="Not found")
+    owner = (
+        pdb.query(PlatformUser)
+        .filter(PlatformUser.calendar_token == t)
+        .first()
+    )
+    if not owner:
+        raise HTTPException(status_code=404, detail="Not found")
+    au = AuthenticatedUser(owner, mandant_slug, None)
+    slugs = _approved_ov_slugs_for_user_feeds(pdb, au)
+    termine = all_termine_multi_mandanten(pdb, slugs)
+    labels = _ov_display_labels_for_slugs(pdb, slugs)
+    body = build_ics_calendar(
+        termine,
+        cal_name="Alle Termine — meine Verbände",
+        ov_labels_for_mandant_slug=labels,
+    )
+    return Response(
+        content=body,
+        media_type="text/calendar; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="alle-termine-alle.ics"',
             "Cache-Control": "no-store",
         },
     )

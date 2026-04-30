@@ -12,7 +12,12 @@ from app.termin_extern import externe_teilnehmer_decode, externe_teilnehmer_labe
 TZ = ZoneInfo("Europe/Berlin")
 
 
-def build_ics_calendar(termine: list[Termin], cal_name: str = "SPD Wahlkampf") -> bytes:
+def build_ics_calendar(
+    termine: list[Termin],
+    cal_name: str = "SPD Wahlkampf",
+    *,
+    ov_labels_for_mandant_slug: dict[str, str] | None = None,
+) -> bytes:
     cal = Calendar()
     cal.add("prodid", "-//SPD Ortsverein//Wahlkampf//DE")
     cal.add("version", "2.0")
@@ -22,7 +27,13 @@ def build_ics_calendar(termine: list[Termin], cal_name: str = "SPD Wahlkampf") -
     for t in sorted(termine, key=lambda x: x.starts_at):
         ev = Event()
         ev.add("uid", f"termin-{t.id}@wahlkampf")
-        ev.add("summary", t.title)
+        summary = t.title
+        if ov_labels_for_mandant_slug:
+            slug = t.mandant_slug.strip().lower()
+            lab = ov_labels_for_mandant_slug.get(slug)
+            if lab:
+                summary = f"{lab}: {t.title}"
+        ev.add("summary", summary)
         desc_parts: list[str] = []
         if t.description:
             desc_parts.append(t.description)
@@ -73,6 +84,33 @@ def termine_for_user_teilnahmen(db: Session, user_id: int, mandant_slug: str) ->
         db.query(Termin)
         .join(TerminTeilnahme, TerminTeilnahme.termin_id == Termin.id)
         .filter(TerminTeilnahme.user_id == user_id, Termin.mandant_slug == ms)
+        .order_by(Termin.starts_at.asc())
+        .all()
+    )
+
+
+def termine_zugesagt_multi_mandanten(
+    db: Session, user_id: int, mandant_slugs: list[str]
+) -> list[Termin]:
+    if not mandant_slugs:
+        return []
+    slugs = [s.strip().lower() for s in mandant_slugs]
+    return (
+        db.query(Termin)
+        .join(TerminTeilnahme, TerminTeilnahme.termin_id == Termin.id)
+        .filter(TerminTeilnahme.user_id == user_id, Termin.mandant_slug.in_(slugs))
+        .order_by(Termin.starts_at.asc())
+        .all()
+    )
+
+
+def all_termine_multi_mandanten(db: Session, mandant_slugs: list[str]) -> list[Termin]:
+    if not mandant_slugs:
+        return []
+    slugs = [s.strip().lower() for s in mandant_slugs]
+    return (
+        db.query(Termin)
+        .filter(Termin.mandant_slug.in_(slugs))
         .order_by(Termin.starts_at.asc())
         .all()
     )

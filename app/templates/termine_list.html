@@ -2,16 +2,17 @@
 {% from '_ui_macros.html' import app_header with context %}
 {% from '_termin_macros.html' import teilnehmer_liste %}
 {% import '_icons.html' as ico %}
-{% block title %}Termine — Wahlkampf{% endblock %}
+{% block title %}{{ page_title }} — Wahlkampf{% endblock %}
 
 {% macro termin_karte(row, vergangen=False) %}
 {% set t = row.termin %}
+{% set mp = row.mandanten_prefix | default(request.state.mandanten_prefix) %}
 <article class="card card--flush termin-card-list">
   <div class="termin-card-list__shell">
     <header class="ics-popup__head termin-card-list__head">
       <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_calendar() }}</div>
       <div class="termin-card-list__head-main">
-        <h2 class="ics-popup__h termin-card-list__title"><a href="{{ request.state.mandanten_prefix }}/termine/{{ t.id }}">{{ t.title }}</a></h2>
+        <h2 class="ics-popup__h termin-card-list__title"><a href="{{ mp }}/termine/{{ t.id }}">{% if row.ov_display_name %}<strong class="termin-ov-name">{{ row.ov_display_name }}</strong><span class="termin-title-sep"> — </span>{% endif %}{{ t.title }}</a></h2>
         <p class="ics-popup__lead termin-card-list__meta">
           {{ t.starts_at.strftime('%d.%m.%Y') }} · {{ t.starts_at.strftime('%H:%M') }}
           {% if t.ends_at %}– {{ t.ends_at.strftime('%H:%M') }}{% endif %}
@@ -24,7 +25,7 @@
       <div class="termin-card-list__media-row">
         {% if t.image_path %}
         <div class="termin-card-list__thumb">
-          <img src="{{ request.state.mandanten_prefix }}/media/{{ t.image_path }}" alt="">
+          <img src="{{ mp }}/media/{{ t.image_path }}" alt="">
         </div>
         {% endif %}
         <div class="termin-card-list__columns">
@@ -46,14 +47,14 @@
     <div class="termin-footer-actions">
       {% if not vergangen %}
       {% if row.ich_teilnehme %}
-      <form method="post" action="{{ request.state.mandanten_prefix }}/termine/{{ t.id }}/abmelden" style="margin:0;">
+      <form method="post" action="{{ mp }}/termine/{{ t.id }}/abmelden" style="margin:0;">
         <input type="hidden" name="return_to" value="list">
         <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Abmelden">
           {{ ico.svg_logout() }}<span class="btn-text">Abmelden</span>
         </button>
       </form>
       {% else %}
-      <form method="post" action="{{ request.state.mandanten_prefix }}/termine/{{ t.id }}/teilnehmen" style="margin:0;">
+      <form method="post" action="{{ mp }}/termine/{{ t.id }}/teilnehmen" style="margin:0;">
         <input type="hidden" name="return_to" value="list">
         <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Am Termin teilnehmen">
           {{ ico.svg_check() }}<span class="btn-text">Teilnehmen</span>
@@ -65,16 +66,16 @@
       {% endif %}
       <div class="termin-footer-actions__tail">
         {% set nk = row.kommentar_count|default(0) %}
-        <a href="{{ request.state.mandanten_prefix }}/termine/{{ t.id }}" class="btn btn-sm btn-ghost btn-ico termin-footer-komment-bubble" title="Kommentare" aria-label="Kommentare: {{ nk }}">
+        <a href="{{ mp }}/termine/{{ t.id }}" class="btn btn-sm btn-ghost btn-ico termin-footer-komment-bubble" title="Kommentare" aria-label="Kommentare: {{ nk }}">
           {{ ico.svg_chat() }}
           <span class="termin-footer-komment-bubble__n">{{ nk }}</span>
         </a>
         {% if row.kann_verwalten %}
         <div class="termin-footer-actions__admin">
-          <a href="{{ request.state.mandanten_prefix }}/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico" aria-label="Termin bearbeiten" title="Bearbeiten">
+          <a href="{{ mp }}/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico" aria-label="Termin bearbeiten" title="Bearbeiten">
             {{ ico.svg_pencil() }}
           </a>
-          <a href="{{ request.state.mandanten_prefix }}/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico" aria-label="Termin löschen" title="Löschen">
+          <a href="{{ mp }}/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico" aria-label="Termin löschen" title="Löschen">
             {{ ico.svg_trash() }}
           </a>
         </div>
@@ -97,6 +98,13 @@
   .termin-card-list__title a {
     color: var(--text) !important;
     text-decoration: none !important;
+  }
+  .termin-card-list__title .termin-title-sep {
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .termin-card-list__title .termin-ov-name {
+    font-weight: 700;
   }
   .termin-card-list__title a:hover {
     color: var(--accent) !important;
@@ -333,15 +341,17 @@
 {% endblock %}
 
 {% block body %}
-{{ app_header('Termine') }}
+{{ app_header(page_title) }}
 
 <div class="page-toolbar" aria-label="Aktionen für Termine">
   <button type="button" class="btn btn-sm btn-ico btn-with-label" id="ics-open" aria-label="Kalender abonnieren">
     {{ ico.svg_calendar() }}<span class="btn-text">Abonnieren</span>
   </button>
+  {% if show_neuer_termin_button %}
   <a href="{{ request.state.mandanten_prefix }}/termine/neu" class="btn btn-sm btn-ico btn-with-label" aria-label="Neuer Termin">
     {{ ico.svg_plus() }}<span class="btn-text">Neuer Termin</span>
   </a>
+  {% endif %}
 </div>
 
 {% if feed_url_my.startswith('https://') %}
@@ -372,7 +382,7 @@
     </header>
 
     <section class="ics-popup__panel ics-popup__panel--accent" aria-label="Kalender Meine Zusagen">
-      <h3 class="ics-popup__label">Meine Zusagen</h3>
+      <h3 class="ics-popup__label">{{ ics_my_label }}</h3>
       <div class="ics-dialog-actions">
         <a class="btn btn-sm btn-ico btn-with-label" href="{{ webcal_my }}" aria-label="Meine Zusagen: In Apple Kalender abonnieren">
           {{ ico.svg_calendar() }}<span class="btn-text">Apple</span>
@@ -387,7 +397,7 @@
     </section>
 
     <section class="ics-popup__panel" aria-label="Kalender alle Termine">
-      <h3 class="ics-popup__label">Alle Termine</h3>
+      <h3 class="ics-popup__label">{{ ics_all_label }}</h3>
       <div class="ics-dialog-actions">
         <a class="btn btn-sm btn-ico btn-with-label" href="{{ webcal_all }}" aria-label="Alle Termine: In Apple Kalender abonnieren">
           {{ ico.svg_calendar() }}<span class="btn-text">Apple</span>
@@ -454,7 +464,7 @@
 </script>
 
 {% if not termin_upcoming and not termin_past %}
-<p class="muted">Noch keine Termine — <a href="{{ request.state.mandanten_prefix }}/termine/neu">ersten Termin anlegen</a>.</p>
+<p class="muted">{% if show_neuer_termin_button %}Noch keine Termine — <a href="{{ request.state.mandanten_prefix }}/termine/neu">ersten Termin anlegen</a>.{% else %}Noch keine Termine in deinen Verbänden.{% endif %}</p>
 {% else %}
 <div class="termin-tablist" role="tablist" aria-label="Terminansicht">
   <button type="button" class="termin-tab" id="tab-kommend" role="tab" aria-selected="true" aria-controls="termin-panel-kommend" data-tab="kommend">Aktuelle Termine</button>
@@ -463,7 +473,7 @@
 
 <div id="termin-panel-kommend" class="termin-tab-panel" role="tabpanel" aria-labelledby="tab-kommend" tabindex="0">
   {% if not termin_upcoming %}
-  <p class="muted">Keine aktuellen Termine — <a href="{{ request.state.mandanten_prefix }}/termine/neu">Termin anlegen</a> oder unter „Archiv“ nachsehen.</p>
+  <p class="muted">{% if show_neuer_termin_button %}Keine aktuellen Termine — <a href="{{ request.state.mandanten_prefix }}/termine/neu">Termin anlegen</a> oder unter „Archiv“ nachsehen.{% else %}Keine aktuellen Termine — unter „Archiv“ nachsehen.{% endif %}</p>
   {% endif %}
   {% for row in termin_upcoming %}
   {{ termin_karte(row, vergangen=False) }}
