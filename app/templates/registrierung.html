@@ -3,12 +3,23 @@
 {% import '_icons.html' as ico %}
 {% block title %}Registrieren — Wahlkampf{% endblock %}
 {% block body %}
+{% set reg_action_slug = preselect_ov_slug if preselect_ov_slug else (ovs[0].slug if ovs else '') %}
 {{ app_header('Registrieren') }}
 <div class="card" style="max-width: 400px; margin: 0 auto;">
   <h2 style="margin-top:0;">Registrieren</h2>
-  <p class="muted" style="margin-top:0;"><strong>Name</strong> ist dein Anzeigename (z. B. bei Terminen). <strong>Benutzername</strong> nutzt du nur zum Anmelden — ohne Leerzeichen. Keine E-Mail nötig. <strong>Der erste Nutzer</strong> wird automatisch freigeschaltet und Administrator.</p>
+  <p class="muted" style="margin-top:0;"><strong>Name</strong> ist dein Anzeigename (z. B. bei Terminen). <strong>Benutzername</strong> nutzt du nur zum Anmelden — ohne Leerzeichen. Keine E-Mail nötig. <strong>Der erste Nutzer</strong> eines Ortsverbands wird automatisch freigeschaltet und Administrator.</p>
   {% if error %}<div class="error">{{ error }}</div>{% endif %}
-  <form method="post" action="{{ request.state.mandanten_prefix }}/registrierung">
+  {% if ovs %}
+  <form id="registrierung-form" method="post" action="/m/{{ reg_action_slug }}/registrierung">
+    <label for="reg-ov-select">Ortsverband</label>
+    <select id="reg-ov-select" required autocomplete="off">
+      {% for o in ovs %}
+      {% set oslug = o.slug | lower %}
+      <option value="{{ o.slug }}" {% if preselect_ov_slug == oslug %}selected{% elif not preselect_ov_slug and loop.first %}selected{% endif %}>{{ (o.display_name or '').strip() or o.slug }}</option>
+      {% endfor %}
+    </select>
+    <p class="muted" style="margin:.35rem 0 0; font-size:.85rem;">Du registrierst dich genau bei diesem OV — achte bei mehreren Verbänden auf die richtige Auswahl.</p>
+
     <label for="name">Name</label>
     <input id="name" name="name" type="text" autocomplete="name" required maxlength="120" placeholder="z. B. Max Mustermann" value="{{ name_value }}">
 
@@ -28,6 +39,28 @@
       </button>
     </p>
   </form>
-  <p class="muted" style="margin-bottom:0;">Schon freigeschaltet? <a href="{{ request.state.mandanten_prefix }}/login">Zur Anmeldung</a> (mit Benutzername)</p>
+  <p class="muted" style="margin-bottom:0;">Schon freigeschaltet? <a id="reg-login-link" href="{% if request.state.hide_mandant_path_prefix %}/login{% else %}/{% endif %}">Zur Anmeldung</a> (Startseite mit Benutzername)</p>
+  <script>
+    (function () {
+      var hideShort = {{ request.state.hide_mandant_path_prefix | tojson }};
+      var form = document.getElementById("registrierung-form");
+      var sel = document.getElementById("reg-ov-select");
+      var login = document.getElementById("reg-login-link");
+      function sync() {
+        var s = sel && sel.value ? sel.value : "";
+        if (!s) return;
+        if (form) form.action = "/m/" + encodeURIComponent(s) + "/registrierung";
+        if (login) {
+          login.href = hideShort ? "/login" : "/?" + new URLSearchParams({ ov: s }).toString();
+        }
+      }
+      if (sel) sel.addEventListener("change", sync);
+      if (form) form.addEventListener("submit", sync);
+      sync();
+    })();
+  </script>
+  {% else %}
+  <p class="muted" style="margin-bottom:0;">Es gibt noch keine Ortsverbände — Registrierung ist momentan nicht möglich.</p>
+  {% endif %}
 </div>
 {% endblock %}

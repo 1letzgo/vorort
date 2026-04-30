@@ -384,6 +384,37 @@ def _login_shell_response(
     )
 
 
+def _registrierung_shell_ctx(
+    pdb: Session,
+    mandant_slug_for_select: str,
+    *,
+    error: str | None,
+    name_value: str,
+    username_value: str,
+) -> dict:
+    ovs = _query_ortsverbaende_sorted(pdb)
+    valid = {o.slug.strip().lower() for o in ovs}
+    ms = mandant_slug_for_select.strip().lower()
+    preselect = ms if ms in valid else ""
+    return {
+        "error": error,
+        "name_value": name_value,
+        "username_value": username_value,
+        "ovs": ovs,
+        "preselect_ov_slug": preselect,
+    }
+
+
+def _redirect_after_registrierung(request: Request, ov_slug: str, *, first_user: bool) -> RedirectResponse:
+    """Nach Registrierung zur gemeinsamen Start-/Login-Ansicht (Multi-Mandant: /?ov=…)."""
+    ms = ov_slug.strip().lower()
+    if getattr(request.state, "hide_mandant_path_prefix", False):
+        q = "registered=first" if first_user else "registered=1"
+        return RedirectResponse(f"{_mp(request)}/login?{q}", status_code=302)
+    reg_val = "first" if first_user else "1"
+    return RedirectResponse(f"/?{urlencode([('ov', ms), ('registered', reg_val)])}", status_code=302)
+
+
 def _user_display_names(pdb: Session, user_ids: set[int]) -> dict[int, str]:
     if not user_ids:
         return {}
@@ -794,16 +825,19 @@ def plakate_abhaengen(
 
 
 @tenant_router.get("/registrierung", response_class=HTMLResponse)
-def registrierung_form(request: Request):
-    return templates.TemplateResponse(
-        request,
-        "registrierung.html",
-        {
-            "error": None,
-            "name_value": "",
-            "username_value": "",
-        },
+def registrierung_form(
+    mandant_slug: str,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+):
+    ctx = _registrierung_shell_ctx(
+        pdb,
+        mandant_slug,
+        error=None,
+        name_value="",
+        username_value="",
     )
+    return templates.TemplateResponse(request, "registrierung.html", ctx)
 
 
 @tenant_router.post("/registrierung", response_class=HTMLResponse)
@@ -816,6 +850,21 @@ def registrierung_submit(
     password: Annotated[str, Form()],
     password2: Annotated[str, Form()],
 ):
+    ms = mandant_slug.strip().lower()
+    if pdb.get(Ortsverband, ms) is None:
+        ctx = _registrierung_shell_ctx(
+            pdb,
+            mandant_slug,
+            error="Dieser Ortsverband ist nicht bekannt — bitte einen gültigen Verband wählen.",
+            name_value=" ".join(name.split()).strip(),
+            username_value=benutzername.strip(),
+        )
+        return templates.TemplateResponse(
+            request,
+            "registrierung.html",
+            ctx,
+            status_code=404,
+        )
     display_name = " ".join(name.split()).strip()
     username_raw = benutzername.strip()
     username_norm = username_raw.lower()
@@ -837,36 +886,42 @@ def registrierung_submit(
         err = "Passwort mindestens 8 Zeichen."
     elif password != password2:
         err = "Passwörter stimmen nicht überein."
-    ctx = {
-        "name_value": display_name,
-        "username_value": username_raw,
-    }
+    ctx = _registrierung_shell_ctx(
+        pdb,
+        mandant_slug,
+        error=err,
+        name_value=display_name,
+        username_value=username_raw,
+    )
     if err:
         return templates.TemplateResponse(
             request,
             "registrierung.html",
-            {"error": err, **ctx},
+            ctx,
             status_code=400,
         )
-    ms = mandant_slug.strip().lower()
     if (
         pdb.query(PlatformUser)
         .filter(func.lower(PlatformUser.username) == username_norm)
         .first()
     ):
+        ctx = _registrierung_shell_ctx(
+            pdb,
+            mandant_slug,
+            error=(
+                "Dieser Benutzername ist bereits auf der Plattform vergeben — ein zweites Konto "
+                "gibt es nicht. Hast du dich schon woanders registriert und willst diesem "
+                "Ortsverband beitreten? Dann hier nicht erneut registrieren, sondern mit "
+                "Benutzername und Passwort anmelden; danach wird ein Beitritt beantragt oder "
+                "du wirst freigeschaltet."
+            ),
+            name_value=display_name,
+            username_value=username_raw,
+        )
         return templates.TemplateResponse(
             request,
             "registrierung.html",
-            {
-                "error": (
-                    "Dieser Benutzername ist bereits auf der Plattform vergeben — ein zweites Konto "
-                    "gibt es nicht. Hast du dich schon woanders registriert und willst diesem "
-                    "Ortsverband beitreten? Dann hier nicht erneut registrieren, sondern mit "
-                    "Benutzername und Passwort anmelden; danach wird ein Beitritt beantragt oder "
-                    "du wirst freigeschaltet."
-                ),
-                **ctx,
-            },
+            ctx,
             status_code=400,
         )
     founder_done = pdb.get(MandantAppSetting, (ms, "founder_done"))
@@ -889,9 +944,7 @@ def registrierung_submit(
     if is_first_user:
         pdb.merge(MandantAppSetting(mandant_slug=ms, key="founder_done", value="1"))
     pdb.commit()
-    if is_first_user:
-        return RedirectResponse(f"{_mp(request)}/login?registered=first", status_code=302)
-    return RedirectResponse(f"{_mp(request)}/login?registered=1", status_code=302)
+    return _redirect_after_registrierung(request, ms, first_user=is_first_user)
 
 
 def _admin_count(pdb: Session, mandant_slug: str) -> int:
