@@ -1257,6 +1257,56 @@ def _termin_row_from_instance(
     }
 
 
+def _teilnahme_wants_live_json(request: Request) -> bool:
+    return "application/json" in (request.headers.get("accept") or "").lower()
+
+
+def _termin_teilnahme_live_payload(
+    request: Request,
+    pdb: Session,
+    *,
+    mandant_slug: str,
+    termin_id: int,
+    user: AuthenticatedUser,
+    return_to_list: bool,
+) -> dict:
+    ms = mandant_slug.strip().lower()
+    t = (
+        pdb.query(Termin)
+        .options(selectinload(Termin.teilnahmen))
+        .filter(Termin.id == termin_id, Termin.mandant_slug == ms)
+        .first()
+    )
+    if not t:
+        raise HTTPException(status_code=404, detail="Termin nicht gefunden")
+    counts = _termin_kommentar_counts_by_termin(pdb, [termin_id])
+    row = _termin_row_from_instance(pdb, t, user, kommentar_count=counts.get(termin_id, 0))
+    termin_vergangen = t.starts_at < datetime.utcnow()
+    mp = request.state.mandanten_prefix or ""
+    ctx = {
+        "request": request,
+        "mp": mp,
+        "termin_id": termin_id,
+        "row": row,
+        "termin_vergangen": termin_vergangen,
+        "return_to_list": return_to_list,
+        "teilnehmer": row["teilnehmer"],
+        "teilnehmer_extern": row["teilnehmer_extern"],
+        "teilnehmer_abgesagt": row["teilnehmer_abgesagt"],
+    }
+    footer_inner = templates.env.get_template("_termin_live_footer_inner.html").render(**ctx)
+    teilnehmer_inner = templates.env.get_template("_termin_live_teilnehmer_inner.html").render(**ctx)
+    absagen_section = ""
+    if row["teilnehmer_abgesagt"]:
+        absagen_section = templates.env.get_template("_termin_live_absagen_section.html").render(**ctx)
+    return {
+        "ok": True,
+        "footer_inner_html": footer_inner,
+        "teilnehmer_inner_html": teilnehmer_inner,
+        "absagen_section_html": absagen_section,
+    }
+
+
 def _filter_extern_gast_keys(extern_gast: Optional[List[str]]) -> list[str]:
     if not extern_gast:
         return []
@@ -1795,7 +1845,19 @@ def termin_teilnehmen(
         exists.teilnahme_status = TEILNAHME_STATUS_ZUGESAGT
         pdb.add(exists)
     pdb.commit()
-    if return_to == "list":
+    return_to_list = (return_to or "").strip() == "list"
+    if _teilnahme_wants_live_json(request):
+        return JSONResponse(
+            _termin_teilnahme_live_payload(
+                request,
+                pdb,
+                mandant_slug=mandant_slug,
+                termin_id=termin_id,
+                user=user,
+                return_to_list=return_to_list,
+            ),
+        )
+    if return_to_list:
         return RedirectResponse(f"{_mp(request)}/termine", status_code=302)
     return RedirectResponse(f"{_mp(request)}/termine/{termin_id}", status_code=302)
 
@@ -1835,7 +1897,19 @@ def termin_abmelden(
             ),
         )
     pdb.commit()
-    if return_to == "list":
+    return_to_list = (return_to or "").strip() == "list"
+    if _teilnahme_wants_live_json(request):
+        return JSONResponse(
+            _termin_teilnahme_live_payload(
+                request,
+                pdb,
+                mandant_slug=mandant_slug,
+                termin_id=termin_id,
+                user=user,
+                return_to_list=return_to_list,
+            ),
+        )
+    if return_to_list:
         return RedirectResponse(f"{_mp(request)}/termine", status_code=302)
     return RedirectResponse(f"{_mp(request)}/termine/{termin_id}", status_code=302)
 

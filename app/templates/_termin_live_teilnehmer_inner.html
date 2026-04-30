@@ -1,0 +1,5 @@
+{% from '_termin_macros.html' import teilnehmer_liste %}
+{% set _tn = teilnehmer|length + teilnehmer_extern|length %}
+<h3 class="ics-popup__label">Teilnehmer{% if _tn %} ({{ _tn }}){% endif %}</h3>
+{% set row_wrap = {'teilnehmer': teilnehmer, 'teilnehmer_extern': teilnehmer_extern} %}
+{{ teilnehmer_liste(row_wrap, with_heading=False) }}

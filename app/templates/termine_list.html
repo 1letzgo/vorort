@@ -36,8 +36,10 @@
           </section>
           {% endif %}
           <section class="ics-popup__panel termin-card-list__panel-teilnehmer{% if not t.description %} ics-popup__panel--accent{% endif %}" aria-label="Teilnehmer">
-            <h3 class="ics-popup__label">Teilnehmer{% set _n = row.teilnehmer|length + row.teilnehmer_extern|length %}{% if _n %} ({{ _n }}){% endif %}</h3>
-            {{ teilnehmer_liste(row, with_heading=False) }}
+            <div data-live-teilnehmer-inner>
+              <h3 class="ics-popup__label">Teilnehmer{% set _n = row.teilnehmer|length + row.teilnehmer_extern|length %}{% if _n %} ({{ _n }}){% endif %}</h3>
+              {{ teilnehmer_liste(row, with_heading=False) }}
+            </div>
           </section>
         </div>
       </div>
@@ -48,27 +50,27 @@
       {% if not vergangen %}
       <div class="termin-footer-actions__signup">
       {% if row.ich_teilnehme %}
-      <form method="post" action="{{ mp }}/termine/{{ t.id }}/abmelden" style="margin:0;">
+      <form method="post" action="{{ mp }}/termine/{{ t.id }}/abmelden" data-teilnahme-live style="margin:0;">
         <input type="hidden" name="return_to" value="list">
         <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Abmelden">
           {{ ico.svg_logout() }}<span class="btn-text">Abmelden</span>
         </button>
       </form>
       {% elif row.ich_abgesagt %}
-      <form method="post" action="{{ mp }}/termine/{{ t.id }}/teilnehmen" style="margin:0;">
+      <form method="post" action="{{ mp }}/termine/{{ t.id }}/teilnehmen" data-teilnahme-live style="margin:0;">
         <input type="hidden" name="return_to" value="list">
         <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Erneut zusagen">
           {{ ico.svg_check() }}<span class="btn-text">Teilnehmen</span>
         </button>
       </form>
       {% else %}
-      <form method="post" action="{{ mp }}/termine/{{ t.id }}/teilnehmen" style="margin:0;">
+      <form method="post" action="{{ mp }}/termine/{{ t.id }}/teilnehmen" data-teilnahme-live style="margin:0;">
         <input type="hidden" name="return_to" value="list">
         <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Am Termin teilnehmen">
           {{ ico.svg_check() }}<span class="btn-text">Teilnehmen</span>
         </button>
       </form>
-      <form method="post" action="{{ mp }}/termine/{{ t.id }}/absagen" style="margin:0;">
+      <form method="post" action="{{ mp }}/termine/{{ t.id }}/absagen" data-teilnahme-live style="margin:0;">
         <input type="hidden" name="return_to" value="list">
         <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Termin absagen">
           {{ ico.svg_minus_circle() }}<span class="btn-text">Absage</span>
@@ -544,4 +546,5 @@
   })();
 </script>
 {% endif %}
+{% include '_termin_teilnahme_live_script.html' %}
 {% endblock %}

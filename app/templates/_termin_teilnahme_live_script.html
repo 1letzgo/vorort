@@ -1,0 +1,57 @@
+<script>
+(function () {
+  function detailFrom(data) {
+    var d = data.detail;
+    if (typeof d === 'string') return d;
+    if (Array.isArray(d) && d.length && typeof d[0] === 'object' && d[0].msg) return d[0].msg;
+    if (Array.isArray(d) && d.length) return String(d[0]);
+    return null;
+  }
+  document.addEventListener('submit', function (ev) {
+    var form = ev.target;
+    if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-teilnahme-live')) return;
+    var action = form.action || '';
+    if (action.indexOf('/teilnehmen') === -1 && action.indexOf('/abmelden') === -1 && action.indexOf('/absagen') === -1) return;
+    ev.preventDefault();
+    fetch(form.action, {
+      method: 'POST',
+      body: new FormData(form),
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
+    })
+      .then(function (res) {
+        if (res.status === 401 || res.status === 403) {
+          window.location.reload();
+          return Promise.reject(new Error('auth'));
+        }
+        return res.json().catch(function () {
+          return {};
+        }).then(function (data) {
+          return { res: res, data: data };
+        });
+      })
+      .then(function (pair) {
+        if (!pair) return;
+        var res = pair.res;
+        var data = pair.data;
+        if (!res.ok || !data.ok) {
+          var msg = detailFrom(data) || data.error || ('HTTP ' + res.status);
+          alert(msg);
+          return;
+        }
+        var article = form.closest('article.termin-card-list');
+        if (!article) return;
+        var signup = article.querySelector('.termin-footer-actions__signup');
+        if (signup && typeof data.footer_inner_html === 'string') signup.innerHTML = data.footer_inner_html;
+        var tin = article.querySelector('[data-live-teilnehmer-inner]');
+        if (tin && typeof data.teilnehmer_inner_html === 'string') tin.innerHTML = data.teilnehmer_inner_html;
+        var aw = article.querySelector('[data-live-absagen-wrap]');
+        if (aw && typeof data.absagen_section_html === 'string') aw.innerHTML = data.absagen_section_html;
+      })
+      .catch(function (err) {
+        if (err && err.message === 'auth') return;
+        alert('Netzwerkfehler.');
+      });
+  }, false);
+})();
+</script>
