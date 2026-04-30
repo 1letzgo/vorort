@@ -6,10 +6,8 @@ services:
       - "8000:8000"
     environment:
       SECRET_KEY: ${SECRET_KEY:-dev-change-me-in-production}
-      # Superadmin /admin/login — Benutzer „letzgo“ wird beim ersten Start angelegt, wenn gesetzt:
-      SUPERADMIN_INITIAL_PASSWORD: ${SUPERADMIN_INITIAL_PASSWORD:-}
-      # Vergessenes Passwort: einmalig setzen, Container neu starten, Zeile wieder löschen:
-      # SUPERADMIN_RESET_PASSWORD: ...
+      # Optional: Superadmin-Benutzername (Standard letzgo), gleiche Session wie OV-Login:
+      # SUPERADMIN_USERNAME: letzgo
       # Mandant per Subdomain (optional): Host „slug.<BASE>“ → ohne /m/slug in der URL
       # Beispiel lokal: MANDANT_HOST_BASE_DOMAIN=localhost → http://westerstede.localhost:8000/login
       # Statt Subdomain (nur Tests): MANDANT_HOST_IS_RAW_SLUG=true → Hostname = Slug, z. B. http://westerstede:8000/

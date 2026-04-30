@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 from app import models
 from app.auth import hash_password, verify_password
-from app.config import ICS_TOKEN, MAX_UPLOAD_MB, SECRET_KEY, SESSION_COOKIE, upload_dir_for_slug
+from app.config import ICS_TOKEN, MAX_UPLOAD_MB, SECRET_KEY, SESSION_COOKIE, SUPERADMIN_USERNAME, upload_dir_for_slug
 from app.database import get_db
 from app.deps import AdminUser, CurrentUser
 from app.ics_service import (
@@ -113,7 +113,13 @@ async def http_exc(request: Request, exc: HTTPException):
         if rp and path.startswith(rp):
             path = path[len(rp) :] or "/"
         if path.startswith("/admin"):
-            return RedirectResponse("/admin/login", status_code=302)
+            slug = request.session.get("mandant_slug")
+            if slug:
+                return RedirectResponse(
+                    f"/m/{slug.strip().lower()}/login",
+                    status_code=302,
+                )
+            return RedirectResponse("/", status_code=302)
         if exc.detail == "Konto noch nicht freigegeben.":
             slug = request.session.get("mandant_slug")
             if slug:
@@ -145,16 +151,6 @@ def _mp(request: Request) -> str:
     if slug:
         return f"/m/{slug.strip().lower()}"
     return request.state.mandanten_prefix or ""
-
-
-def _session_is_superadmin(request: Request) -> bool:
-    if request.session.get("platform_admin_id"):
-        return True
-    if request.session.get("platform_superadmin_mandant_slug") and request.session.get(
-        "platform_superadmin_user_id"
-    ):
-        return True
-    return False
 
 
 def _upload_root(request: Request) -> Path:
@@ -427,7 +423,8 @@ def app_menu(
         {
             "user": user,
             "pending_count": _pending_approval_count(db, user),
-            "show_superadmin_link": _session_is_superadmin(request),
+            "show_superadmin_link": user.username.strip().lower()
+            == SUPERADMIN_USERNAME,
         },
     )
 

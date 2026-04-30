@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.config import SUPERADMIN_USERNAME
 from app.database import get_db
 from app.models import User
 
@@ -48,3 +49,15 @@ def get_admin_user(user: CurrentUser) -> User:
 
 
 AdminUser = Annotated[User, Depends(get_admin_user)]
+
+
+def require_letzgo_superadmin(user: CurrentUser) -> User:
+    if user.username.strip().lower() != SUPERADMIN_USERNAME:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Nur für den Superadmin (Benutzer „{SUPERADMIN_USERNAME}“).",
+        )
+    return user
+
+
+LetzgoSuperadmin = Annotated[User, Depends(require_letzgo_superadmin)]
