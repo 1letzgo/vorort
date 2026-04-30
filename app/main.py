@@ -49,6 +49,11 @@ from app.ics_service import (
     termine_for_user_teilnahmen,
     termine_zugesagt_multi_mandanten,
 )
+from app.mandant_features import (
+    FEATURE_PLAKATE,
+    FEATURE_SHAREPIC,
+    is_mandant_feature_enabled,
+)
 from app.mandant_host import apply_mandant_host_path_rewrite
 from app.platform_bootstrap import bootstrap_platform
 from app.platform_database import get_platform_db
@@ -673,6 +678,18 @@ def login_submit(
     return _login_submit_response(pdb, request, mandant_slug, username, password)
 
 
+def _mandant_features_for_menu(pdb: Session, mandant_slug: str) -> dict[str, bool]:
+    return {
+        "feature_plakate": is_mandant_feature_enabled(pdb, mandant_slug, FEATURE_PLAKATE),
+        "feature_sharepic": is_mandant_feature_enabled(pdb, mandant_slug, FEATURE_SHAREPIC),
+    }
+
+
+def _require_mandant_feature(pdb: Session, mandant_slug: str, feature_key: str) -> None:
+    if not is_mandant_feature_enabled(pdb, mandant_slug, feature_key):
+        raise HTTPException(status_code=404, detail="Not found")
+
+
 @tenant_router.get("/menu", response_class=HTMLResponse)
 def app_menu(
     mandant_slug: str,
@@ -688,12 +705,19 @@ def app_menu(
             "pending_count": _pending_approval_count(pdb, mandant_slug, user),
             "show_superadmin_link": is_superadmin_username(user.username),
             "my_ovs": _my_ovs_menu_items(pdb, mandant_slug, user.id, user.username),
+            **_mandant_features_for_menu(pdb, mandant_slug),
         },
     )
 
 
 @tenant_router.get("/sharepic", response_class=HTMLResponse)
-def sharepic_creator(mandant_slug: str, request: Request, user: CurrentUser):
+def sharepic_creator(
+    mandant_slug: str,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    user: CurrentUser,
+):
+    _require_mandant_feature(pdb, mandant_slug, FEATURE_SHAREPIC)
     ov_display = (getattr(request.state, "ortsverband_name", None) or "").strip()
     if not ov_display:
         ov_display = mandant_slug.strip().lower()
@@ -717,6 +741,7 @@ def plakate_view(
     pdb: Annotated[Session, Depends(get_platform_db)],
     user: CurrentUser,
 ):
+    _require_mandant_feature(pdb, mandant_slug, FEATURE_PLAKATE)
     return templates.TemplateResponse(
         request,
         "plakate.html",
@@ -735,6 +760,7 @@ def plakate_api_list(
     pdb: Annotated[Session, Depends(get_platform_db)],
     _: CurrentUser,
 ):
+    _require_mandant_feature(pdb, mandant_slug, FEATURE_PLAKATE)
     return JSONResponse(_plakate_list_payload(pdb, mandant_slug, request))
 
 
@@ -749,6 +775,7 @@ async def plakate_hinzufuegen(
     note: Annotated[str, Form()] = "",
     foto: Annotated[Optional[UploadFile], File()] = None,
 ):
+    _require_mandant_feature(pdb, mandant_slug, FEATURE_PLAKATE)
     try:
         lat_f = float(lat.replace(",", "."))
         lng_f = float(lng.replace(",", "."))
@@ -805,6 +832,7 @@ def plakate_abhaengen(
     pdb: Annotated[Session, Depends(get_platform_db)],
     user: CurrentUser,
 ):
+    _require_mandant_feature(pdb, mandant_slug, FEATURE_PLAKATE)
     ms = mandant_slug.strip().lower()
     p = (
         pdb.query(MandantPlakat)

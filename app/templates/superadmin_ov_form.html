@@ -47,6 +47,20 @@
       <form method="post" action="/admin/ortsverbaende/{{ ov.slug }}/bearbeiten">
         <label for="ov-display-edit">Anzeigename</label>
         <input id="ov-display-edit" name="display_name" type="text" value="{{ ov.display_name }}" required maxlength="200">
+
+        <fieldset style="margin-top: 1.25rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem;">
+          <legend class="ics-popup__label" style="padding: 0 0.35rem;">Funktionen</legend>
+          <p class="muted" style="margin: 0 0 0.75rem; font-size: 0.84rem;">Schaltet Menüeinträge und Seiten für diesen Ortsverband (auch bei direktem Link).</p>
+          <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-bottom: 0.5rem; cursor: pointer;">
+            <input type="checkbox" name="feature_plakate" value="1" {% if feature_plakate %}checked{% endif %}>
+            Plakate
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
+            <input type="checkbox" name="feature_sharepic" value="1" {% if feature_sharepic %}checked{% endif %}>
+            Sharepic
+          </label>
+        </fieldset>
+
         <p style="margin-top: 1.25rem;">
           <button type="submit" class="btn btn-ico btn-with-label" aria-label="Änderungen speichern">
             {{ ico.svg_check() }}<span class="btn-text">Speichern</span>

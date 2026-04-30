@@ -79,8 +79,12 @@
       <h2 class="menu-list-section__label" id="menu-kategorien-heading">Kategorien</h2>
     </li>
     <li><a href="{{ request.state.mandanten_prefix }}/termine"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Termine</span></span></a></li>
+    {% if feature_plakate | default(true) %}
     <li><a href="{{ request.state.mandanten_prefix }}/plakate"><span class="menu-list__main">{{ ico.svg_map_pin() }}<span>Plakate</span></span></a></li>
+    {% endif %}
+    {% if feature_sharepic | default(true) %}
     <li><a href="{{ request.state.mandanten_prefix }}/sharepic"><span class="menu-list__main">{{ ico.svg_image() }}<span>Sharepic</span></span></a></li>
+    {% endif %}
   </ul>
 </div>
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Optional
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -14,6 +14,12 @@ from app.ov_services import (
     delete_ortsverband_completely,
     register_ortsverband,
     validate_ov_slug,
+)
+from app.mandant_features import (
+    FEATURE_PLAKATE,
+    FEATURE_SHAREPIC,
+    is_mandant_feature_enabled,
+    merge_mandant_feature,
 )
 from app.platform_database import get_platform_db
 from app.platform_models import Ortsverband
@@ -98,7 +104,13 @@ def superadmin_ov_edit_form(
     return templates.TemplateResponse(
         request,
         "superadmin_ov_form.html",
-        {"error": None, "ov": ov, "is_new": False},
+        {
+            "error": None,
+            "ov": ov,
+            "is_new": False,
+            "feature_plakate": is_mandant_feature_enabled(db, ov.slug, FEATURE_PLAKATE),
+            "feature_sharepic": is_mandant_feature_enabled(db, ov.slug, FEATURE_SHAREPIC),
+        },
     )
 
 
@@ -109,11 +121,16 @@ def superadmin_ov_edit_submit(
     db: Annotated[Session, Depends(get_platform_db)],
     _: LetzgoSuperadmin,
     display_name: Annotated[str, Form()],
+    feature_plakate: Annotated[Optional[str], Form()] = None,
+    feature_sharepic: Annotated[Optional[str], Form()] = None,
 ):
     ov = db.get(Ortsverband, slug.strip().lower())
     if not ov:
         raise HTTPException(status_code=404, detail="Unbekannt")
     ov.display_name = " ".join(display_name.split()).strip() or ov.slug
+    ms = ov.slug.strip().lower()
+    merge_mandant_feature(db, ms, FEATURE_PLAKATE, feature_plakate == "1")
+    merge_mandant_feature(db, ms, FEATURE_SHAREPIC, feature_sharepic == "1")
     db.add(ov)
     db.commit()
     return RedirectResponse("/admin/ortsverbaende", status_code=302)
