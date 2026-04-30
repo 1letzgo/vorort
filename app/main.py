@@ -145,6 +145,16 @@ def _mp(request: Request) -> str:
     return request.state.mandanten_prefix or ""
 
 
+def _session_is_superadmin(request: Request) -> bool:
+    if request.session.get("platform_admin_id"):
+        return True
+    if request.session.get("platform_superadmin_mandant_slug") and request.session.get(
+        "platform_superadmin_user_id"
+    ):
+        return True
+    return False
+
+
 def _upload_root(request: Request) -> Path:
     slug = request.path_params["mandant_slug"].strip().lower()
     return upload_dir_for_slug(slug)
@@ -407,6 +417,7 @@ def app_menu(
         {
             "user": user,
             "pending_count": _pending_approval_count(db, user),
+            "show_superadmin_link": _session_is_superadmin(request),
         },
     )
 

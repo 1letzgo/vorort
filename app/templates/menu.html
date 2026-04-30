@@ -34,15 +34,24 @@
   </ul>
 </div>
 
-{% if user.is_admin %}
+{% if user.is_admin or (show_superadmin_link | default(false)) %}
 <div class="card card--flush">
   <ul class="menu-list" role="list">
+    {% if user.is_admin %}
     <li>
       <a href="{{ request.state.mandanten_prefix }}/admin/benutzer">
         <span class="menu-list__main">{{ ico.svg_cog() }}<span>Administration</span></span>
         {% if pending_count %}<span class="menu-pending-badge" aria-label="{{ pending_count }} ausstehend">{{ pending_count }}</span>{% endif %}
       </a>
     </li>
+    {% endif %}
+    {% if show_superadmin_link | default(false) %}
+    <li>
+      <a href="/admin/ortsverbaende">
+        <span class="menu-list__main">{{ ico.svg_menu() }}<span>Superadmin (Plattform)</span></span>
+      </a>
+    </li>
+    {% endif %}
   </ul>
 </div>
 {% endif %}

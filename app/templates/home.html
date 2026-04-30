@@ -1,20 +1,64 @@
 {% extends "base.html" %}
 {% from '_ui_macros.html' import app_header with context %}
-{% import '_icons.html' as ico %}
 {% block title %}Wahlkampf — Start{% endblock %}
+{% block head %}
+<style>
+  .ov-tile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .ov-tile-grid > li {
+    margin: 0;
+  }
+  .ov-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.3rem;
+    padding: 0.9rem 1rem;
+    min-height: 4.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    text-decoration: none !important;
+    color: var(--text) !important;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .ov-tile:hover {
+    border-color: rgba(196, 30, 58, 0.38);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+  .ov-tile__name {
+    font-weight: 650;
+    font-size: 0.98rem;
+    line-height: 1.25;
+  }
+  .ov-tile__slug {
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+</style>
+{% endblock %}
 {% block body %}
 {{ app_header('Start', '/') }}
-<div class="card" style="max-width: 560px; margin: 0 auto;">
+<div class="card" style="max-width: 720px; margin: 0 auto;">
   <h2 style="margin-top:0;">Willkommen</h2>
   <p class="muted" style="margin-top:0;">Wähle deinen Ortsverband — Termine, Kalender und Sharepic sind je OV getrennt.</p>
   {% if ovs %}
-  <ul style="list-style:none; padding:0; margin:1rem 0 0;">
+  <ul class="ov-tile-grid">
     {% for o in ovs %}
-    <li style="margin:0.5rem 0;">
-      <a class="btn btn-ico" href="/m/{{ o.slug }}/login" style="width:100%; justify-content:flex-start;">
-        {{ ico.svg_login() }}<span class="btn-text">{{ o.display_name }}</span>
-        <span class="muted" style="margin-left:auto; font-size:.85rem;">{{ o.slug }}</span>
-      </a>
+    <li>
+    <a class="ov-tile" href="/m/{{ o.slug }}/login">
+      <span class="ov-tile__name">{{ o.display_name }}</span>
+      <span class="ov-tile__slug">{{ o.slug }}</span>
+    </a>
     </li>
     {% endfor %}
   </ul>
@@ -22,8 +66,5 @@
   {% else %}
   <p class="muted">Noch keine Ortsverbände — bitte Superadmin unter <a href="/admin/login">/admin/login</a> anlegen.</p>
   {% endif %}
-  <p style="margin: 1.5rem 0 0; font-size:.85rem;" class="muted">
-    <a href="/admin/login">Plattform-Verwaltung (Superadmin)</a>
-  </p>
 </div>
 {% endblock %}
