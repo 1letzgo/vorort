@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_ui_macros.html' import app_header with context %}
+{% from '_ui_macros.html' import app_header, public_tenant_prefix with context %}
 {% import '_icons.html' as ico %}
 {% block title %}Plakate — Wahlkampf{% endblock %}
 {% block head %}
@@ -268,7 +268,7 @@
 <script>
 (function () {
   var initial = {{ plakate_initial | tojson }};
-  var MP = {{ request.state.mandanten_prefix | tojson }};
+  var MP = {{ public_tenant_prefix(request) | tojson }};
   var dialog = document.getElementById("plakate-add-dialog");
 
   function deDt(iso) {
@@ -525,8 +525,11 @@
     var btn = e.target.closest(".plakate-pop-remove, .plakate-row-remove");
     if (!btn) return;
     var rid = btn.getAttribute("data-id");
-    if (!rid || !confirm("Dieses Plakat als abgehängt melden?")) return;
-    fetch(MP + "/plakate/api/abhaengen/" + rid, {
+    var pid = rid != null ? parseInt(String(rid).trim(), 10) : NaN;
+    if (!Number.isFinite(pid) || pid < 1) return;
+    if (!confirm("Dieses Plakat als abgehängt melden?")) return;
+    var url = MP + "/plakate/api/abhaengen/" + pid;
+    fetch(url, {
       method: "POST",
       credentials: "same-origin",
       headers: { Accept: "application/json" },

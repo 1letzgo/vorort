@@ -187,6 +187,14 @@
     }
     .btn-ico.btn-xs .ico { width: 1.05em; height: 1.05em; }
     .btn-admin.btn-ico { position: relative; }
+    /* Terminliste/-detail Footer: gleiche Mindesthöhe (Zusage-Haken, Teilnehmen, Absage) */
+    .termin-footer-actions__signup .btn.btn-sm.btn-ico:not(.btn-xs) {
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.35rem;
+    }
     .btn-pending-badge {
       position: absolute;
       top: -0.4rem;
@@ -246,12 +254,11 @@
       }
       .lbl-short { display: inline !important; }
       .lbl-full { display: none !important; }
-      /* Termin-Karten-Footer: Icon-only-Zusage wie Nachbar-Buttons (btn-with-label), keine XL-Touch-Ziele */
-      .termin-footer-actions__signup .btn-sm.btn-ico:not(.btn-xs),
-      .termin-footer-actions__signup .termin-zusage-badge.btn-sm.btn-ico {
+      /* Termin-Karten-Footer: kompakte Touch-Ziele, gleiche Höhe wie Nachbarn */
+      .termin-footer-actions__signup .btn.btn-sm.btn-ico:not(.btn-xs) {
         padding: 0.42rem 0.7rem;
         min-width: unset;
-        min-height: unset;
+        min-height: 2.35rem;
       }
     }
     @media (min-width: 641px) {
