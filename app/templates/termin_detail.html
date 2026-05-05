@@ -296,14 +296,24 @@
       {% else %}
       <span class="termin-footer-actions__hint muted">Termin vorbei — Anmeldung nicht mehr möglich.</span>
       {% endif %}
-      {% if row.kann_verwalten %}
+      {% if t.image_path or row.kann_verwalten %}
       <div class="termin-footer-actions__admin">
+        {% if t.image_path %}
+        <button type="button" class="btn btn-sm btn-ghost btn-ico termin-bild-share-btn" aria-label="Terminbild teilen" title="Terminbild teilen"
+          data-share-path="{{ owner_mp }}/media/{{ t.image_path }}"
+          data-share-title="{{ t.title | e }}"
+          data-share-filename="termin-{{ t.id }}.jpg">
+          {{ ico.svg_share() }}
+        </button>
+        {% endif %}
+        {% if row.kann_verwalten %}
         <a href="{{ owner_mp }}/{{ twp }}/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico" aria-label="Termin bearbeiten" title="Bearbeiten">
           {{ ico.svg_pencil() }}
         </a>
         <a href="{{ owner_mp }}/{{ twp }}/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico" aria-label="Termin löschen" title="Löschen">
           {{ ico.svg_trash() }}
         </a>
+        {% endif %}
       </div>
       {% endif %}
     </div>
@@ -717,4 +727,77 @@
   });
 })();
 </script>
+{% if t.image_path %}
+<script>
+(function () {
+  var btn = document.querySelector(".termin-bild-share-btn");
+  if (!btn || !btn.getAttribute("data-share-path")) return;
+
+  function absoluteUrl(pathRaw) {
+    var path = (pathRaw || "").trim();
+    if (!path) return "";
+    if (path.charAt(0) !== "/") path = "/" + path;
+    return window.location.origin + path;
+  }
+
+  btn.addEventListener("click", function () {
+    var path = btn.getAttribute("data-share-path") || "";
+    var title = (btn.getAttribute("data-share-title") || "Termin").trim();
+    var fname = (btn.getAttribute("data-share-filename") || "termin.jpg").trim();
+    var absUrl = absoluteUrl(path);
+    if (!absUrl) return;
+
+    btn.disabled = true;
+
+    fetch(path, { credentials: "same-origin" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("Bild konnte nicht geladen werden.");
+        return res.blob();
+      })
+      .then(function (blob) {
+        var mime = blob.type || "image/jpeg";
+        var ext = ".jpg";
+        if (mime.indexOf("png") !== -1) ext = ".png";
+        else if (mime.indexOf("webp") !== -1) ext = ".webp";
+        var base = fname.replace(/\.(jpe?g|png|webp)$/i, "") || "termin";
+        var file = new File([blob], base + ext, { type: mime });
+
+        var canFiles = false;
+        try {
+          canFiles = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [file] }));
+        } catch (e) {}
+
+        if (canFiles) {
+          return navigator.share({ files: [file], title: title }).catch(function (err) {
+            if (err && err.name === "AbortError") return;
+            throw err;
+          });
+        }
+        if (navigator.share) {
+          return navigator.share({ title: title, text: title, url: absUrl }).catch(function (err) {
+            if (err && err.name === "AbortError") return;
+            throw err;
+          });
+        }
+        throw new Error("no-share");
+      })
+      .catch(function () {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(absUrl).then(function () {
+            var prev = btn.getAttribute("title") || "";
+            btn.setAttribute("title", "Link kopiert");
+            window.setTimeout(function () {
+              btn.setAttribute("title", prev || "Terminbild teilen");
+            }, 2000);
+          });
+        }
+        window.prompt("Link zum Bild kopieren:", absUrl);
+      })
+      .finally(function () {
+        btn.disabled = false;
+      });
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}
