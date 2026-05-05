@@ -260,12 +260,30 @@ header.site-header .header-brand:hover {
   position: relative;
 }
 
-/* Termin-Footer: zwei kompakte Icon-Buttons (grün Zusage / rot Absage) */
-.termin-signup-pair {
-  display: inline-flex;
+/* Termin-Footer: zwei kompakte Icon-Buttons nebeneinander (Zusage / Absage) */
+.termin-footer-actions__signup {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.4rem;
   flex-shrink: 0;
+}
+
+.termin-signup-pair {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.termin-signup-pair form {
+  margin: 0;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
 }
 
 .termin-signup-btn.btn.btn-sm.btn-ico {
@@ -279,14 +297,17 @@ header.site-header .header-brand:hover {
   border-radius: var(--radius-input);
 }
 
-.termin-signup-btn--teilnehmen {
+/* Unausgewählt: nur Rand, kein Hintergrund */
+.termin-signup-btn--teilnehmen:not(.termin-signup-btn--teilnehmen-active) {
   background: transparent !important;
   color: #1e7a4c !important;
   border: 1px solid rgba(30, 122, 76, 0.42);
 }
 
-.termin-signup-btn--teilnehmen:hover {
-  background: rgba(30, 122, 76, 0.09) !important;
+.termin-signup-btn--teilnehmen:not(.termin-signup-btn--teilnehmen-active):hover {
+  background: transparent !important;
+  color: #16633d !important;
+  border-color: rgba(30, 122, 76, 0.65);
 }
 
 .termin-signup-btn--teilnehmen-active {
@@ -297,16 +318,19 @@ header.site-header .header-brand:hover {
 
 .termin-signup-btn--teilnehmen-active:hover {
   background: #16633d !important;
+  color: #fff !important;
 }
 
-.termin-signup-btn--absage {
+.termin-signup-btn--absage:not(.termin-signup-btn--absage-active) {
   background: transparent !important;
   color: var(--accent) !important;
   border: 1px solid rgba(196, 30, 58, 0.38);
 }
 
-.termin-signup-btn--absage:hover {
-  background: rgba(196, 30, 58, 0.07) !important;
+.termin-signup-btn--absage:not(.termin-signup-btn--absage-active):hover {
+  background: transparent !important;
+  color: var(--accent-dim) !important;
+  border-color: rgba(196, 30, 58, 0.58);
 }
 
 .termin-signup-btn--absage-active {
@@ -317,6 +341,7 @@ header.site-header .header-brand:hover {
 
 .termin-signup-btn--absage-active:hover {
   background: #5c1622 !important;
+  color: #fff !important;
 }
 
 .btn-pending-badge {
