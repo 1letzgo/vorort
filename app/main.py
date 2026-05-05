@@ -7,7 +7,7 @@ from urllib.parse import urlencode
 from datetime import date, datetime, time
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Optional, Union
 
 from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.exception_handlers import http_exception_handler
@@ -1852,9 +1852,9 @@ async def termin_create(
     location: Annotated[str, Form()] = "",
     end_uhrzeit: Annotated[str, Form()] = "",
     extern_gast: Annotated[Optional[List[str]], Form()] = None,
+    promoted_all_ovs: Annotated[str | None, Form()] = None,
     bild: Annotated[Optional[UploadFile], File()] = None,
     anhaenge: Annotated[Optional[List[UploadFile]], File()] = None,
-    promoted_all_ovs: Annotated[str | None, Form()] = None,
 ):
     err = _parse_times(start_uhrzeit, end_uhrzeit)
     if err:
@@ -2239,10 +2239,13 @@ async def termin_edit_save(
     end_uhrzeit: Annotated[str, Form()] = "",
     bild_entfernen: Annotated[str, Form()] = "",
     extern_gast: Annotated[Optional[List[str]], Form()] = None,
-    bild: Annotated[Optional[UploadFile], File()] = None,
-    anhang_entfernen: Annotated[Optional[List[str]], Form()] = None,
-    anhaenge: Annotated[Optional[List[UploadFile]], File()] = None,
+    anhang_entfernen: Annotated[
+        Union[str, List[str], None],
+        Form(),
+    ] = None,
     promoted_all_ovs: Annotated[str | None, Form()] = None,
+    bild: Annotated[Optional[UploadFile], File()] = None,
+    anhaenge: Annotated[Optional[List[UploadFile]], File()] = None,
 ):
     ms = mandant_slug.strip().lower()
     t = termin_sichtbar_in_mandant(pdb, termin_id, ms, user)

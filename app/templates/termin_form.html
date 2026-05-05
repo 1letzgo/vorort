@@ -128,7 +128,7 @@
 
 <div class="page-toolbar" aria-label="Navigation">
   {% if termin %}
-  <a href="{{ mp }}/termine/{{ termin.id }}" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="Zur Terminansicht">
+  <a href="{{ mp }}/termine/{{ termin.id }}" class="btn btn-sm btn-ico btn-with-label" aria-label="Zur Terminansicht">
     {{ ico.svg_arrow_left() }}<span class="btn-text">Zurück</span>
   </a>
   {% else %}
@@ -234,8 +234,8 @@
     </section>
     {% endif %}
 
-    <section class="ics-popup__panel" aria-label="Dateianhänge hinzufügen">
-      <h3 class="ics-popup__label">{% if termin %}Weitere Dateien{% else %}Dateianhänge{% endif %}</h3>
+    <section class="ics-popup__panel" aria-label="Dateien">
+      <h3 class="ics-popup__label">Dateien</h3>
       <p class="ics-popup__lead" style="margin-top:0;">Beliebige Dateitypen, bis {{ max_attachment_mb }} MB pro Datei — einzeln vor dem Speichern wieder entfernbar.</p>
       <label for="termin-anhaenge-input">Dateien auswählen (mehrere möglich)</label>
       <input id="termin-anhaenge-input" name="anhaenge" type="file" multiple>
@@ -267,7 +267,16 @@
   var dt = new DataTransfer();
 
   function sync() {
-    input.files = dt.files;
+    try {
+      if (dt.files.length === 0) {
+        input.removeAttribute("name");
+      } else {
+        input.setAttribute("name", "anhaenge");
+        input.files = dt.files;
+      }
+    } catch (e) {
+      input.setAttribute("name", "anhaenge");
+    }
     listEl.innerHTML = "";
     Array.from(dt.files).forEach(function (file, idx) {
       var li = document.createElement("li");
@@ -297,6 +306,7 @@
     input.value = "";
     sync();
   });
+  sync();
 })();
 </script>
 {% endblock %}
