@@ -22,7 +22,7 @@
 {% block body %}
 {% set path_prefix = request.scope.get('root_path') or '' %}
 {% call app_header_toolbar('Ortsverbände') %}
-  <a href="{{ path_prefix }}/admin/ortsverbaende/neu" class="btn btn-sm btn-ico btn-with-label" aria-label="Neuer Ortsverband">
+  <a href="{{ path_prefix }}/admin/ortsverbaende/neu" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Neuer Ortsverband">
     {{ ico.svg_plus() }}<span class="btn-text">Neuer Ortsverband</span>
   </a>
 {% endcall %}
