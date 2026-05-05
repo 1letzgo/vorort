@@ -48,6 +48,23 @@
     margin-top: 0.25rem;
     box-sizing: border-box;
   }
+  .termin-sharepic-preview-wrap {
+    margin-top: 0.85rem;
+  }
+  .termin-sharepic-preview-wrap .termin-sharepic-preview__label {
+    margin: 0 0 0.35rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted, inherit);
+  }
+  .termin-sharepic-preview__img {
+    display: block;
+    width: 100%;
+    max-width: min(280px, 100%);
+    height: auto;
+    border-radius: var(--radius-thumb);
+    border: 1px solid var(--border);
+  }
 </style>
 {% if termin_sharepic_enabled %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -207,6 +224,10 @@
         {{ ico.svg_image() }}<span class="btn-text">Sharepic erzeugen &amp; als Terminfoto</span>
       </button>
       <p id="termin-sharepic-status" class="muted" style="margin:0.45rem 0 0;font-size:0.88rem;" hidden role="status"></p>
+      <div id="termin-sharepic-preview-wrap" class="termin-sharepic-preview-wrap" hidden>
+        <p class="termin-sharepic-preview__label">Vorschau (noch nicht gespeichert)</p>
+        <img id="termin-sharepic-preview-img" class="termin-sharepic-preview__img" alt="Vorschau des erzeugten Sharepics" width="768" height="1024">
+      </div>
     </section>
     {% endif %}
 
@@ -292,6 +313,9 @@
   var datumEl = document.getElementById("datum");
   var startEl = document.getElementById("start_uhrzeit");
   var WG = window.WahlkampfSharepicGenerator;
+  var previewWrap = document.getElementById("termin-sharepic-preview-wrap");
+  var previewImg = document.getElementById("termin-sharepic-preview-img");
+  var previewObjectUrl = null;
   if (!cfgEl || !btn || !vorlageSel || !bildInput || !WG || !WG.renderToBlob) return;
   var cfg = {};
   try {
@@ -310,7 +334,7 @@
     var d = new Date(y, m, day);
     var wd = d.toLocaleDateString("de-DE", { weekday: "long" });
     wd = wd.charAt(0).toUpperCase() + wd.slice(1);
-    var ds = d.toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric" });
+    var ds = d.toLocaleDateString("de-DE", { day: "numeric", month: "long" });
     return wd + ", " + ds;
   }
 
@@ -331,12 +355,36 @@
     return (fallback || "").trim();
   }
 
+  function revokePreviewObjectUrl() {
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl);
+      previewObjectUrl = null;
+    }
+  }
+
+  function showPreviewFromBlob(blob) {
+    if (!previewWrap || !previewImg) return;
+    revokePreviewObjectUrl();
+    previewObjectUrl = URL.createObjectURL(blob);
+    previewImg.src = previewObjectUrl;
+    previewWrap.hidden = false;
+  }
+
   function showStatus(msg, isErr) {
     if (!statusEl) return;
     statusEl.hidden = !msg;
     statusEl.textContent = msg || "";
     statusEl.style.color = isErr ? "var(--danger, #b00020)" : "";
   }
+
+  bildInput.addEventListener("change", function () {
+    if (!previewWrap || !previewImg) return;
+    previewWrap.hidden = true;
+    revokePreviewObjectUrl();
+    previewImg.removeAttribute("src");
+  });
+
+  window.addEventListener("pagehide", revokePreviewObjectUrl);
 
   btn.addEventListener("click", function () {
     var maskSrc = cfg.maskSrc || "";
@@ -367,7 +415,8 @@
       var dt = new DataTransfer();
       dt.items.add(file);
       bildInput.files = dt.files;
-      showStatus("Sharepic wurde als Terminfoto gesetzt — zum Übernehmen „Speichern“.", false);
+      showPreviewFromBlob(blob);
+      showStatus("Vorschau siehst du oben — zum Übernehmen „Speichern“.", false);
     }).catch(function (err) {
       showStatus((err && err.message) ? err.message : "Sharepic konnte nicht erzeugt werden.", true);
     }).finally(function () {
