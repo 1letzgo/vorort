@@ -474,12 +474,14 @@ header.site-header .header-brand:hover {
     gap: 0.45rem;
   }
 
+  /* Voller Seitentitel lesbar: Umbrechen statt Ellipsis (sonst fehlt z. B. „Neuer Ortsverband“). */
   .site-header .header-brand {
     flex: 1 1 auto;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible;
+    text-overflow: unset;
+    white-space: normal;
+    word-break: break-word;
   }
 
   .site-header .header-toolbar {
