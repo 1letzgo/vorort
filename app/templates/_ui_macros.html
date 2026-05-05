@@ -20,7 +20,7 @@
   {%- endif -%}
 {%- endmacro %}
 
-{% macro app_header(title, brand_href=None, profile_icon=False, profile_href=None) %}
+{% macro app_header(title, brand_href=None, profil_icon_instead_of_title=false) %}
 <header class="site-header">
   <div class="header-inner">
     {% if brand_href is none %}
@@ -30,13 +30,11 @@
     {% endif %}
     <a href="{{ bh }}" class="header-brand">SPD vor Ort</a>
     <div class="header-toolbar-spacer" aria-hidden="true"></div>
-    {% if profile_href %}
-    <a href="{{ profile_href }}" class="header-profile-link" aria-label="Mein Konto">{{ _hdr_icons.svg_user() }}</a>
-    {% elif profile_icon %}
-    {%- set _prof_prefix -%}
-    {{- public_tenant_prefix(request) -}}
-    {%- endset -%}
-    <a href="{{ _prof_prefix }}/profil" class="header-profile-link" aria-label="Mein Konto">{{ _hdr_icons.svg_user() }}</a>
+    {% if profil_icon_instead_of_title %}
+    <div class="header-page-title header-page-title--profil-slot">
+      <h1 class="header-visually-hidden">{{ title }}</h1>
+      <a href="{{ public_tenant_prefix(request) }}/profil" class="header-profil-link" aria-label="Mein Konto">{{ _hdr_icons.svg_user() }}</a>
+    </div>
     {% else %}
     <h1 class="header-page-title">{{ title }}</h1>
     {% endif %}
