@@ -162,7 +162,6 @@ def _shell_nav_auth_exempt(rel: str) -> bool:
 
 
 app = FastAPI(title="Wahlkampf", lifespan=lifespan)
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie=SESSION_COOKIE)
 
 
 @app.middleware("http")
@@ -209,7 +208,8 @@ async def mandanten_kontext(request: Request, call_next):
 
     request.state.shell_nav_rel = path
     request.state.show_app_shell_nav = False
-    if request.session.get("user_id"):
+    user_id = request.scope["session"].get("user_id") if "session" in request.scope else None
+    if user_id:
         in_shell_scope = bool(request.state.mandanten_prefix) or bool(
             getattr(request.state, "hide_mandant_path_prefix", False)
         )
@@ -218,6 +218,9 @@ async def mandanten_kontext(request: Request, call_next):
 
     response = await call_next(request)
     return response
+
+
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie=SESSION_COOKIE)
 
 
 def _browser_login_url(request: Request, slug: str, *, pending: bool = False) -> str:
