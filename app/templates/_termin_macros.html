@@ -1,20 +1,36 @@
 {% import '_icons.html' as ico %}
 
-{# Zwei kleine Icon-Buttons: grün = Zusage, rot = Absage; gefüllt wenn aktiv. #}
+{# Teilnahme: neutral zwei Buttons; bei Zusage nur grün (Klick → Absage); bei Absage nur rot (Klick → Zusage). #}
 {% macro termin_signup_compact_buttons(row, teilnehmen_action, absagen_action, return_to_list=false) %}
 <div class="termin-signup-pair" role="group" aria-label="Teilnahme">
+{% if row.ich_teilnehme %}
+  <form method="post" action="{{ absagen_action }}" data-teilnahme-live style="margin:0;">
+    {% if return_to_list %}<input type="hidden" name="return_to" value="list">{% endif %}
+    <button type="submit" class="btn btn-sm btn-ico termin-signup-btn termin-signup-btn--teilnehmen termin-signup-btn--teilnehmen-active" aria-label="Zugesagt — zum Absagen tippen" title="Zugesagt — zum Absagen tippen">
+      {{ ico.svg_check() }}
+    </button>
+  </form>
+{% elif row.ich_abgesagt %}
   <form method="post" action="{{ teilnehmen_action }}" data-teilnahme-live style="margin:0;">
     {% if return_to_list %}<input type="hidden" name="return_to" value="list">{% endif %}
-    <button type="submit" class="btn btn-sm btn-ico termin-signup-btn termin-signup-btn--teilnehmen{% if row.ich_teilnehme %} termin-signup-btn--teilnehmen-active{% endif %}" aria-label="{% if row.ich_teilnehme %}Du hast zugesagt{% else %}Zusagen{% endif %}" title="{% if row.ich_teilnehme %}Zugesagt{% else %}Zusagen{% endif %}">
+    <button type="submit" class="btn btn-sm btn-ico termin-signup-btn termin-signup-btn--absage termin-signup-btn--absage-active" aria-label="Abgesagt — zum Zusagen tippen" title="Abgesagt — zum Zusagen tippen">
+      {{ ico.svg_minus_circle() }}
+    </button>
+  </form>
+{% else %}
+  <form method="post" action="{{ teilnehmen_action }}" data-teilnahme-live style="margin:0;">
+    {% if return_to_list %}<input type="hidden" name="return_to" value="list">{% endif %}
+    <button type="submit" class="btn btn-sm btn-ico termin-signup-btn termin-signup-btn--teilnehmen" aria-label="Zusagen" title="Zusagen">
       {{ ico.svg_check() }}
     </button>
   </form>
   <form method="post" action="{{ absagen_action }}" data-teilnahme-live style="margin:0;">
     {% if return_to_list %}<input type="hidden" name="return_to" value="list">{% endif %}
-    <button type="submit" class="btn btn-sm btn-ico termin-signup-btn termin-signup-btn--absage{% if row.ich_abgesagt %} termin-signup-btn--absage-active{% endif %}" aria-label="{% if row.ich_abgesagt %}Du hast abgesagt{% else %}Absagen{% endif %}" title="{% if row.ich_abgesagt %}Abgesagt{% else %}Absagen{% endif %}">
+    <button type="submit" class="btn btn-sm btn-ico termin-signup-btn termin-signup-btn--absage" aria-label="Absagen" title="Absagen">
       {{ ico.svg_minus_circle() }}
     </button>
   </form>
+{% endif %}
 </div>
 {% endmacro %}
 
