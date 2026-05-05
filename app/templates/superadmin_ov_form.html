@@ -24,6 +24,8 @@
     flex-shrink: 0;
   }
   .sharepic-vorlage-meta { flex: 1 1 140px; min-width: 0; font-weight: 600; font-size: 0.9rem; }
+  /* Immer beschriftet (Mobil-Icon-Only-Regeln greifen hier nicht) */
+  .sharepic-vorlage-loeschen-btn .btn-text { display: inline !important; }
 </style>
 {% endblock %}
 {% block body %}
@@ -96,43 +98,6 @@
           </label>
         </fieldset>
 
-        {% if vorlage_success %}<div class="success" style="margin-top: 1rem;">{{ vorlage_success }}</div>{% endif %}
-        {% if vorlage_error %}<div class="error" style="margin-top: 1rem;">{{ vorlage_error }}</div>{% endif %}
-
-        <fieldset style="margin-top: 1rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem;">
-          <legend class="ics-popup__label" style="padding: 0 0.35rem;">Sharepic-Hintergrundvorlagen</legend>
-          <p class="muted" style="margin: 0 0 0.65rem; font-size: 0.84rem;">
-            Bilder für den Sharepic-Generator dieses Ortsverbands (unter „Sharepic“ als Auswahl). JPEG, PNG oder WebP, bis {{ max_upload_mb }} MB pro Datei, höchstens {{ sharepic_vorlagen_max }} Vorlagen.
-          </p>
-          {% if sharepic_vorlagen %}
-          {% for v in sharepic_vorlagen %}
-          <div class="sharepic-vorlage-row">
-            <img class="sharepic-vorlage-thumb" src="{{ v.url }}" alt="">
-            <span class="sharepic-vorlage-meta">{{ v.label }}</span>
-            <form method="post" action="{{ path_prefix }}/admin/ortsverbaende/{{ ov.slug }}/sharepic-vorlage-loeschen" style="margin:0;">
-              <input type="hidden" name="template_id" value="{{ v.id }}">
-              <button type="submit" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="Vorlage {{ v.label }} entfernen">
-                {{ ico.svg_trash() }}<span class="btn-text">Entfernen</span>
-              </button>
-            </form>
-          </div>
-          {% endfor %}
-          {% else %}
-          <p class="muted" style="margin: 0 0 0.65rem;">Noch keine Vorlagen.</p>
-          {% endif %}
-          <form method="post" action="{{ path_prefix }}/admin/ortsverbaende/{{ ov.slug }}/sharepic-vorlage-hochladen" enctype="multipart/form-data" style="margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px solid var(--border);">
-            <label for="sharepic-vorlage-datei">Neue Vorlage</label>
-            <input id="sharepic-vorlage-datei" name="vorlage_datei" type="file" accept="image/jpeg,image/png,image/webp" required>
-            <label for="sharepic-vorlage-name" style="margin-top: 0.65rem;">Bezeichnung (optional)</label>
-            <input id="sharepic-vorlage-name" name="vorlage_bezeichnung" type="text" maxlength="120" placeholder="z. B. Marktplatz, Rathaus">
-            <p style="margin: 0.75rem 0 0;">
-              <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Sharepic-Vorlage hochladen">
-                {{ ico.svg_check() }}<span class="btn-text">Hochladen</span>
-              </button>
-            </p>
-          </form>
-        </fieldset>
-
         <fieldset style="margin-top: 1rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem;">
           <legend class="ics-popup__label" style="padding: 0 0.35rem;">Kalender-Abo (Fraktionstermine)</legend>
           <p class="muted" style="margin: 0 0 0.65rem; font-size: 0.84rem;">
@@ -157,6 +122,44 @@
         </fieldset>
 
       </form>
+
+      {% if vorlage_success %}<div class="success" style="margin-top: 1rem;">{{ vorlage_success }}</div>{% endif %}
+      {% if vorlage_error %}<div class="error" style="margin-top: 1rem;">{{ vorlage_error }}</div>{% endif %}
+
+      {# Eigene Formulare — keine Verschachtelung in superadmin-ov-edit-form (sonst bricht HTML-Löschen/Speichern). #}
+      <fieldset style="margin-top: 1rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem;">
+        <legend class="ics-popup__label" style="padding: 0 0.35rem;">Sharepic-Hintergrundvorlagen</legend>
+        <p class="muted" style="margin: 0 0 0.65rem; font-size: 0.84rem;">
+          Bilder für den Sharepic-Generator dieses Ortsverbands (unter „Sharepic“ als Auswahl). JPEG, PNG oder WebP, bis {{ max_upload_mb }} MB pro Datei, höchstens {{ sharepic_vorlagen_max }} Vorlagen.
+        </p>
+        {% if sharepic_vorlagen %}
+        {% for v in sharepic_vorlagen %}
+        <div class="sharepic-vorlage-row">
+          <img class="sharepic-vorlage-thumb" src="{{ v.url }}" alt="">
+          <span class="sharepic-vorlage-meta">{{ v.label }}</span>
+          <form method="post" action="{{ path_prefix }}/admin/ortsverbaende/{{ ov.slug }}/sharepic-vorlage-loeschen" style="margin:0;">
+            <input type="hidden" name="template_id" value="{{ v.id }}">
+            <button type="submit" class="btn btn-sm btn-danger btn-ico btn-with-label sharepic-vorlage-loeschen-btn" aria-label="Vorlage {{ v.label }} löschen">
+              {{ ico.svg_trash() }}<span class="btn-text">Löschen</span>
+            </button>
+          </form>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="muted" style="margin: 0 0 0.65rem;">Noch keine Vorlagen.</p>
+        {% endif %}
+        <form method="post" action="{{ path_prefix }}/admin/ortsverbaende/{{ ov.slug }}/sharepic-vorlage-hochladen" enctype="multipart/form-data" style="margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px solid var(--border);">
+          <label for="sharepic-vorlage-datei">Neue Vorlage</label>
+          <input id="sharepic-vorlage-datei" name="vorlage_datei" type="file" accept="image/jpeg,image/png,image/webp" required>
+          <label for="sharepic-vorlage-name" style="margin-top: 0.65rem;">Bezeichnung (optional)</label>
+          <input id="sharepic-vorlage-name" name="vorlage_bezeichnung" type="text" maxlength="120" placeholder="z. B. Marktplatz, Rathaus">
+          <p style="margin: 0.75rem 0 0;">
+            <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Sharepic-Vorlage hochladen">
+              {{ ico.svg_check() }}<span class="btn-text">Hochladen</span>
+            </button>
+          </p>
+        </form>
+      </fieldset>
 
       <footer style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border);">
         <p class="muted" style="margin: 0 0 0.65rem; font-size: 0.84rem;">Unwiderruflich: Eintrag unter Ortsverbände, SQLite und alle Uploads dieses OV.</p>

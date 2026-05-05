@@ -558,7 +558,7 @@
       return;
     }
     var im = new Image();
-    im.crossOrigin = "anonymous";
+    /* Kein crossOrigin: /media liefert keine CORS-Header — mit „anonymous“ scheitert das Laden oft; ohne bleibt Same-Origin für Canvas ok. */
     im.onload = function () {
       applyLoadedPhoto(im);
     };
