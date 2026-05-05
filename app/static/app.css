@@ -60,6 +60,8 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
 }
 
 a {
@@ -78,6 +80,12 @@ a:hover {
   padding-right: max(1rem, env(safe-area-inset-right, 0px));
   padding-bottom: max(3rem, calc(1.25rem + env(safe-area-inset-bottom, 0px)));
   padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+body:has(nav.site-footer-nav) .wrap {
+  padding-bottom: max(1rem, calc(0.65rem + env(safe-area-inset-bottom, 0px)));
 }
 
 header.site-header {
@@ -170,12 +178,12 @@ header.site-header .header-brand:hover {
   max-width: 100%;
 }
 
-/* Fixe Fußleiste (Tenant): gleiches Rot wie Header, zentrierte Schiene wie .header-inner */
+/* Sticky Footer-Nav (Tenant): im Fluss unter .wrap, klebt am unteren Viewport beim Scrollen */
 nav.site-footer-nav {
-  position: fixed;
-  left: 0;
-  right: 0;
+  position: sticky;
   bottom: 0;
+  flex-shrink: 0;
+  width: 100%;
   z-index: 99;
   margin: 0;
   padding: 0;
