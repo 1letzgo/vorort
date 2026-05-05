@@ -2457,11 +2457,11 @@ def fraktion_termine_list(
             "termin_past": termin_past,
             "feed_url_my": feed_url_my,
             "feed_url_all": feed_url_all,
-            "page_title": "Fraktion — Termine",
+            "page_title": "Fraktion",
             "show_neuer_termin_button": kann_fraktionstermin_anlegen,
             "ics_my_label": "Meine Zusagen",
             "ics_all_label": "Alle Termine",
-            "neuer_termin_button_label": "Neuer Fraktionstermin",
+            "neuer_termin_button_label": "Neue Sitzung",
             "neuer_termin_href": neuer_termin_href,
         },
     )
