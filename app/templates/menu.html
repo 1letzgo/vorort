@@ -37,6 +37,17 @@
     background: color-mix(in srgb, var(--border) 35%, transparent);
   }
   /* Eine OV-Karte = eine .card wie überall */
+  .menu-ov-card.menu-ov-card--admin {
+    border-color: rgba(196, 30, 58, 0.28);
+    box-shadow:
+      var(--shadow),
+      0 0 0 1px rgba(196, 30, 58, 0.06);
+    background: color-mix(in srgb, var(--accent) 5%, var(--card));
+  }
+  .menu-ov-card.menu-ov-card--admin .menu-ov-details__summary {
+    background: color-mix(in srgb, var(--accent) 10%, color-mix(in srgb, var(--border) 28%, transparent));
+    border-bottom-color: rgba(196, 30, 58, 0.18);
+  }
   .menu-ov-card .menu-ov-details__summary {
     display: flex;
     align-items: center;
@@ -73,18 +84,7 @@
   }
   .menu-ov-details__title {
     min-width: 0;
-  }
-  .menu-ov-details__admin-pill {
-    flex-shrink: 0;
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #16633d;
-    padding: 0.12rem 0.45rem;
-    border-radius: 999px;
-    border: 1px solid color-mix(in srgb, #1e7a4c 45%, var(--border));
-    background: color-mix(in srgb, #1e7a4c 14%, transparent);
+    flex: 1;
   }
   .menu-ov-card .menu-list li:last-child a {
     border-bottom: none;
@@ -107,7 +107,7 @@
 
 {% for o in my_ovs %}
 {% set op = public_tenant_prefix(request, '/m/' ~ o.slug) %}
-<div class="card card--flush menu-ov-card">
+<div class="card card--flush menu-ov-card{% if o.is_admin %} menu-ov-card--admin{% endif %}">
   <details
     class="menu-ov-details"
     data-ov-slug="{{ o.slug }}"
@@ -115,19 +115,8 @@
   >
     <summary class="menu-ov-details__summary" id="menu-ov-{{ o.slug }}-heading">
       <span class="menu-ov-details__title">{{ o.display_name }}</span>
-      {% if o.is_admin %}
-      <span class="menu-ov-details__admin-pill">Admin</span>
-      {% endif %}
     </summary>
     <ul class="menu-list" role="list" aria-labelledby="menu-ov-{{ o.slug }}-heading">
-      {% if o.is_admin %}
-      <li>
-        <a href="{{ op }}/admin/benutzer">
-          <span class="menu-list__main">{{ ico.svg_cog() }}<span>Administration</span></span>
-          {% if o.admin_pending_count %}<span class="menu-pending-badge" aria-label="{{ o.admin_pending_count }} ausstehend">{{ o.admin_pending_count }}</span>{% endif %}
-        </a>
-      </li>
-      {% endif %}
       <li><a href="{{ op }}/termine"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Termine</span></span></a></li>
       {% if o.feature_fraktion %}
       <li><a href="{{ op }}/fraktion/termine"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Fraktion</span></span></a></li>
@@ -137,6 +126,14 @@
       {% endif %}
       {% if o.feature_sharepic | default(true) %}
       <li><a href="{{ op }}/sharepic"><span class="menu-list__main">{{ ico.svg_image() }}<span>Sharepic</span></span></a></li>
+      {% endif %}
+      {% if o.is_admin %}
+      <li>
+        <a href="{{ op }}/admin/benutzer">
+          <span class="menu-list__main">{{ ico.svg_cog() }}<span>Administration</span></span>
+          {% if o.admin_pending_count %}<span class="menu-pending-badge" aria-label="{{ o.admin_pending_count }} ausstehend">{{ o.admin_pending_count }}</span>{% endif %}
+        </a>
+      </li>
       {% endif %}
     </ul>
   </details>
