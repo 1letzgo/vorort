@@ -48,27 +48,52 @@
   .profil-ov-card__body {
     padding: 0.95rem 1.25rem 1.05rem;
   }
-  .profil-ov-chip-list {
-    margin: 0 0 0.85rem;
+  .profil-ov-list {
+    margin: 0 0 0.9rem;
     padding: 0;
     list-style: none;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-  .profil-ov-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.35rem 0.55rem;
     border: 1px solid var(--border);
-    border-radius: 999px;
-    font-size: 0.78rem;
-    color: var(--text);
-    background: color-mix(in srgb, var(--card) 86%, var(--border) 14%);
+    border-radius: var(--radius);
+    overflow: hidden;
   }
-  .profil-ov-chip--pending {
+  .profil-ov-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.75rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--card) 92%, var(--border) 8%);
+  }
+  .profil-ov-list li:last-child {
+    border-bottom: 0;
+  }
+  .profil-ov-list__name {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .profil-ov-list__status {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #1e4d2e;
+    background: #e8f2ec;
+    border: 1px solid #a8d4b8;
+    border-radius: 999px;
+    padding: 0.1rem 0.45rem;
+    white-space: nowrap;
+  }
+  .profil-ov-list__status--pending {
     color: var(--muted);
+    background: #f3f0eb;
+    border-color: var(--border);
+  }
+  .profil-ov-list__status--admin {
+    color: #7a1e2e;
+    background: #fde8ec;
+    border-color: #f3b8c4;
   }
   .profil-ov-request-form {
     display: grid;
@@ -151,12 +176,13 @@
   <h2 class="profil-ov-card__head">Ortsverbände</h2>
   <div class="profil-ov-card__body">
     {% if profile_memberships %}
-    <ul class="profil-ov-chip-list" role="list">
+    <ul class="profil-ov-list" role="list">
       {% for m in profile_memberships %}
-      <li class="profil-ov-chip{% if not m.is_approved %} profil-ov-chip--pending{% endif %}">
-        <span>{{ m.display_name }}</span>
-        <span aria-hidden="true">·</span>
-        <span>{% if m.is_approved %}aktiv{% else %}angefragt{% endif %}{% if m.is_admin %} · Admin{% endif %}</span>
+      <li>
+        <span class="profil-ov-list__name">{{ m.display_name }}</span>
+        <span class="profil-ov-list__status{% if not m.is_approved %} profil-ov-list__status--pending{% endif %}{% if m.is_admin %} profil-ov-list__status--admin{% endif %}">
+          {% if m.is_approved %}Aktiv{% else %}Angefragt{% endif %}{% if m.is_admin %} · Admin{% endif %}
+        </span>
       </li>
       {% endfor %}
     </ul>

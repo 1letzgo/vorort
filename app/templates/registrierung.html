@@ -51,7 +51,7 @@
         if (!s) return;
         if (form) form.action = "/m/" + encodeURIComponent(s) + "/registrierung";
         if (login) {
-          login.href = hideShort ? "/login" : "/?" + new URLSearchParams({ ov: s }).toString();
+          login.href = hideShort ? "/login" : "/";
         }
       }
       if (sel) sel.addEventListener("change", sync);
