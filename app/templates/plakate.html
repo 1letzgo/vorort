@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_ui_macros.html' import app_header with context %}
+{% from '_ui_macros.html' import app_header_toolbar with context %}
 {% import '_icons.html' as ico %}
 {% block title %}Plakate — Wahlkampf{% endblock %}
 {% block head %}
@@ -64,7 +64,11 @@
 </style>
 {% endblock %}
 {% block body %}
-{{ app_header('Plakate') }}
+{% call app_header_toolbar('Plakate') %}
+  <button type="button" class="btn btn-ghost btn-sm btn-ico btn-with-label" id="plakate-locate" aria-label="Mein Standort auf der Karte anzeigen">
+    {{ ico.svg_map_pin() }}<span class="btn-text">Mein Standort</span>
+  </button>
+{% endcall %}
 
 <div class="plakate-page">
 <div class="card card--flush plakate-map-card">
@@ -79,11 +83,6 @@
     <div class="plakate-map-card__map-area">
       <div id="plakate-map" role="application" aria-label="Karte Plakat-Standorte"></div>
     </div>
-    <footer class="ics-popup__foot" aria-label="Aktionen zur Karte">
-      <button type="button" class="btn btn-sm btn-ico btn-with-label" id="plakate-locate" aria-label="Mein Standort auf der Karte anzeigen">
-        {{ ico.svg_map_pin() }}<span class="btn-text">Mein Standort</span>
-      </button>
-    </footer>
   </div>
 </div>
 
