@@ -1,14 +1,10 @@
 {% extends "base.html" %}
-{% from '_ui_macros.html' import app_header_toolbar, public_tenant_prefix with context %}
+{% from '_ui_macros.html' import app_header with context %}
 {% import '_icons.html' as ico %}
 {% block title %}Wahlkampf — Start{% endblock %}
 {% block body %}
 {% set login_action_slug = preselect_ov_slug if preselect_ov_slug else (ovs[0].slug if ovs else '') %}
-{% call app_header_toolbar('Start', '/') %}
-  <a href="{{ public_tenant_prefix(request) }}/profil" class="btn btn-ghost btn-sm btn-ico" aria-label="Mein Konto" title="Mein Konto">
-    {{ ico.svg_user() }}
-  </a>
-{% endcall %}
+{{ app_header('Start', '/') }}
 <div class="card" style="max-width: 440px; margin: 0 auto;">
   <h2 style="margin-top:0;">Anmelden</h2>
   {% if login_error %}<div class="error">{{ login_error }}</div>{% endif %}

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_ui_macros.html' import app_header, public_tenant_prefix with context %}
+{% from '_ui_macros.html' import app_header_toolbar, public_tenant_prefix with context %}
 {% import '_icons.html' as ico %}
 {% block title %}SPD vor Ort — Wahlkampf{% endblock %}
 {% block head %}
@@ -127,7 +127,11 @@
 </style>
 {% endblock %}
 {% block body %}
-{{ app_header('Menü') }}
+{% call app_header_toolbar('') %}
+  <a href="{{ public_tenant_prefix(request) }}/profil" class="btn btn-ghost btn-sm btn-ico" aria-label="Mein Konto" title="Mein Konto">
+    {{ ico.svg_user() }}
+  </a>
+{% endcall %}
 
 {% if show_alle_termine | default(false) %}
 <div class="card card--flush">
