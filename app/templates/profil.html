@@ -48,72 +48,26 @@
   .profil-ov-card__body {
     padding: 0.95rem 1.25rem 1.05rem;
   }
-  .profil-ov-list {
-    margin: 0 0 0.9rem;
-    padding: 0;
-    list-style: none;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-  .profil-ov-list li {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem;
-    padding: 0.75rem 0.9rem;
-    border-bottom: 1px solid var(--border);
-    background: color-mix(in srgb, var(--card) 92%, var(--border) 8%);
-  }
-  .profil-ov-list li:last-child {
-    border-bottom: 0;
-  }
-  .profil-ov-list__name {
+  .profil-ov-memberships {
+    margin: 0;
+    padding: 0 0 0 1rem;
+    line-height: 1.45;
     font-size: 0.92rem;
-    font-weight: 600;
-    color: var(--text);
   }
-  .profil-ov-list__status {
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    color: #1e4d2e;
-    background: #e8f2ec;
-    border: 1px solid #a8d4b8;
-    border-radius: 999px;
-    padding: 0.1rem 0.45rem;
-    white-space: nowrap;
+  .profil-ov-memberships li + li {
+    margin-top: 0.3rem;
   }
-  .profil-ov-list__status--pending {
+  .profil-ov-memberships__state {
     color: var(--muted);
-    background: #f3f0eb;
-    border-color: var(--border);
+    font-size: 0.84rem;
   }
-  .profil-ov-list__status--admin {
-    color: #7a1e2e;
-    background: #fde8ec;
-    border-color: #f3b8c4;
-  }
-  .profil-ov-request-form {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 0.55rem;
-    align-items: end;
-  }
-  .profil-ov-request-form label {
+  .profil-ov-request-form > label:first-of-type {
     margin-top: 0;
   }
-  .profil-ov-request-form .btn {
-    white-space: nowrap;
-  }
-  @media (max-width: 560px) {
-    .profil-ov-request-form {
-      grid-template-columns: 1fr;
-    }
-    .profil-ov-request-form .btn {
-      justify-self: flex-end;
-    }
+  .profil-ov-request-actions {
+    margin-top: 0.85rem;
+    display: flex;
+    justify-content: flex-end;
   }
 </style>
 {% endblock %}
@@ -175,32 +129,36 @@
 <div class="card card--flush profil-ov-card">
   <h2 class="profil-ov-card__head">Ortsverbände</h2>
   <div class="profil-ov-card__body">
+    <section class="ics-popup__panel ics-popup__panel--accent" aria-label="Deine Ortsverbände">
+      <h3 class="ics-popup__label">Deine Ortsverbände</h3>
     {% if profile_memberships %}
-    <ul class="profil-ov-list" role="list">
+    <ul class="profil-ov-memberships" role="list">
       {% for m in profile_memberships %}
       <li>
-        <span class="profil-ov-list__name">{{ m.display_name }}</span>
-        <span class="profil-ov-list__status{% if not m.is_approved %} profil-ov-list__status--pending{% endif %}{% if m.is_admin %} profil-ov-list__status--admin{% endif %}">
-          {% if m.is_approved %}Aktiv{% else %}Angefragt{% endif %}{% if m.is_admin %} · Admin{% endif %}
-        </span>
+        {{ m.display_name }}
+        <span class="profil-ov-memberships__state">({% if m.is_approved %}aktiv{% else %}angefragt{% endif %}{% if m.is_admin %} · Admin{% endif %})</span>
       </li>
       {% endfor %}
     </ul>
+    {% else %}
+    <p class="muted" style="margin:0;">Noch keine Mitgliedschaften vorhanden.</p>
     {% endif %}
+    </section>
 
     {% if profile_requestable_ovs %}
-    <form method="post" action="{{ public_tenant_prefix(request) }}/profil/ov-anfragen" class="profil-ov-request-form">
-      <div>
-        <label for="profil-ov-request">Weiteren OV anfragen</label>
-        <select id="profil-ov-request" name="ov_slug" required>
-          {% for ov in profile_requestable_ovs %}
-          <option value="{{ ov.slug }}">{{ ov.display_name }}</option>
-          {% endfor %}
-        </select>
+    <form method="post" action="{{ public_tenant_prefix(request) }}/profil/ov-anfragen" class="ics-popup__panel profil-ov-request-form" aria-label="Weiteren OV anfragen">
+      <h3 class="ics-popup__label">Weiteren OV anfragen</h3>
+      <label for="profil-ov-request">Ortsverband</label>
+      <select id="profil-ov-request" name="ov_slug" required>
+        {% for ov in profile_requestable_ovs %}
+        <option value="{{ ov.slug }}">{{ ov.display_name }}</option>
+        {% endfor %}
+      </select>
+      <div class="profil-ov-request-actions">
+        <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="OV anfragen">
+          {{ ico.svg_plus() }}<span class="btn-text">Anfragen</span>
+        </button>
       </div>
-      <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="OV anfragen">
-        {{ ico.svg_plus() }}<span class="btn-text">Anfragen</span>
-      </button>
     </form>
     {% endif %}
   </div>
