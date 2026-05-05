@@ -4,8 +4,10 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from icalendar import Calendar, Event
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
+from app.config import kreis_ov_slug
 from app.platform_models import TEILNAHME_STATUS_ZUGESAGT, Termin, TerminTeilnahme
 from app.termin_extern import externe_teilnehmer_decode, externe_teilnehmer_labels
 
@@ -67,18 +69,29 @@ def build_ics_calendar(
     return cal.to_ical()
 
 
+def _mandanten_filter_for_feed(ms: str):
+    ms = ms.strip().lower()
+    ks = kreis_ov_slug()
+    if ks and ms != ks:
+        return or_(
+            Termin.mandant_slug == ms,
+            and_(Termin.promoted_all_ovs.is_(True), Termin.mandant_slug == ks),
+        )
+    return Termin.mandant_slug == ms
+
+
 def all_termine_for_feed(db: Session, mandant_slug: str) -> list[Termin]:
     ms = mandant_slug.strip().lower()
     return (
         db.query(Termin)
-        .filter(Termin.mandant_slug == ms)
+        .filter(_mandanten_filter_for_feed(ms))
         .order_by(Termin.starts_at.asc())
         .all()
     )
 
 
 def termine_for_user_teilnahmen(db: Session, user_id: int, mandant_slug: str) -> list[Termin]:
-    """Nur Termine dieses Mandanten, für die der User eine Teilnahme eingetragen hat."""
+    """Termine dieses Mandanten-Feeds mit Zusage des Nutzers (inkl. Kreis-promoted)."""
     ms = mandant_slug.strip().lower()
     return (
         db.query(Termin)
@@ -86,7 +99,7 @@ def termine_for_user_teilnahmen(db: Session, user_id: int, mandant_slug: str) ->
         .filter(
             TerminTeilnahme.user_id == user_id,
             TerminTeilnahme.teilnahme_status == TEILNAHME_STATUS_ZUGESAGT,
-            Termin.mandant_slug == ms,
+            _mandanten_filter_for_feed(ms),
         )
         .order_by(Termin.starts_at.asc())
         .all()
@@ -99,13 +112,20 @@ def termine_zugesagt_multi_mandanten(
     if not mandant_slugs:
         return []
     slugs = [s.strip().lower() for s in mandant_slugs]
+    ks = kreis_ov_slug()
+    mandanten_cond = Termin.mandant_slug.in_(slugs)
+    if ks:
+        mandanten_cond = or_(
+            mandanten_cond,
+            and_(Termin.promoted_all_ovs.is_(True), Termin.mandant_slug == ks),
+        )
     return (
         db.query(Termin)
         .join(TerminTeilnahme, TerminTeilnahme.termin_id == Termin.id)
         .filter(
             TerminTeilnahme.user_id == user_id,
             TerminTeilnahme.teilnahme_status == TEILNAHME_STATUS_ZUGESAGT,
-            Termin.mandant_slug.in_(slugs),
+            mandanten_cond,
         )
         .order_by(Termin.starts_at.asc())
         .all()
@@ -116,9 +136,16 @@ def all_termine_multi_mandanten(db: Session, mandant_slugs: list[str]) -> list[T
     if not mandant_slugs:
         return []
     slugs = [s.strip().lower() for s in mandant_slugs]
+    ks = kreis_ov_slug()
+    mandanten_cond = Termin.mandant_slug.in_(slugs)
+    if ks:
+        mandanten_cond = or_(
+            mandanten_cond,
+            and_(Termin.promoted_all_ovs.is_(True), Termin.mandant_slug == ks),
+        )
     return (
         db.query(Termin)
-        .filter(Termin.mandant_slug.in_(slugs))
+        .filter(mandanten_cond)
         .order_by(Termin.starts_at.asc())
         .all()
     )

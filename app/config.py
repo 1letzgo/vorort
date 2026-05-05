@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from pathlib import Path
 
@@ -64,6 +66,14 @@ PUBLIC_SITE_HOSTS = _parse_public_site_hosts(
     os.environ.get("PUBLIC_SITE_HOSTS", ""),
 )
 PUBLIC_SITE_MANDANT_SLUG = os.environ.get("PUBLIC_SITE_MANDANT_SLUG", "").strip().lower()
+
+# Kreis-/überörtlicher OV: Slug für projektweit sichtbare Termine (optional).
+_raw_kreis_ov = os.environ.get("WAHKAMPF_KREIS_OV_SLUG", "").strip().lower()
+
+
+def kreis_ov_slug() -> str | None:
+    """Mandanten-Slug des Kreises oder None, wenn nicht konfiguriert."""
+    return _raw_kreis_ov if _raw_kreis_ov else None
 
 
 def mandant_dir(slug: str) -> Path:

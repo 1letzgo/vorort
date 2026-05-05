@@ -170,3 +170,23 @@ def run_platform_sqlite_migrations(engine: Engine) -> None:
                 )
     migrate_termine_created_by_nullable_sqlite(engine)
     migrate_termin_teilnahme_status_sqlite(engine)
+    migrate_termine_promoted_all_ovs_sqlite(engine)
+
+
+def migrate_termine_promoted_all_ovs_sqlite(engine: Engine) -> None:
+    """Boolean promoted_all_ovs: Kreis-Termine optional in allen OVs listen."""
+    if engine.dialect.name != "sqlite":
+        return
+    insp = inspect(engine)
+    if not insp.has_table("termine"):
+        return
+    cols = {c["name"] for c in insp.get_columns("termine")}
+    if "promoted_all_ovs" in cols:
+        return
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE termine ADD COLUMN promoted_all_ovs "
+                "BOOLEAN NOT NULL DEFAULT 0"
+            ),
+        )

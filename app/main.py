@@ -14,7 +14,7 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 from starlette.middleware.sessions import SessionMiddleware
@@ -40,6 +40,7 @@ from app.config import (
     SECRET_KEY,
     SESSION_COOKIE,
     is_superadmin_username,
+    kreis_ov_slug,
     superadmin_usernames,
     upload_dir_for_slug,
 )
@@ -271,6 +272,85 @@ def _can_manage_termin(user: AuthenticatedUser, termin: Termin) -> bool:
     return bool(user.is_admin or termin.created_by_id == user.id)
 
 
+def termin_is_promoted(t: Termin) -> bool:
+    return bool(getattr(t, "promoted_all_ovs", False))
+
+
+def ist_kreis_admin(pdb: Session, user: AuthenticatedUser) -> bool:
+    ks = kreis_ov_slug()
+    if not ks:
+        return False
+    if is_superadmin_username(user.username):
+        return False
+    mem = (
+        pdb.query(OvMembership)
+        .filter(
+            OvMembership.user_id == user.id,
+            OvMembership.ov_slug == ks,
+            OvMembership.is_approved.is_(True),
+            OvMembership.is_admin.is_(True),
+        )
+        .first()
+    )
+    return mem is not None
+
+
+def termin_sichtbar_in_mandant(
+    pdb: Session,
+    termin_id: int,
+    viewing_ms: str,
+    user: AuthenticatedUser,
+) -> Termin | None:
+    """Termin im Kontext viewing_ms (URL-Mandant), inkl. Kreis-promoted."""
+    viewing_ms = viewing_ms.strip().lower()
+    t = (
+        pdb.query(Termin)
+        .options(selectinload(Termin.teilnahmen))
+        .filter(Termin.id == termin_id)
+        .first()
+    )
+    if not t:
+        return None
+    ms_t = t.mandant_slug.strip().lower()
+    if ms_t == viewing_ms:
+        return t
+    ks = kreis_ov_slug()
+    if not ks or ms_t != ks or not termin_is_promoted(t):
+        return None
+    if is_superadmin_username(user.username):
+        return t
+    mem = (
+        pdb.query(OvMembership)
+        .filter(
+            OvMembership.user_id == user.id,
+            OvMembership.ov_slug == viewing_ms,
+            OvMembership.is_approved.is_(True),
+        )
+        .first()
+    )
+    return t if mem else None
+
+
+def _termin_row_for_viewing_ov(
+    pdb: Session,
+    t: Termin,
+    user: AuthenticatedUser,
+    *,
+    viewing_ms: str,
+    kommentar_count: int,
+    ov_labels: dict[str, str],
+) -> dict:
+    row = _termin_row_from_instance(pdb, t, user, kommentar_count=kommentar_count)
+    ms_t = t.mandant_slug.strip().lower()
+    vw = viewing_ms.strip().lower()
+    row["mandanten_prefix"] = f"/m/{ms_t}"
+    row["ov_display_name"] = (
+        ov_labels.get(ms_t, ms_t) if ms_t != vw else ""
+    )
+    row["kann_verwalten"] = _can_manage_termin_cross_ov(pdb, user, t)
+    return row
+
+
 def _unlink_upload(rel: Optional[str], upload_root: Path) -> None:
     if not rel:
         return
@@ -430,7 +510,10 @@ def _user_display_names(pdb: Session, user_ids: set[int]) -> dict[int, str]:
 
 
 def _termin_kommentare_public(
-    pdb: Session, termin_id: int, user: AuthenticatedUser
+    pdb: Session,
+    termin_id: int,
+    user: AuthenticatedUser,
+    termin: Termin | None = None,
 ) -> list[dict]:
     rows = (
         pdb.query(TerminKommentar)
@@ -438,13 +521,16 @@ def _termin_kommentare_public(
         .order_by(TerminKommentar.created_at.asc())
         .all()
     )
+    tref = termin if termin is not None else pdb.get(Termin, termin_id)
     ids = {r.user_id for r in rows}
     names = _user_display_names(pdb, ids)
     out: list[dict] = []
     for r in rows:
         dt = r.created_at
         au = names.get(r.user_id, "Unbekannt")
-        may_manage = bool(user.is_admin or r.user_id == user.id)
+        may_manage = bool(r.user_id == user.id) or (
+            tref is not None and _can_manage_termin_cross_ov(pdb, user, tref)
+        )
         out.append(
             {
                 "id": r.id,
@@ -1374,12 +1460,7 @@ def _termin_teilnahme_live_payload(
     return_to_list: bool,
 ) -> dict:
     ms = mandant_slug.strip().lower()
-    t = (
-        pdb.query(Termin)
-        .options(selectinload(Termin.teilnahmen))
-        .filter(Termin.id == termin_id, Termin.mandant_slug == ms)
-        .first()
-    )
+    t = termin_sichtbar_in_mandant(pdb, termin_id, ms, user)
     if not t:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden")
     counts = _termin_kommentar_counts_by_termin(pdb, [termin_id])
@@ -1444,6 +1525,11 @@ def _termin_form_context(
             termin_neu_ov_options = _termin_neu_ov_options_for_form(
                 pdb, ov_slugs, mandant_slug
             )
+    ks = kreis_ov_slug()
+    ms_ctx = (mandant_slug or (termin.mandant_slug if termin else "") or "").strip().lower()
+    show_promoted = bool(
+        pdb is not None and ks and ms_ctx == ks and ist_kreis_admin(pdb, user)
+    )
     return {
         "user": user,
         "termin": termin,
@@ -1453,22 +1539,38 @@ def _termin_form_context(
         "externe_auswahl": auswahl,
         "termin_neu_ov_options": termin_neu_ov_options,
         "from_alle_termine": from_alle_termine,
+        "show_promoted_all_ovs_checkbox": show_promoted,
+        "promoted_all_ovs_checked": bool(termin and termin_is_promoted(termin)),
     }
 
 
 def _termin_list_rows(pdb: Session, mandant_slug: str, user: AuthenticatedUser) -> list[dict]:
     ms = mandant_slug.strip().lower()
-    rows = (
-        pdb.query(Termin)
-        .options(selectinload(Termin.teilnahmen))
-        .filter(Termin.mandant_slug == ms)
-        .order_by(Termin.starts_at.asc())
-        .all()
-    )
+    ks = kreis_ov_slug()
+    q = pdb.query(Termin).options(selectinload(Termin.teilnahmen))
+    if ks and ms != ks:
+        q = q.filter(
+            or_(
+                Termin.mandant_slug == ms,
+                and_(Termin.promoted_all_ovs.is_(True), Termin.mandant_slug == ks),
+            ),
+        )
+    else:
+        q = q.filter(Termin.mandant_slug == ms)
+    rows = q.order_by(Termin.starts_at.asc()).all()
     ids = [t.id for t in rows]
     counts = _termin_kommentar_counts_by_termin(pdb, ids)
+    label_slugs = sorted({t.mandant_slug.strip().lower() for t in rows})
+    labels = _ov_display_labels_for_slugs(pdb, label_slugs)
     return [
-        _termin_row_from_instance(pdb, t, user, kommentar_count=counts.get(t.id, 0))
+        _termin_row_for_viewing_ov(
+            pdb,
+            t,
+            user,
+            viewing_ms=ms,
+            kommentar_count=counts.get(t.id, 0),
+            ov_labels=labels,
+        )
         for t in rows
     ]
 
@@ -1550,24 +1652,46 @@ def _termin_row_cross_ov(
     return row
 
 
-def _termin_list_rows_multi(pdb: Session, mandant_slugs: list[str], user: AuthenticatedUser) -> list[dict]:
+def _termin_list_rows_multi(
+    pdb: Session,
+    mandant_slugs: list[str],
+    user: AuthenticatedUser,
+    *,
+    viewing_ms: str,
+) -> list[dict]:
     if not mandant_slugs:
         return []
-    labels = _ov_display_labels_for_slugs(pdb, mandant_slugs)
-    rows = (
-        pdb.query(Termin)
-        .options(selectinload(Termin.teilnahmen))
-        .filter(Termin.mandant_slug.in_(mandant_slugs))
-        .order_by(Termin.starts_at.asc())
-        .all()
-    )
+    sl = sorted({s.strip().lower() for s in mandant_slugs})
+    ks = kreis_ov_slug()
+    vm = viewing_ms.strip().lower()
+    q = pdb.query(Termin).options(selectinload(Termin.teilnahmen))
+    if ks:
+        q = q.filter(
+            or_(
+                Termin.mandant_slug.in_(sl),
+                and_(Termin.promoted_all_ovs.is_(True), Termin.mandant_slug == ks),
+            ),
+        )
+    else:
+        q = q.filter(Termin.mandant_slug.in_(sl))
+    rows_ordered = q.order_by(Termin.starts_at.asc()).all()
+    seen: set[int] = set()
+    rows: list[Termin] = []
+    for t in rows_ordered:
+        if t.id in seen:
+            continue
+        seen.add(t.id)
+        rows.append(t)
+    label_slugs = sorted({t.mandant_slug.strip().lower() for t in rows})
+    labels = _ov_display_labels_for_slugs(pdb, label_slugs + sl)
     ids = [t.id for t in rows]
     counts = _termin_kommentar_counts_by_termin(pdb, ids)
     return [
-        _termin_row_cross_ov(
+        _termin_row_for_viewing_ov(
             pdb,
             t,
             user,
+            viewing_ms=vm,
             kommentar_count=counts.get(t.id, 0),
             ov_labels=labels,
         )
@@ -1579,20 +1703,18 @@ def _termin_detail_row(
     pdb: Session, mandant_slug: str, user: AuthenticatedUser, termin_id: int
 ) -> dict | None:
     ms = mandant_slug.strip().lower()
-    t = (
-        pdb.query(Termin)
-        .options(selectinload(Termin.teilnahmen))
-        .filter(Termin.id == termin_id, Termin.mandant_slug == ms)
-        .first()
-    )
+    t = termin_sichtbar_in_mandant(pdb, termin_id, ms, user)
     if not t:
         return None
     counts = _termin_kommentar_counts_by_termin(pdb, [t.id])
-    return _termin_row_from_instance(
+    labels = _ov_display_labels_for_slugs(pdb, [t.mandant_slug.strip().lower()])
+    return _termin_row_for_viewing_ov(
         pdb,
         t,
         user,
+        viewing_ms=ms,
         kommentar_count=counts.get(t.id, 0),
+        ov_labels=labels,
     )
 
 
@@ -1649,7 +1771,7 @@ def termine_list_alle(
     slugs = _approved_ov_slugs_for_user_feeds(pdb, user)
     if len(slugs) <= 1:
         return RedirectResponse(f"{_mp(request)}/termine", status_code=302)
-    termin_rows = _termin_list_rows_multi(pdb, slugs, user)
+    termin_rows = _termin_list_rows_multi(pdb, slugs, user, viewing_ms=mandant_slug.strip().lower())
     termin_upcoming, termin_past = _split_termine_upcoming_past(termin_rows)
     my_token = ensure_user_calendar_token(pdb, user.platform_user)
     base = str(request.base_url).rstrip("/")
@@ -1716,6 +1838,7 @@ async def termin_create(
     extern_gast: Annotated[Optional[List[str]], Form()] = None,
     bild: Annotated[Optional[UploadFile], File()] = None,
     von_alle_termine: Annotated[str, Form()] = "",
+    promoted_all_ovs: Annotated[str | None, Form()] = None,
 ):
     from_alle = von_alle_termine.strip() == "1"
     err = _parse_times(start_uhrzeit, end_uhrzeit)
@@ -1739,8 +1862,14 @@ async def termin_create(
     if en and en <= st:
         en = None
 
+    ms_low = mandant_slug.strip().lower()
+    ks = kreis_ov_slug()
+    promoted = False
+    if ks and ms_low == ks and ist_kreis_admin(pdb, user):
+        promoted = (promoted_all_ovs or "").strip() == "1"
+
     t = Termin(
-        mandant_slug=mandant_slug.strip().lower(),
+        mandant_slug=ms_low,
         title=title.strip(),
         description=description.strip(),
         vorbereitung=vorbereitung.strip(),
@@ -1752,6 +1881,7 @@ async def termin_create(
             _filter_extern_gast_keys(extern_gast),
         ),
         created_by_id=user.id,
+        promoted_all_ovs=promoted,
     )
     pdb.add(t)
     pdb.flush()
@@ -1802,7 +1932,7 @@ def termin_detail(
     if not row:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden")
     termin_vergangen = row["termin"].starts_at < datetime.utcnow()
-    kommentare = _termin_kommentare_public(pdb, termin_id, user)
+    kommentare = _termin_kommentare_public(pdb, termin_id, user, termin=row["termin"])
     return templates.TemplateResponse(
         request,
         "termin_detail.html",
@@ -1827,11 +1957,7 @@ def termin_kommentar_create(
     body_txt = payload.body.strip()
     if not body_txt:
         raise HTTPException(status_code=400, detail="Kommentar darf nicht leer sein.")
-    t = (
-        pdb.query(Termin)
-        .filter(Termin.id == termin_id, Termin.mandant_slug == ms)
-        .first()
-    )
+    t = termin_sichtbar_in_mandant(pdb, termin_id, ms, user)
     if not t:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden.")
     km = TerminKommentar(
@@ -1844,7 +1970,7 @@ def termin_kommentar_create(
     return JSONResponse(
         {
             "ok": True,
-            "kommentare": _termin_kommentare_public(pdb, termin_id, user),
+            "kommentare": _termin_kommentare_public(pdb, termin_id, user, termin=t),
         },
     )
 
@@ -1861,6 +1987,10 @@ def termin_kommentar_update(
     body_txt = payload.body.strip()
     if not body_txt:
         raise HTTPException(status_code=400, detail="Kommentar darf nicht leer sein.")
+    ms = mandant_slug.strip().lower()
+    t = termin_sichtbar_in_mandant(pdb, termin_id, ms, user)
+    if not t:
+        raise HTTPException(status_code=404, detail="Termin nicht gefunden.")
     km = (
         pdb.query(TerminKommentar)
         .filter(
@@ -1871,7 +2001,9 @@ def termin_kommentar_update(
     )
     if not km:
         raise HTTPException(status_code=404, detail="Kommentar nicht gefunden.")
-    if not (user.is_admin or km.user_id == user.id):
+    if not (
+        km.user_id == user.id or _can_manage_termin_cross_ov(pdb, user, t)
+    ):
         raise HTTPException(status_code=403, detail="Keine Berechtigung.")
     km.body = body_txt[:4000]
     pdb.add(km)
@@ -1879,7 +2011,7 @@ def termin_kommentar_update(
     return JSONResponse(
         {
             "ok": True,
-            "kommentare": _termin_kommentare_public(pdb, termin_id, user),
+            "kommentare": _termin_kommentare_public(pdb, termin_id, user, termin=t),
         },
     )
 
@@ -1892,6 +2024,10 @@ def termin_kommentar_delete(
     pdb: Annotated[Session, Depends(get_platform_db)],
     user: CurrentUser,
 ):
+    ms = mandant_slug.strip().lower()
+    t = termin_sichtbar_in_mandant(pdb, termin_id, ms, user)
+    if not t:
+        raise HTTPException(status_code=404, detail="Termin nicht gefunden.")
     km = (
         pdb.query(TerminKommentar)
         .filter(
@@ -1902,14 +2038,16 @@ def termin_kommentar_delete(
     )
     if not km:
         raise HTTPException(status_code=404, detail="Kommentar nicht gefunden.")
-    if not (user.is_admin or km.user_id == user.id):
+    if not (
+        km.user_id == user.id or _can_manage_termin_cross_ov(pdb, user, t)
+    ):
         raise HTTPException(status_code=403, detail="Keine Berechtigung.")
     pdb.delete(km)
     pdb.commit()
     return JSONResponse(
         {
             "ok": True,
-            "kommentare": _termin_kommentare_public(pdb, termin_id, user),
+            "kommentare": _termin_kommentare_public(pdb, termin_id, user, termin=t),
         },
     )
 
@@ -1924,11 +2062,7 @@ def termin_teilnehmen(
     return_to: Annotated[str | None, Form()] = None,
 ):
     ms = mandant_slug.strip().lower()
-    t = (
-        pdb.query(Termin)
-        .filter(Termin.id == termin_id, Termin.mandant_slug == ms)
-        .first()
-    )
+    t = termin_sichtbar_in_mandant(pdb, termin_id, ms, user)
     if not t:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden")
     exists = (
@@ -1977,11 +2111,7 @@ def termin_teilnahme_absagen(
 ):
     """Absage bzw. Zusage zurücknehmen — gleiche Logik für `/absagen` und `/abmelden` (Legacy)."""
     ms = mandant_slug.strip().lower()
-    t = (
-        pdb.query(Termin)
-        .filter(Termin.id == termin_id, Termin.mandant_slug == ms)
-        .first()
-    )
+    t = termin_sichtbar_in_mandant(pdb, termin_id, ms, user)
     if not t:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden")
     row = (
@@ -2027,14 +2157,15 @@ def termin_edit_form(
     user: CurrentUser,
 ):
     ms = mandant_slug.strip().lower()
-    t = (
-        pdb.query(Termin)
-        .filter(Termin.id == termin_id, Termin.mandant_slug == ms)
-        .first()
-    )
+    t = termin_sichtbar_in_mandant(pdb, termin_id, ms, user)
     if not t:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden")
-    if not _can_manage_termin(user, t):
+    owner = t.mandant_slug.strip().lower()
+    if owner != ms:
+        rp = _app_path_prefix(request).rstrip("/")
+        dest = f"{rp}/m/{owner}/termine/{termin_id}/bearbeiten"
+        return RedirectResponse(dest, status_code=302)
+    if not _can_manage_termin_cross_ov(pdb, user, t):
         raise HTTPException(
             status_code=403,
             detail="Du darfst diesen Termin nicht bearbeiten.",
@@ -2042,7 +2173,13 @@ def termin_edit_form(
     return templates.TemplateResponse(
         request,
         "termin_form.html",
-        _termin_form_context(user=user, termin=t, error=None),
+        _termin_form_context(
+            user=user,
+            termin=t,
+            error=None,
+            pdb=pdb,
+            mandant_slug=mandant_slug,
+        ),
     )
 
 
@@ -2064,20 +2201,20 @@ async def termin_edit_save(
     bild_entfernen: Annotated[str, Form()] = "",
     extern_gast: Annotated[Optional[List[str]], Form()] = None,
     bild: Annotated[Optional[UploadFile], File()] = None,
+    promoted_all_ovs: Annotated[str | None, Form()] = None,
 ):
     ms = mandant_slug.strip().lower()
-    t = (
-        pdb.query(Termin)
-        .filter(Termin.id == termin_id, Termin.mandant_slug == ms)
-        .first()
-    )
+    t = termin_sichtbar_in_mandant(pdb, termin_id, ms, user)
     if not t:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden")
-    if not _can_manage_termin(user, t):
+    if t.mandant_slug.strip().lower() != ms:
+        raise HTTPException(status_code=404, detail="Termin nicht gefunden")
+    if not _can_manage_termin_cross_ov(pdb, user, t):
         raise HTTPException(
             status_code=403,
             detail="Du darfst diesen Termin nicht bearbeiten.",
         )
+    upload_root = upload_dir_for_slug(t.mandant_slug.strip().lower())
 
     err = _parse_times(start_uhrzeit, end_uhrzeit)
     if err:
@@ -2089,6 +2226,8 @@ async def termin_edit_save(
                 termin=t,
                 error=err,
                 extern_gast=extern_gast,
+                pdb=pdb,
+                mandant_slug=mandant_slug,
             ),
             status_code=400,
         )
@@ -2108,8 +2247,18 @@ async def termin_edit_save(
         _filter_extern_gast_keys(extern_gast),
     )
 
+    ks = kreis_ov_slug()
+    can_prom = bool(
+        ks
+        and ms == ks
+        and t.mandant_slug.strip().lower() == ks
+        and ist_kreis_admin(pdb, user),
+    )
+    if can_prom:
+        t.promoted_all_ovs = (promoted_all_ovs or "").strip() == "1"
+
     if bild_entfernen == "1":
-        _unlink_upload(t.image_path, _upload_root(request))
+        _unlink_upload(t.image_path, upload_root)
         t.image_path = None
 
     if bild and bild.filename:
@@ -2117,7 +2266,7 @@ async def termin_edit_save(
         if ext and bild.content_type in ALLOWED_IMAGE:
             max_b = MAX_UPLOAD_MB * 1024 * 1024
             dest_name = f"{t.id}_{uuid.uuid4().hex}{ext}"
-            dest = _upload_root(request) / dest_name
+            dest = upload_root / dest_name
             size = 0
             with dest.open("wb") as f:
                 while chunk := await bild.read(1024 * 1024):
@@ -2134,11 +2283,13 @@ async def termin_edit_save(
                                 termin=t,
                                 error=f"Bild zu groß (max. {MAX_UPLOAD_MB} MB).",
                                 extern_gast=extern_gast,
+                                pdb=pdb,
+                                mandant_slug=mandant_slug,
                             ),
                             status_code=400,
                         )
                     f.write(chunk)
-            _unlink_upload(t.image_path, _upload_root(request))
+            _unlink_upload(t.image_path, upload_root)
             t.image_path = dest_name
 
     pdb.add(t)
@@ -2155,14 +2306,14 @@ def termin_delete_confirm(
     user: CurrentUser,
 ):
     ms = mandant_slug.strip().lower()
-    t = (
-        pdb.query(Termin)
-        .filter(Termin.id == termin_id, Termin.mandant_slug == ms)
-        .first()
-    )
+    t = termin_sichtbar_in_mandant(pdb, termin_id, ms, user)
     if not t:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden")
-    if not _can_manage_termin(user, t):
+    owner = t.mandant_slug.strip().lower()
+    if owner != ms:
+        rp = _app_path_prefix(request).rstrip("/")
+        return RedirectResponse(f"{rp}/m/{owner}/termine/{termin_id}/loeschen", status_code=302)
+    if not _can_manage_termin_cross_ov(pdb, user, t):
         raise HTTPException(
             status_code=403,
             detail="Du darfst diesen Termin nicht löschen.",
@@ -2183,19 +2334,18 @@ def termin_delete_do(
     user: CurrentUser,
 ):
     ms = mandant_slug.strip().lower()
-    t = (
-        pdb.query(Termin)
-        .filter(Termin.id == termin_id, Termin.mandant_slug == ms)
-        .first()
-    )
+    t = termin_sichtbar_in_mandant(pdb, termin_id, ms, user)
     if not t:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden")
-    if not _can_manage_termin(user, t):
+    if t.mandant_slug.strip().lower() != ms:
+        raise HTTPException(status_code=404, detail="Termin nicht gefunden")
+    if not _can_manage_termin_cross_ov(pdb, user, t):
         raise HTTPException(
             status_code=403,
             detail="Du darfst diesen Termin nicht löschen.",
         )
-    _unlink_upload(t.image_path, _upload_root(request))
+    upload_root = upload_dir_for_slug(t.mandant_slug.strip().lower())
+    _unlink_upload(t.image_path, upload_root)
     pdb.delete(t)
     pdb.commit()
     return RedirectResponse(f"{_mp(request)}/termine", status_code=302)
@@ -2229,7 +2379,12 @@ def calendar_ics(
     if not verify_ics_token(pdb, mandant_slug, ICS_TOKEN, t):
         raise HTTPException(status_code=404, detail="Not found")
     termine = all_termine_for_feed(pdb, mandant_slug)
-    body = build_ics_calendar(termine)
+    ks = kreis_ov_slug()
+    labels = None
+    if ks and termine:
+        slugs = sorted({x.mandant_slug.strip().lower() for x in termine})
+        labels = _ov_display_labels_for_slugs(pdb, slugs)
+    body = build_ics_calendar(termine, ov_labels_for_mandant_slug=labels)
     return Response(
         content=body,
         media_type="text/calendar; charset=utf-8",
@@ -2257,7 +2412,12 @@ def calendar_ics_me(
     if not owner:
         raise HTTPException(status_code=404, detail="Not found")
     termine = termine_for_user_teilnahmen(pdb, owner.id, mandant_slug)
-    body = build_ics_calendar(termine, cal_name="Meine Zusagen — Wahlkampf")
+    ks = kreis_ov_slug()
+    labels = None
+    if ks and termine:
+        slugs = sorted({x.mandant_slug.strip().lower() for x in termine})
+        labels = _ov_display_labels_for_slugs(pdb, slugs)
+    body = build_ics_calendar(termine, cal_name="Meine Zusagen — Wahlkampf", ov_labels_for_mandant_slug=labels)
     return Response(
         content=body,
         media_type="text/calendar; charset=utf-8",
@@ -2287,7 +2447,11 @@ def calendar_ics_zusagen_alle(
     au = AuthenticatedUser(owner, mandant_slug, None)
     slugs = _approved_ov_slugs_for_user_feeds(pdb, au)
     termine = termine_zugesagt_multi_mandanten(pdb, owner.id, slugs)
-    labels = _ov_display_labels_for_slugs(pdb, slugs)
+    ks = kreis_ov_slug()
+    label_slugs = list(slugs)
+    if ks and ks not in label_slugs:
+        label_slugs.append(ks)
+    labels = _ov_display_labels_for_slugs(pdb, label_slugs)
     body = build_ics_calendar(
         termine,
         cal_name="Meine Zusagen — alle Verbände",
@@ -2322,7 +2486,11 @@ def calendar_ics_termine_alle(
     au = AuthenticatedUser(owner, mandant_slug, None)
     slugs = _approved_ov_slugs_for_user_feeds(pdb, au)
     termine = all_termine_multi_mandanten(pdb, slugs)
-    labels = _ov_display_labels_for_slugs(pdb, slugs)
+    ks = kreis_ov_slug()
+    label_slugs = list(slugs)
+    if ks and ks not in label_slugs:
+        label_slugs.append(ks)
+    labels = _ov_display_labels_for_slugs(pdb, label_slugs)
     body = build_ics_calendar(
         termine,
         cal_name="Alle Termine — meine Verbände",

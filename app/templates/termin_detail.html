@@ -3,6 +3,7 @@
 {% from '_termin_macros.html' import teilnehmer_liste %}
 {% import '_icons.html' as ico %}
 {% set t = row.termin %}
+{% set owner_mp = row.mandanten_prefix %}
 {% set path_prefix = request.scope.get('root_path') or '' %}
 {% block title %}{{ t.title }} — Termin — Wahlkampf{% endblock %}
 {% block head %}
@@ -413,7 +414,7 @@
       <div class="termin-card-list__media-row">
         {% if t.image_path %}
         <div class="termin-card-list__thumb termin-card-list__thumb--detail">
-          <img src="{{ request.state.mandanten_prefix }}/media/{{ t.image_path }}" alt="">
+          <img src="{{ owner_mp }}/media/{{ t.image_path }}" alt="">
         </div>
         {% endif %}
         <div class="termin-card-list__columns">
@@ -496,10 +497,10 @@
       {% endif %}
       {% if row.kann_verwalten %}
       <div class="termin-footer-actions__admin">
-        <a href="{{ request.state.mandanten_prefix }}/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico" aria-label="Termin bearbeiten" title="Bearbeiten">
+        <a href="{{ owner_mp }}/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico" aria-label="Termin bearbeiten" title="Bearbeiten">
           {{ ico.svg_pencil() }}
         </a>
-        <a href="{{ request.state.mandanten_prefix }}/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico" aria-label="Termin löschen" title="Löschen">
+        <a href="{{ owner_mp }}/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico" aria-label="Termin löschen" title="Löschen">
           {{ ico.svg_trash() }}
         </a>
       </div>
