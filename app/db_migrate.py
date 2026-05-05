@@ -167,6 +167,13 @@ def run_platform_sqlite_migrations(engine: Engine) -> None:
                         "ALTER TABLE platform_users ADD COLUMN calendar_token VARCHAR(64)"
                     ),
                 )
+            if "menu_ov_card_open_json" not in cols:
+                conn.execute(
+                    text(
+                        "ALTER TABLE platform_users ADD COLUMN menu_ov_card_open_json "
+                        "TEXT NOT NULL DEFAULT '{}'"
+                    ),
+                )
     migrate_termine_created_by_nullable_sqlite(engine)
     migrate_termin_teilnahme_status_sqlite(engine)
     migrate_termine_promoted_all_ovs_sqlite(engine)

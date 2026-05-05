@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 import uuid
@@ -9,7 +10,7 @@ from urllib.parse import urlencode, urlparse
 from datetime import date, datetime, time
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Annotated, List, Optional, Union
+from typing import Annotated, Any, List, Optional, Union
 
 from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.exception_handlers import http_exception_handler
@@ -20,7 +21,7 @@ from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 from starlette.middleware.sessions import SessionMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.platform_models import (
     TEILNAHME_STATUS_ABGESAGT,
@@ -129,11 +130,19 @@ ALLOWED_IMAGE = {"image/jpeg", "image/png", "image/webp"}
 EXT_MAP = {".jpg": ".jpg", ".jpeg": ".jpg", ".png": ".png", ".webp": ".webp"}
 USERNAME_PATTERN = re.compile(r"^[\w.-]+$", re.UNICODE)
 
-tenant_router = APIRouter(prefix="/m/{mandant_slug}")
 
 class TerminKommentarPayload(BaseModel):
     body: str = Field("", max_length=4000)
 
+
+class MenuOvCardOpenBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    slug: str = Field(..., max_length=80)
+    open: bool
+
+
+tenant_router = APIRouter(prefix="/m/{mandant_slug}")
 
 app = FastAPI(title="Wahlkampf", lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie=SESSION_COOKIE)
@@ -565,14 +574,37 @@ def _pending_approval_count(pdb: Session, mandant_slug: str, user: Authenticated
     )
 
 
+def _decode_menu_ov_card_open(raw: str | None) -> dict[str, bool]:
+    try:
+        data = json.loads((raw or "").strip() or "{}")
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    out: dict[str, bool] = {}
+    for k, v in data.items():
+        sk = str(k).strip().lower()
+        if not sk:
+            continue
+        if isinstance(v, bool):
+            out[sk] = v
+    return out
+
+
+def _menu_ov_open_map_for_user(pdb: Session, user: AuthenticatedUser) -> dict[str, bool]:
+    pu = pdb.get(PlatformUser, user.id)
+    if not pu:
+        return {}
+    return _decode_menu_ov_card_open(getattr(pu, "menu_ov_card_open_json", None))
+
+
 def _my_ovs_menu_items(
     pdb: Session,
-    mandant_slug: str,
+    _mandant_slug: str,
     user_id: int,
     username: str,
-) -> list[dict[str, str | bool]]:
+) -> list[dict[str, Any]]:
     """OVs für Menü / Wechsel: nur freigegebene Mitgliedschaften — auch für Plattform-Superadmins."""
-    ms = mandant_slug.strip().lower()
     sup = is_superadmin_username(username)
     rows = (
         pdb.query(OvMembership, Ortsverband)
@@ -584,17 +616,27 @@ def _my_ovs_menu_items(
         .order_by(func.lower(Ortsverband.display_name), OvMembership.ov_slug.asc())
         .all()
     )
-    out_members: list[dict[str, str | bool]] = []
+    out_members: list[dict[str, Any]] = []
     for m, ov in rows:
         slug = ov.slug.strip().lower()
         dn = (ov.display_name or "").strip() or slug.replace("-", " ").replace("_", " ").title()
+        is_adm = bool(m.is_admin or sup)
+        pend = 0
+        if is_adm:
+            pend = (
+                pdb.query(OvMembership)
+                .filter(
+                    OvMembership.ov_slug == slug,
+                    OvMembership.is_approved.is_(False),
+                )
+                .count()
+            )
         out_members.append(
             {
                 "slug": slug,
                 "display_name": dn,
-                "href": f"/m/{slug}/menu",
-                "current": slug == ms,
-                "is_admin": bool(m.is_admin or sup),
+                "is_admin": is_adm,
+                "admin_pending_count": pend,
                 "feature_plakate": is_mandant_feature_enabled(pdb, slug, FEATURE_PLAKATE),
                 "feature_sharepic": is_mandant_feature_enabled(pdb, slug, FEATURE_SHAREPIC),
                 "feature_fraktion": is_mandant_feature_enabled(pdb, slug, FEATURE_FRAKTION),
@@ -987,12 +1029,43 @@ def app_menu(
         "menu.html",
         {
             "user": user,
-            "pending_count": _pending_approval_count(pdb, mandant_slug, user),
             "show_superadmin_link": is_superadmin_username(user.username),
             "my_ovs": _my_ovs_menu_items(pdb, mandant_slug, user.id, user.username),
             "show_alle_termine": _menu_show_alle_termine(pdb, user),
+            "menu_ov_open": _menu_ov_open_map_for_user(pdb, user),
+            "menu_ov_card_save_url": f"{_mp(request)}/menu/ov-card-open",
         },
     )
+
+
+@tenant_router.post("/menu/ov-card-open")
+def app_menu_ov_card_open(
+    mandant_slug: str,
+    body: MenuOvCardOpenBody,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    user: CurrentUser,
+):
+    ms = body.slug.strip().lower()
+    mem_ok = (
+        pdb.query(OvMembership)
+        .filter(
+            OvMembership.user_id == user.id,
+            OvMembership.ov_slug == ms,
+            OvMembership.is_approved.is_(True),
+        )
+        .first()
+    )
+    if not mem_ok:
+        raise HTTPException(status_code=403, detail="Kein Zugriff auf diesen Verband")
+    pu = pdb.get(PlatformUser, user.id)
+    if not pu:
+        raise HTTPException(status_code=401, detail="Ungültige Sitzung")
+    data = _decode_menu_ov_card_open(getattr(pu, "menu_ov_card_open_json", None))
+    data[ms] = body.open
+    pu.menu_ov_card_open_json = json.dumps(data, sort_keys=True, separators=(",", ":"))
+    pdb.add(pu)
+    pdb.commit()
+    return JSONResponse({"ok": True})
 
 
 def _profil_template_response(

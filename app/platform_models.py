@@ -46,6 +46,8 @@ class PlatformUser(PlatformBase):
     calendar_token: Mapped[Optional[str]] = mapped_column(
         String(64), unique=True, nullable=True, index=True
     )
+    # JSON-Objekt {"ov-slug": true|false}: Ein-/Ausklappzustand der OV-Karten im Menü (true = offen).
+    menu_ov_card_open_json: Mapped[str] = mapped_column(Text, default="{}")
 
     memberships: Mapped[List["OvMembership"]] = relationship(back_populates="user")
 

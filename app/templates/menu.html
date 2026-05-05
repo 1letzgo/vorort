@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_ui_macros.html' import app_header_toolbar, public_tenant_prefix with context %}
+{% from '_ui_macros.html' import app_header, public_tenant_prefix with context %}
 {% import '_icons.html' as ico %}
 {% block title %}SPD vor Ort — Wahlkampf{% endblock %}
 {% block head %}
@@ -36,31 +36,8 @@
     color: var(--muted);
     background: color-mix(in srgb, var(--border) 35%, transparent);
   }
-  /* Header: Admin-Button rechts (nur Menü nutzt btn-admin in der Toolbar) */
-  header.site-header nav.header-toolbar:has(.btn-admin) {
-    justify-content: flex-end;
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  header.site-header nav.header-toolbar:has(.btn-admin) .btn-admin {
-    border-color: rgba(255, 255, 255, 0.45);
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
-  }
-  header.site-header nav.header-toolbar:has(.btn-admin) .btn-admin:hover {
-    border-color: rgba(255, 255, 255, 0.85);
-  }
-  /* Pro OV: ausklappbar, standardmäßig offen */
-  .menu-ov-details {
-    border-bottom: 1px solid var(--border);
-  }
-  .menu-ov-details:last-child {
-    border-bottom: none;
-  }
-  .menu-ov-details--current > .menu-ov-details__summary {
-    box-shadow: inset 3px 0 0 var(--accent);
-    background: color-mix(in srgb, var(--accent) 9%, transparent);
-  }
-  .menu-ov-details__summary {
+  /* Eine OV-Karte = eine .card wie überall */
+  .menu-ov-card .menu-ov-details__summary {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -73,11 +50,12 @@
     color: var(--text);
     list-style: none;
     background: color-mix(in srgb, var(--border) 28%, transparent);
+    border-bottom: 1px solid var(--border);
   }
-  .menu-ov-details__summary::-webkit-details-marker {
+  .menu-ov-card .menu-ov-details__summary::-webkit-details-marker {
     display: none;
   }
-  .menu-ov-details__summary::after {
+  .menu-ov-card .menu-ov-details__summary::after {
     content: "";
     flex-shrink: 0;
     width: 0.55rem;
@@ -89,39 +67,32 @@
     opacity: 0.65;
     transition: transform 0.15s ease;
   }
-  .menu-ov-details[open] > .menu-ov-details__summary::after {
+  .menu-ov-card .menu-ov-details[open] > .menu-ov-details__summary::after {
     transform: rotate(225deg);
     margin-top: 0.15rem;
   }
   .menu-ov-details__title {
     min-width: 0;
   }
-  .menu-ov-details__badge {
+  .menu-ov-details__admin-pill {
     flex-shrink: 0;
     font-size: 0.68rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--accent);
+    color: #16633d;
     padding: 0.12rem 0.45rem;
     border-radius: 999px;
-    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    border: 1px solid color-mix(in srgb, #1e7a4c 45%, var(--border));
+    background: color-mix(in srgb, #1e7a4c 14%, transparent);
   }
-  .menu-list--in-details li:last-child a {
+  .menu-ov-card .menu-list li:last-child a {
     border-bottom: none;
   }
 </style>
 {% endblock %}
 {% block body %}
-{% call app_header_toolbar('Menü') %}
-  {% if user.is_admin %}
-  <a href="{{ request.state.mandanten_prefix }}/admin/benutzer" class="btn btn-sm btn-admin btn-ico btn-with-label" aria-label="Administration{% if pending_count %}: {{ pending_count }} ausstehend{% endif %}">
-    {{ ico.svg_cog() }}<span class="btn-text">Admin</span>
-    {% if pending_count %}<span class="btn-pending-badge" aria-hidden="true">{{ pending_count }}</span>{% endif %}
-  </a>
-  {% endif %}
-{% endcall %}
+{{ app_header('Menü') }}
 
 {% if show_alle_termine | default(false) %}
 <div class="card card--flush">
@@ -134,16 +105,29 @@
 </div>
 {% endif %}
 
-{% if my_ovs | length %}
-<div class="card card--flush">
-  {% for o in my_ovs %}
-  {% set op = public_tenant_prefix(request, '/m/' ~ o.slug) %}
-  <details class="menu-ov-details{% if o.current %} menu-ov-details--current{% endif %}" open>
+{% for o in my_ovs %}
+{% set op = public_tenant_prefix(request, '/m/' ~ o.slug) %}
+<div class="card card--flush menu-ov-card">
+  <details
+    class="menu-ov-details"
+    data-ov-slug="{{ o.slug }}"
+    {% if (menu_ov_open or {}).get(o.slug, True) %}open{% endif %}
+  >
     <summary class="menu-ov-details__summary" id="menu-ov-{{ o.slug }}-heading">
       <span class="menu-ov-details__title">{{ o.display_name }}</span>
-      {% if o.current %}<span class="menu-ov-details__badge">Aktiv</span>{% endif %}
+      {% if o.is_admin %}
+      <span class="menu-ov-details__admin-pill">Admin</span>
+      {% endif %}
     </summary>
-    <ul class="menu-list menu-list--in-details" role="list" aria-labelledby="menu-ov-{{ o.slug }}-heading">
+    <ul class="menu-list" role="list" aria-labelledby="menu-ov-{{ o.slug }}-heading">
+      {% if o.is_admin %}
+      <li>
+        <a href="{{ op }}/admin/benutzer">
+          <span class="menu-list__main">{{ ico.svg_cog() }}<span>Administration</span></span>
+          {% if o.admin_pending_count %}<span class="menu-pending-badge" aria-label="{{ o.admin_pending_count }} ausstehend">{{ o.admin_pending_count }}</span>{% endif %}
+        </a>
+      </li>
+      {% endif %}
       <li><a href="{{ op }}/termine"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Termine</span></span></a></li>
       {% if o.feature_fraktion %}
       <li><a href="{{ op }}/fraktion/termine"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Fraktion</span></span></a></li>
@@ -156,9 +140,8 @@
       {% endif %}
     </ul>
   </details>
-  {% endfor %}
 </div>
-{% endif %}
+{% endfor %}
 
 <div class="card card--flush">
   <ul class="menu-list" role="list">
@@ -193,6 +176,25 @@
   </ul>
 </div>
 {% endif %}
+
+<script>
+(function () {
+  var saveUrl = {{ menu_ov_card_save_url | tojson }};
+  if (!saveUrl) return;
+  document.querySelectorAll(".menu-ov-card details.menu-ov-details").forEach(function (det) {
+    det.addEventListener("toggle", function () {
+      var slug = det.getAttribute("data-ov-slug");
+      if (!slug) return;
+      fetch(saveUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ slug: slug, open: det.open }),
+      }).catch(function () {});
+    });
+  });
+})();
+</script>
 
 <footer class="menu-page-footer">
   Made by Daniel G. · <a href="https://github.com/1letzgo/wahlkampf" rel="noopener noreferrer" target="_blank">GitHub</a>
