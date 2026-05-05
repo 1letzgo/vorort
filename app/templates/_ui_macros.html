@@ -20,7 +20,7 @@
   {%- endif -%}
 {%- endmacro %}
 
-{% macro app_header(title, brand_href=None, profile_href=None) %}
+{% macro app_header(title, brand_href=None, profile_icon=False, profile_href=None) %}
 <header class="site-header">
   <div class="header-inner">
     {% if brand_href is none %}
@@ -32,6 +32,11 @@
     <div class="header-toolbar-spacer" aria-hidden="true"></div>
     {% if profile_href %}
     <a href="{{ profile_href }}" class="header-profile-link" aria-label="Mein Konto">{{ _hdr_icons.svg_user() }}</a>
+    {% elif profile_icon %}
+    {%- set _prof_prefix -%}
+    {{- public_tenant_prefix(request) -}}
+    {%- endset -%}
+    <a href="{{ _prof_prefix }}/profil" class="header-profile-link" aria-label="Mein Konto">{{ _hdr_icons.svg_user() }}</a>
     {% else %}
     <h1 class="header-page-title">{{ title }}</h1>
     {% endif %}

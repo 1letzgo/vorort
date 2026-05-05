@@ -127,7 +127,7 @@
 </style>
 {% endblock %}
 {% block body %}
-{{ app_header('', profile_href=public_tenant_prefix(request) ~ '/profil') }}
+{{ app_header('', profile_icon=true) }}
 <h1 class="sr-only">Menü</h1>
 
 {% if show_alle_termine | default(false) %}
