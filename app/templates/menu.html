@@ -37,16 +37,12 @@
     background: color-mix(in srgb, var(--border) 35%, transparent);
   }
   /* Eine OV-Karte = eine .card wie überall */
-  .menu-ov-card.menu-ov-card--admin {
-    border-color: rgba(196, 30, 58, 0.28);
-    box-shadow:
-      var(--shadow),
-      0 0 0 1px rgba(196, 30, 58, 0.06);
-    background: color-mix(in srgb, var(--accent) 5%, var(--card));
+  .menu-ov-card .menu-list a.menu-list__admin-row {
+    background: color-mix(in srgb, var(--accent) 9%, transparent);
+    box-shadow: inset 3px 0 0 rgba(196, 30, 58, 0.45);
   }
-  .menu-ov-card.menu-ov-card--admin .menu-ov-details__summary {
-    background: color-mix(in srgb, var(--accent) 10%, color-mix(in srgb, var(--border) 28%, transparent));
-    border-bottom-color: rgba(196, 30, 58, 0.18);
+  .menu-ov-card .menu-list a.menu-list__admin-row:not(:hover) {
+    border-bottom-color: rgba(196, 30, 58, 0.14);
   }
   .menu-ov-card .menu-ov-details__summary {
     display: flex;
@@ -107,7 +103,7 @@
 
 {% for o in my_ovs %}
 {% set op = public_tenant_prefix(request, '/m/' ~ o.slug) %}
-<div class="card card--flush menu-ov-card{% if o.is_admin %} menu-ov-card--admin{% endif %}">
+<div class="card card--flush menu-ov-card">
   <details
     class="menu-ov-details"
     data-ov-slug="{{ o.slug }}"
@@ -129,7 +125,7 @@
       {% endif %}
       {% if o.is_admin %}
       <li>
-        <a href="{{ op }}/admin/benutzer">
+        <a href="{{ op }}/admin/benutzer" class="menu-list__admin-row">
           <span class="menu-list__main">{{ ico.svg_cog() }}<span>Administration</span></span>
           {% if o.admin_pending_count %}<span class="menu-pending-badge" aria-label="{{ o.admin_pending_count }} ausstehend">{{ o.admin_pending_count }}</span>{% endif %}
         </a>
