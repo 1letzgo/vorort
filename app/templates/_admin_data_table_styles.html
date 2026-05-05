@@ -138,18 +138,32 @@
     .admin-users-td-actions {
       text-align: left;
     }
+    /* Nur Icons: überschreibt app.css (.btn-ico.btn-with-label zeigt sonst überall Text auf Mobil) */
+    .admin-users-td-actions .btn.btn-ico.btn-with-label .btn-text {
+      display: none !important;
+    }
+    .admin-users-td-actions .btn.btn-ico.btn-with-label:not(.btn-xs) {
+      padding: 0.45rem !important;
+      min-width: 2.35rem !important;
+      min-height: 2.35rem !important;
+      justify-content: center;
+      box-sizing: border-box;
+    }
     .admin-users-td-actions > div {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
-      gap: 0.5rem;
-      justify-content: stretch;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      justify-content: flex-start;
+      align-items: center;
     }
     .admin-users-td-actions form {
       margin: 0;
       display: flex;
+      flex: 0 0 auto;
     }
     .admin-users-td-actions form .btn {
-      flex: 1 1 auto;
+      flex: 0 0 auto;
+      width: auto;
       justify-content: center;
     }
   }
