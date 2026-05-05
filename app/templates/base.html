@@ -21,39 +21,23 @@
   <div class="wrap">
     {% block body %}{% endblock %}
   </div>
-  {% include '_app_footer_nav.html' %}
   <script>
     (function () {
-      function gapPx(rem) {
-        return rem * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
-      }
-      function syncWrapChromePad() {
-        var wrap = document.querySelector(".wrap");
-        if (!wrap) return;
+      function syncWrapHeaderPad() {
         var header = document.querySelector("header.site-header");
-        if (header) {
-          wrap.style.paddingTop =
-            Math.ceil(header.getBoundingClientRect().height + gapPx(1.5)) + "px";
-        }
-        var footerNav = document.getElementById("app-tabbar");
-        if (footerNav) {
-          wrap.style.paddingBottom =
-            Math.ceil(footerNav.getBoundingClientRect().height + gapPx(0.65)) + "px";
-        } else {
-          wrap.style.paddingBottom = "";
-        }
+        var wrap = document.querySelector(".wrap");
+        if (!header || !wrap) return;
+        var gapRem = 1.5;
+        var gapPx = gapRem * parseFloat(getComputedStyle(document.documentElement).fontSize) || 24;
+        wrap.style.paddingTop = Math.ceil(header.getBoundingClientRect().height + gapPx) + "px";
       }
       function init() {
-        syncWrapChromePad();
-        requestAnimationFrame(syncWrapChromePad);
-        window.addEventListener("resize", syncWrapChromePad);
-        var headerEl = document.querySelector("header.site-header");
-        if (headerEl && typeof ResizeObserver !== "undefined") {
-          new ResizeObserver(syncWrapChromePad).observe(headerEl);
-        }
-        var footerNav = document.getElementById("app-tabbar");
-        if (footerNav && typeof ResizeObserver !== "undefined") {
-          new ResizeObserver(syncWrapChromePad).observe(footerNav);
+        syncWrapHeaderPad();
+        requestAnimationFrame(syncWrapHeaderPad);
+        window.addEventListener("resize", syncWrapHeaderPad);
+        var header = document.querySelector("header.site-header");
+        if (header && typeof ResizeObserver !== "undefined") {
+          new ResizeObserver(syncWrapHeaderPad).observe(header);
         }
       }
       if (document.readyState === "loading") {

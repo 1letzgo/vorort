@@ -78,7 +78,6 @@ a:hover {
   padding-right: max(1rem, env(safe-area-inset-right, 0px));
   padding-bottom: max(3rem, calc(1.25rem + env(safe-area-inset-bottom, 0px)));
   padding-left: max(1rem, env(safe-area-inset-left, 0px));
-  width: 100%;
 }
 
 header.site-header {
@@ -169,98 +168,6 @@ header.site-header .header-brand:hover {
   text-align: right;
   min-width: 0;
   max-width: 100%;
-}
-
-/* Feste Tabbar (Tenant): kompakte Zeile, SVG fest in px — vermeidet „riesige Icons“ ohne greifende Styles */
-nav.site-footer-nav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 99;
-  box-sizing: border-box;
-  margin: 0;
-  padding: 6px 0 max(6px, env(safe-area-inset-bottom, 0px));
-  background: var(--accent);
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
-}
-
-nav.site-footer-nav .site-footer-nav__inner {
-  max-width: 720px;
-  margin: 0 auto;
-  padding-left: max(8px, env(safe-area-inset-left, 0px));
-  padding-right: max(8px, env(safe-area-inset-right, 0px));
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-evenly;
-  height: 48px;
-}
-
-nav.site-footer-nav .site-footer-nav__link {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  min-width: 0;
-  max-height: 48px;
-  padding: 2px 6px;
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.85) !important;
-  text-decoration: none !important;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1;
-  -webkit-tap-highlight-color: transparent;
-}
-
-nav.site-footer-nav .site-footer-nav__link:hover {
-  color: #fff !important;
-  text-decoration: none !important;
-}
-
-nav.site-footer-nav .site-footer-nav__link:active {
-  opacity: 0.9;
-}
-
-nav.site-footer-nav .site-footer-nav__link.is-active {
-  color: #fff !important;
-  background: rgba(255, 255, 255, 0.22);
-}
-
-nav.site-footer-nav .site-footer-nav__ico {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-/* Alle SVG in dieser Leiste — schlägt andere .ico-/flex-Regeln */
-nav.site-footer-nav svg {
-  display: block !important;
-  width: 22px !important;
-  height: 22px !important;
-  max-width: 22px !important;
-  max-height: 22px !important;
-  flex-shrink: 0;
-  overflow: visible;
-}
-
-nav.site-footer-nav .site-footer-nav__lbl {
-  display: block;
-  margin-top: 1px;
-  font-size: 10px;
-  line-height: 1.1;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .btn {
