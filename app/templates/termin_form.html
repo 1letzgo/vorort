@@ -209,6 +209,9 @@
         value="{{ termin.link_url if termin and termin.link_url else '' }}">
       <p class="muted termin-form-card__hint" style="margin:0.45rem 0 0;font-size:0.84rem;">Zur Detailseite bei RIS o. Ä.; wird unter der Beschreibung und in der Terminliste angezeigt.</p>
     </section>
+
+    {% if show_externe_gaeste | default(true) %}
+    <section class="ics-popup__panel" aria-label="Externe Gäste">
       <h3 class="ics-popup__label">Externe Gäste</h3>
       <div class="termin-form-card__guest-list">
         {% for key, label in externe_optionen %}
@@ -219,6 +222,7 @@
         {% endfor %}
       </div>
     </section>
+    {% endif %}
 
     {% if termin and termin.image_path %}
     <section class="ics-popup__panel" aria-label="Aktuelles Foto">

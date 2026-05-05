@@ -1791,6 +1791,8 @@ def _termin_form_context(
     show_fraktion_vertraulich = termin_form_segment == "fraktion/termine" or (
         termin is not None and getattr(termin, "is_fraktion_termin", False)
     )
+    tseg_norm = termin_form_segment.strip().strip("/")
+    show_externe_gaeste = tseg_norm != "fraktion/termine"
     return {
         "user": user,
         "termin": termin,
@@ -1807,6 +1809,7 @@ def _termin_form_context(
         "fraktion_vertraulich_checked": bool(
             termin and getattr(termin, "fraktion_vertraulich", False)
         ),
+        "show_externe_gaeste": show_externe_gaeste,
     }
 
 
@@ -1922,6 +1925,17 @@ def _can_manage_termin_cross_ov(pdb: Session, user: AuthenticatedUser, termin: T
     if termin.created_by_id == user.id:
         return True
     return bool(mem.is_admin)
+
+
+def _can_anlegen_fraktionstermin(
+    pdb: Session,
+    user: AuthenticatedUser,
+    mandant_slug: str,
+) -> bool:
+    """Neue Fraktionstermine nur für Fraktionsmitglieder (OV-weit); Superadmin ausnahme."""
+    if is_superadmin_username(user.username):
+        return True
+    return user_is_fraktionsmitglied(pdb, user.id, mandant_slug.strip().lower())
 
 
 def _termin_row_cross_ov(
@@ -2289,6 +2303,7 @@ def fraktion_termine_list(
     feed_url_my = f"{base}{mp}/calendar/me.ics?t={my_token}"
     feed_url_all = f"{base}{mp}/calendar.ics?t={token}"
     neuer_termin_href = f"{mp}/fraktion/termine/neu"
+    kann_fraktionstermin_anlegen = _can_anlegen_fraktionstermin(pdb, user, mandant_slug)
     return templates.TemplateResponse(
         request,
         "termine_list.html",
@@ -2299,7 +2314,7 @@ def fraktion_termine_list(
             "feed_url_my": feed_url_my,
             "feed_url_all": feed_url_all,
             "page_title": "Fraktion — Termine",
-            "show_neuer_termin_button": True,
+            "show_neuer_termin_button": kann_fraktionstermin_anlegen,
             "ics_my_label": "Meine Zusagen",
             "ics_all_label": "Alle Termine",
             "neuer_termin_button_label": "Neuer Fraktionstermin",
@@ -2316,6 +2331,11 @@ def fraktion_termin_new_form(
     user: CurrentUser,
 ):
     _require_mandant_feature(pdb, mandant_slug, FEATURE_FRAKTION)
+    if not _can_anlegen_fraktionstermin(pdb, user, mandant_slug):
+        raise HTTPException(
+            status_code=403,
+            detail="Nur Fraktionsmitglieder können neue Fraktionstermine anlegen.",
+        )
     return templates.TemplateResponse(
         request,
         "termin_form.html",
@@ -2343,13 +2363,17 @@ async def fraktion_termin_create(
     location: Annotated[str, Form()] = "",
     link_url: Annotated[str, Form()] = "",
     end_uhrzeit: Annotated[str, Form()] = "",
-    extern_gast: Annotated[Optional[List[str]], Form()] = None,
     promoted_all_ovs: Annotated[str | None, Form()] = None,
     fraktion_vertraulich: Annotated[str | None, Form()] = None,
     bild: Annotated[Optional[UploadFile], File()] = None,
     anhaenge: Annotated[Optional[List[UploadFile]], File()] = None,
 ):
     _require_mandant_feature(pdb, mandant_slug, FEATURE_FRAKTION)
+    if not _can_anlegen_fraktionstermin(pdb, user, mandant_slug):
+        raise HTTPException(
+            status_code=403,
+            detail="Nur Fraktionsmitglieder können neue Fraktionstermine anlegen.",
+        )
     err = _parse_times(start_uhrzeit, end_uhrzeit)
     if err:
         return templates.TemplateResponse(
@@ -2359,7 +2383,6 @@ async def fraktion_termin_create(
                 user=user,
                 termin=None,
                 error=err,
-                extern_gast=extern_gast,
                 pdb=pdb,
                 mandant_slug=mandant_slug,
                 termin_form_segment="fraktion/termine",
@@ -2375,7 +2398,6 @@ async def fraktion_termin_create(
                 user=user,
                 termin=None,
                 error=link_err,
-                extern_gast=extern_gast,
                 pdb=pdb,
                 mandant_slug=mandant_slug,
                 termin_form_segment="fraktion/termine",
@@ -2402,9 +2424,7 @@ async def fraktion_termin_create(
         location=location.strip(),
         starts_at=st,
         ends_at=en,
-        externe_teilnehmer_json=externe_teilnehmer_encode(
-            _filter_extern_gast_keys(extern_gast),
-        ),
+        externe_teilnehmer_json=externe_teilnehmer_encode([]),
         created_by_id=user.id,
         promoted_all_ovs=promoted,
         is_fraktion_termin=True,
@@ -2433,7 +2453,6 @@ async def fraktion_termin_create(
                                 user=user,
                                 termin=None,
                                 error=f"Bild zu groß (max. {MAX_UPLOAD_MB} MB).",
-                                extern_gast=extern_gast,
                                 pdb=pdb,
                                 mandant_slug=mandant_slug,
                                 termin_form_segment="fraktion/termine",
@@ -2460,7 +2479,6 @@ async def fraktion_termin_create(
                     user=user,
                     termin=None,
                     error=aerr,
-                    extern_gast=extern_gast,
                     pdb=pdb,
                     mandant_slug=mandant_slug,
                     termin_form_segment="fraktion/termine",
@@ -2843,9 +2861,12 @@ async def termin_edit_save(
     t.link_url = link_u
     t.starts_at = st
     t.ends_at = en
-    t.externe_teilnehmer_json = externe_teilnehmer_encode(
-        _filter_extern_gast_keys(extern_gast),
-    )
+    if getattr(t, "is_fraktion_termin", False):
+        t.externe_teilnehmer_json = externe_teilnehmer_encode([])
+    else:
+        t.externe_teilnehmer_json = externe_teilnehmer_encode(
+            _filter_extern_gast_keys(extern_gast),
+        )
 
     ks = kreis_ov_slug()
     can_prom = bool(
