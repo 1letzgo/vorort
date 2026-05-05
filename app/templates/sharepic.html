@@ -270,6 +270,16 @@
     return x >= P.x && x <= P.x + P.w && y >= P.y && y <= P.y + P.h;
   }
 
+  /** Einheitliche Cover-Skalierung: Basis scale₀ = max(Breite,Höhe), Zoom multipliziert darauf. */
+  function photoCoverScale(img, rw, rh, zoom) {
+    var iw = img.naturalWidth;
+    var ih = img.naturalHeight;
+    var scale0 = Math.max(rw / iw, rh / ih);
+    var dw = iw * scale0 * zoom;
+    var dh = ih * scale0 * zoom;
+    return { dw: dw, dh: dh };
+  }
+
   function clampPan() {
     if (!userImg || !userImg.naturalWidth || !userImg.naturalHeight) {
       photoPanX = 0;
@@ -277,15 +287,11 @@
       return;
     }
     var P = layoutSharepic().photoRect;
-    var iw = userImg.naturalWidth;
-    var ih = userImg.naturalHeight;
-    var dh = P.h * photoZoom;
-    var dw = (iw / ih) * dh;
+    var dims = photoCoverScale(userImg, P.w, P.h, photoZoom);
+    var dw = dims.dw;
+    var dh = dims.dh;
     var maxPX = Math.max(0, (dw - P.w) / 2);
     var maxPY = Math.max(0, (dh - P.h) / 2);
-    if (photoZoom <= 1) {
-      photoPanY = 0;
-    }
     photoPanX = Math.max(-maxPX, Math.min(maxPX, photoPanX));
     photoPanY = Math.max(-maxPY, Math.min(maxPY, photoPanY));
   }
@@ -312,6 +318,7 @@
     var zEl = document.getElementById("sharepic-zoom");
     zEl.value = "100";
     zEl.setAttribute("aria-valuenow", "100");
+    clampPan();
     scheduleRedraw();
   }
 
@@ -368,15 +375,16 @@
   }
 
   /**
-   * Foto auf volle Höhe der Maske-Fotozone skaliert (100 % Höhe bei Zoom 100 %).
-   * Quelle immer komplett (kein Cover-Crop oben/unten); seitlich wird bei Bedarf beschnitten.
+   * Foto: object-fit cover — bei Zoom 100 % immer volle Breite und Höhe der Fotozone (ggf. beschnitten).
+   * Zoom > 1 vergrößert die Darstellung; Verschieben begrenzt auf den überstehenden Bereich.
    */
   function drawCoverPanZoom(img, rx, ry, rw, rh, zoom, panX, panY) {
     if (!img || !img.naturalWidth || !img.naturalHeight) return;
     var iw = img.naturalWidth;
     var ih = img.naturalHeight;
-    var dh = rh * zoom;
-    var dw = (iw / ih) * dh;
+    var dims = photoCoverScale(img, rw, rh, zoom);
+    var dw = dims.dw;
+    var dh = dims.dh;
     var cx = rx + rw * 0.5 + panX;
     var cy = ry + rh * 0.5 + panY;
     var dx = cx - dw * 0.5;
