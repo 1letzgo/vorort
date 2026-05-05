@@ -64,16 +64,9 @@
                 {% endif %}
               </td>
               <td data-label="Aktionen" class="admin-users-td-actions">
-                <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">
                 <a href="/admin/nutzer/{{ u.id }}/bearbeiten" class="btn btn-sm btn-ico btn-with-label" aria-label="Nutzer {{ u.username }} bearbeiten">
                   {{ ico.svg_pencil() }}<span class="btn-text">Bearbeiten</span>
                 </a>
-                {% if not row.platform_superadmin %}
-                <a href="/admin/nutzer/{{ u.id }}/loeschen" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="Nutzer {{ u.username }} löschen">
-                  {{ ico.svg_trash() }}<span class="btn-text">Löschen</span>
-                </a>
-                {% endif %}
-                </div>
               </td>
             </tr>
             {% endfor %}
