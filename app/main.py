@@ -87,10 +87,6 @@ USERNAME_PATTERN = re.compile(r"^[\w.-]+$", re.UNICODE)
 
 tenant_router = APIRouter(prefix="/m/{mandant_slug}")
 
-# Termin-neu-Maske: OV-Dropdown nur bei Aufruf von „Alle Termine“ (?von=alle-termine), nicht bei „Termine“ des OV.
-TERMIN_NEU_FROM_ALLE_QUERY = "von=alle-termine"
-
-
 class TerminKommentarPayload(BaseModel):
     body: str = Field("", max_length=4000)
 
@@ -1503,7 +1499,6 @@ def _termin_form_context(
     extern_gast: Optional[List[str]] = None,
     pdb: Optional[Session] = None,
     mandant_slug: Optional[str] = None,
-    from_alle_termine: bool = False,
 ) -> dict:
     if extern_gast is not None:
         auswahl = _filter_extern_gast_keys(extern_gast)
@@ -1511,18 +1506,6 @@ def _termin_form_context(
         auswahl = externe_teilnehmer_decode(termin.externe_teilnehmer_json)
     else:
         auswahl = []
-    termin_neu_ov_options: list[dict[str, str]] = []
-    if (
-        termin is None
-        and from_alle_termine
-        and pdb is not None
-        and mandant_slug is not None
-    ):
-        ov_slugs = _approved_ov_slugs_for_user_feeds(pdb, user)
-        if len(ov_slugs) > 1:
-            termin_neu_ov_options = _termin_neu_ov_options_for_form(
-                pdb, ov_slugs, mandant_slug
-            )
     ks = kreis_ov_slug()
     ms_ctx = (mandant_slug or (termin.mandant_slug if termin else "") or "").strip().lower()
     show_promoted = bool(
@@ -1535,8 +1518,6 @@ def _termin_form_context(
         "max_mb": MAX_UPLOAD_MB,
         "externe_optionen": EXTERNE_TEILNEHMER_OPTIONS,
         "externe_auswahl": auswahl,
-        "termin_neu_ov_options": termin_neu_ov_options,
-        "from_alle_termine": from_alle_termine,
         "show_promoted_all_ovs_checkbox": show_promoted,
         "promoted_all_ovs_checked": bool(termin and termin_is_promoted(termin)),
     }
@@ -1596,23 +1577,6 @@ def _ov_display_labels_for_slugs(pdb: Session, slugs: list[str]) -> dict[str, st
         o.slug.strip().lower(): ((o.display_name or "").strip() or o.slug)
         for o in ovs
     }
-
-
-def _termin_neu_ov_options_for_form(
-    pdb: Session,
-    slugs: list[str],
-    current_mandant_slug: str,
-) -> list[dict[str, str]]:
-    labels = _ov_display_labels_for_slugs(pdb, slugs)
-    opts: list[dict[str, str]] = []
-    for s in slugs:
-        sl = s.strip().lower()
-        opts.append({"slug": sl, "display_name": labels.get(sl, sl)})
-    cur = current_mandant_slug.strip().lower()
-    opts.sort(
-        key=lambda o: (0 if o["slug"] == cur else 1, o["display_name"].lower(), o["slug"]),
-    )
-    return opts
 
 
 def _can_manage_termin_cross_ov(pdb: Session, user: AuthenticatedUser, termin: Termin) -> bool:
@@ -1782,7 +1746,6 @@ def termine_list_alle(
     mp = _mp(request)
     feed_url_my = f"{base}{mp}/calendar/zusagen-alle.ics?t={my_token}"
     feed_url_all = f"{base}{mp}/calendar/termine-alle.ics?t={my_token}"
-    neuer_termin_href = f"{mp}/termine/neu?{TERMIN_NEU_FROM_ALLE_QUERY}"
     return templates.TemplateResponse(
         request,
         "termine_list.html",
@@ -1793,11 +1756,9 @@ def termine_list_alle(
             "feed_url_my": feed_url_my,
             "feed_url_all": feed_url_all,
             "page_title": "Alle Termine",
-            "show_neuer_termin_button": True,
-            "neuer_termin_button_label": "Termin hinzufügen",
+            "show_neuer_termin_button": False,
             "ics_my_label": "Meine Zusagen (alle Verbände)",
             "ics_all_label": "Alle Termine (alle Verbände)",
-            "neuer_termin_href": neuer_termin_href,
         },
     )
 
@@ -1808,9 +1769,7 @@ def termin_new_form(
     request: Request,
     pdb: Annotated[Session, Depends(get_platform_db)],
     user: CurrentUser,
-    von: Annotated[str | None, Query()] = None,
 ):
-    from_alle = (von or "").strip().lower().replace("_", "-") == "alle-termine"
     return templates.TemplateResponse(
         request,
         "termin_form.html",
@@ -1820,7 +1779,6 @@ def termin_new_form(
             error=None,
             pdb=pdb,
             mandant_slug=mandant_slug,
-            from_alle_termine=from_alle,
         ),
     )
 
@@ -1841,10 +1799,8 @@ async def termin_create(
     end_uhrzeit: Annotated[str, Form()] = "",
     extern_gast: Annotated[Optional[List[str]], Form()] = None,
     bild: Annotated[Optional[UploadFile], File()] = None,
-    von_alle_termine: Annotated[str, Form()] = "",
     promoted_all_ovs: Annotated[str | None, Form()] = None,
 ):
-    from_alle = von_alle_termine.strip() == "1"
     err = _parse_times(start_uhrzeit, end_uhrzeit)
     if err:
         return templates.TemplateResponse(
@@ -1857,7 +1813,6 @@ async def termin_create(
                 extern_gast=extern_gast,
                 pdb=pdb,
                 mandant_slug=mandant_slug,
-                from_alle_termine=from_alle,
             ),
             status_code=400,
         )
@@ -1912,7 +1867,6 @@ async def termin_create(
                                 extern_gast=extern_gast,
                                 pdb=pdb,
                                 mandant_slug=mandant_slug,
-                                from_alle_termine=from_alle,
                             ),
                             status_code=400,
                         )

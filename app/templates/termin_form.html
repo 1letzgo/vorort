@@ -69,24 +69,6 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.65),
       0 0 0 1px rgba(196, 30, 58, 0.06);
   }
-  .termin-form-card .termin-form-card__ov-panel {
-    background: linear-gradient(
-      165deg,
-      rgba(196, 30, 58, 0.18),
-      rgba(196, 30, 58, 0.09)
-    );
-    border-color: rgba(196, 30, 58, 0.28);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.45),
-      0 0 0 1px rgba(196, 30, 58, 0.07);
-  }
-  .termin-form-card .termin-form-card__ov-panel .ics-popup__label {
-    color: rgba(120, 24, 38, 0.95);
-  }
-  .termin-form-card .termin-form-card__ov-panel select {
-    background: var(--card);
-    border-color: rgba(196, 30, 58, 0.35);
-  }
   .termin-form-card .ics-popup__panel .ics-popup__label {
     margin: 0 0 0.55rem;
     font-size: 0.72rem;
@@ -136,16 +118,13 @@
 {{ app_header('Termin bearbeiten' if termin else 'Neuer Termin') }}
 
 <div class="page-toolbar" aria-label="Navigation">
-  <a href="{% if termin %}{{ mp }}/termine/{{ termin.id }}{% else %}{{ mp }}/termine{% endif %}" class="btn btn-sm btn-ghost btn-ico btn-with-label{% if not termin and termin_neu_ov_options %} js-termin-form-back-termine{% endif %}" aria-label="{% if termin %}Zur Terminansicht{% else %}Zur Terminliste{% endif %}">
+  <a href="{% if termin %}{{ mp }}/termine/{{ termin.id }}{% else %}{{ mp }}/termine{% endif %}" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="{% if termin %}Zur Terminansicht{% else %}Zur Terminliste{% endif %}">
     {{ ico.svg_arrow_left() }}<span class="btn-text">{% if termin %}Zurück{% else %}Termine{% endif %}</span>
   </a>
 </div>
 
 <div class="card card--flush termin-form-card">
-  <form method="post" class="ics-popup__form termin-form-card__form" id="termin-main-form" action="{% if termin %}{{ mp }}/termine/{{ termin.id }}/bearbeiten{% elif termin_neu_ov_options %}/m/{{ request.state.mandant_slug }}/termine/neu{% else %}{{ mp }}/termine/neu{% endif %}" enctype="multipart/form-data">
-    {% if not termin and from_alle_termine %}
-    <input type="hidden" name="von_alle_termine" value="1">
-    {% endif %}
+  <form method="post" class="ics-popup__form termin-form-card__form" id="termin-main-form" action="{% if termin %}{{ mp }}/termine/{{ termin.id }}/bearbeiten{% else %}{{ mp }}/termine/neu{% endif %}" enctype="multipart/form-data">
     <header class="ics-popup__head">
       <div class="ics-popup__head-icon" aria-hidden="true">
         {% if termin %}{{ ico.svg_pencil() }}{% else %}{{ ico.svg_plus() }}{% endif %}
@@ -168,18 +147,6 @@
         In allen Ortsverbänden anzeigen
       </label>
       <p class="muted" style="margin:0.5rem 0 0; font-size:.85rem;">Zusätzlich in den Terminlisten aller anderen Verbände sichtbar (nur Kreis).</p>
-    </section>
-    {% endif %}
-
-    {% if not termin and termin_neu_ov_options %}
-    <section class="ics-popup__panel termin-form-card__ov-panel" aria-label="Ortsverband">
-      <h3 class="ics-popup__label">Ortsverband</h3>
-      <label for="termin-neu-ov-select">Für welchen Ortsverband ist der Termin?</label>
-      <select id="termin-neu-ov-select" autocomplete="off" aria-label="Ortsverband für neuen Termin">
-        {% for o in termin_neu_ov_options %}
-        <option value="{{ o.slug }}"{% if o.slug == request.state.mandant_slug %} selected{% endif %}>{{ o.display_name }}</option>
-        {% endfor %}
-      </select>
     </section>
     {% endif %}
 
@@ -246,7 +213,7 @@
 
     <footer class="ics-popup__foot">
       <div class="termin-form-card__actions">
-        <a href="{% if termin %}{{ mp }}/termine/{{ termin.id }}{% else %}{{ mp }}/termine{% endif %}" class="btn btn-ghost btn-sm btn-ico btn-with-label{% if not termin and termin_neu_ov_options %} js-termin-form-back-termine{% endif %}" aria-label="Abbrechen">
+        <a href="{% if termin %}{{ mp }}/termine/{{ termin.id }}{% else %}{{ mp }}/termine{% endif %}" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Abbrechen">
           {{ ico.svg_x() }}<span class="btn-text">Abbrechen</span>
         </a>
         <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Speichern">
@@ -256,24 +223,4 @@
     </footer>
   </form>
 </div>
-{% if not termin and termin_neu_ov_options %}
-<script>
-  (function () {
-    var form = document.getElementById("termin-main-form");
-    var sel = document.getElementById("termin-neu-ov-select");
-    if (!form || !sel) return;
-    function mp(slug) {
-      return "/m/" + slug + "/";
-    }
-    function sync() {
-      var slug = sel.value;
-      form.action = mp(slug) + "termine/neu";
-      document.querySelectorAll(".js-termin-form-back-termine").forEach(function (a) {
-        a.href = mp(slug) + "termine";
-      });
-    }
-    sel.addEventListener("change", sync);
-  })();
-</script>
-{% endif %}
 {% endblock %}
