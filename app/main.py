@@ -280,8 +280,6 @@ def ist_kreis_admin(pdb: Session, user: AuthenticatedUser) -> bool:
     ks = kreis_ov_slug()
     if not ks:
         return False
-    if is_superadmin_username(user.username):
-        return False
     mem = (
         pdb.query(OvMembership)
         .filter(
