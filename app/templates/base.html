@@ -17,10 +17,13 @@
   {% include '_ics_surface_styles.html' %}
   {% block head %}{% endblock %}
 </head>
-<body>
+<body{% if request.state.show_app_shell_nav %} class="has-app-shell-tabbar"{% endif %}>
   <div class="wrap">
     {% block body %}{% endblock %}
   </div>
+  {% if request.state.show_app_shell_nav %}
+  {% include '_app_shell_nav.html' %}
+  {% endif %}
   <script>
     (function () {
       function syncWrapHeaderPad() {

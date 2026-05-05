@@ -144,6 +144,23 @@ class MenuOvCardOpenBody(BaseModel):
 
 tenant_router = APIRouter(prefix="/m/{mandant_slug}")
 
+
+def _request_rel_path(request: Request) -> str:
+    path = request.scope.get("path") or "/"
+    rp = (request.scope.get("root_path") or "").rstrip("/")
+    if rp and path.startswith(rp):
+        path = path[len(rp) :] or "/"
+    return path
+
+
+def _shell_nav_auth_exempt(rel: str) -> bool:
+    """Login/Registrierung — keine feste untere Tab-Leiste."""
+    parts = [p for p in rel.strip("/").split("/") if p]
+    if len(parts) >= 3 and parts[0] == "m":
+        return parts[2] in ("login", "registrierung")
+    return bool(parts) and parts[0] in ("login", "registrierung")
+
+
 app = FastAPI(title="Wahlkampf", lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie=SESSION_COOKIE)
 
@@ -167,10 +184,7 @@ async def mandanten_kontext(request: Request, call_next):
     request.state.mandanten_prefix = ""
     request.state.mandant_slug = ""
     request.state.ortsverband_name = ""
-    path = request.scope.get("path") or "/"
-    rp = (request.scope.get("root_path") or "").rstrip("/")
-    if rp and path.startswith(rp):
-        path = path[len(rp) :] or "/"
+    path = _request_rel_path(request)
     parts = [p for p in path.strip("/").split("/") if p]
     if len(parts) >= 2 and parts[0] == "m":
         slug = parts[1].lower()
@@ -192,6 +206,16 @@ async def mandanten_kontext(request: Request, call_next):
                 request.state.ortsverband_name = (ov.display_name or "").strip() or slug
         finally:
             pdb.close()
+
+    request.state.shell_nav_rel = path
+    request.state.show_app_shell_nav = False
+    if request.session.get("user_id"):
+        in_shell_scope = bool(request.state.mandanten_prefix) or bool(
+            getattr(request.state, "hide_mandant_path_prefix", False)
+        )
+        if in_shell_scope and not _shell_nav_auth_exempt(path):
+            request.state.show_app_shell_nav = True
+
     response = await call_next(request)
     return response
 
