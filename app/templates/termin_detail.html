@@ -3,7 +3,7 @@
 {% from '_termin_macros.html' import teilnehmer_liste %}
 {% import '_icons.html' as ico %}
 {% set t = row.termin %}
-{% set owner_mp = row.mandanten_prefix %}
+{% set owner_mp = row.owner_mandanten_prefix | default(row.mandanten_prefix) %}
 {% set path_prefix = request.scope.get('root_path') or '' %}
 {% block title %}{{ t.title }} — Termin — Wahlkampf{% endblock %}
 {% block head %}

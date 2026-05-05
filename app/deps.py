@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
@@ -18,6 +19,36 @@ def _effective_mandant_slug(request: Request) -> str:
     if ms:
         return str(ms).strip().lower()
     return DEFAULT_MANDANT_SLUG
+
+
+_TERMINE_CROSS_OV_PATH_RES = (
+    re.compile(r"^/termine/\d+$"),
+    re.compile(r"^/termine/\d+/(teilnehmen|absagen|abmelden)$"),
+    re.compile(r"^/termine/\d+/kommentare(/\d+)?$"),
+)
+
+
+def _relative_path_under_mandant(request: Request) -> str | None:
+    """Pfad relativ zu `/m/<slug>/`, z. B. `/termine/12/teilnehmen`."""
+    path = request.scope.get("path") or ""
+    rp = (request.scope.get("root_path") or "").rstrip("/")
+    if rp and path.startswith(rp):
+        path = path[len(rp) :] or "/"
+    parts = [p for p in path.strip("/").split("/") if p]
+    if len(parts) < 3 or parts[0] != "m":
+        return None
+    rest = parts[2:]
+    if not rest:
+        return "/"
+    return "/" + "/".join(rest)
+
+
+def _allow_logged_user_without_this_ov_membership(request: Request) -> bool:
+    """Ein OV-Link darf Kreistermine (teilnehmen, Detail …) ohne Mitgliedschaft in DIESEM Slug."""
+    rel = _relative_path_under_mandant(request)
+    if rel is None:
+        return False
+    return any(p.match(rel) for p in _TERMINE_CROSS_OV_PATH_RES)
 
 
 class AuthenticatedUser:
@@ -92,7 +123,33 @@ def get_current_user(
             )
             .first()
         )
-        if not membership or not membership.is_approved:
+        if membership is None:
+            any_approved = (
+                pdb.query(OvMembership)
+                .filter(
+                    OvMembership.user_id == pu.id,
+                    OvMembership.is_approved.is_(True),
+                )
+                .first()
+            )
+            if any_approved is None:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=(
+                        "Kein Zugang unter diesem Ortsverbands-Link. "
+                        "Bitte die App über deinen Ortsverband öffnen."
+                    ),
+                )
+            if _allow_logged_user_without_this_ov_membership(request):
+                return AuthenticatedUser(pu, slug, None)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "Kein Zugang unter diesem Ortsverbands-Link. "
+                    "Bitte die App über deinen Ortsverband öffnen."
+                ),
+            )
+        if not membership.is_approved:
             request.session.clear()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

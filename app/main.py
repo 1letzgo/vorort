@@ -167,6 +167,18 @@ def _browser_login_url(request: Request, slug: str, *, pending: bool = False) ->
     return _app_home_with_query(request, params)
 
 
+def _safe_login_next_path(raw: str | None) -> str | None:
+    """Nur gleiche Origin, Pfad — gegen Open-Redirect."""
+    if not raw:
+        return None
+    s = raw.strip()
+    if not s.startswith("/") or s.startswith("//"):
+        return None
+    if "\x00" in s or "\r" in s or "\n" in s:
+        return None
+    return s
+
+
 @app.exception_handler(HTTPException)
 async def http_exc(request: Request, exc: HTTPException):
     accept = request.headers.get("accept") or ""
@@ -312,9 +324,34 @@ def termin_sichtbar_in_mandant(
     if not t:
         return None
     ms_t = t.mandant_slug.strip().lower()
-    if ms_t == viewing_ms:
-        return t
     ks = kreis_ov_slug()
+
+    if ms_t == viewing_ms:
+        if ks and ms_t == ks:
+            if termin_is_promoted(t):
+                if is_superadmin_username(user.username):
+                    return t
+                mem_any = (
+                    pdb.query(OvMembership)
+                    .filter(
+                        OvMembership.user_id == user.id,
+                        OvMembership.is_approved.is_(True),
+                    )
+                    .first()
+                )
+                return t if mem_any else None
+            mem_here = (
+                pdb.query(OvMembership)
+                .filter(
+                    OvMembership.user_id == user.id,
+                    OvMembership.ov_slug == viewing_ms,
+                    OvMembership.is_approved.is_(True),
+                )
+                .first()
+            )
+            return t if mem_here else None
+        return t
+
     if not ks or ms_t != ks or not termin_is_promoted(t):
         return None
     if is_superadmin_username(user.username):
@@ -343,7 +380,9 @@ def _termin_row_for_viewing_ov(
     row = _termin_row_from_instance(pdb, t, user, kommentar_count=kommentar_count)
     ms_t = t.mandant_slug.strip().lower()
     vw = viewing_ms.strip().lower()
-    row["mandanten_prefix"] = f"/m/{ms_t}"
+    row["owner_mandanten_prefix"] = f"/m/{ms_t}"
+    row["viewing_mandanten_prefix"] = f"/m/{vw}"
+    row["mandanten_prefix"] = f"/m/{vw}"
     row["ov_display_name"] = (
         ov_labels.get(ms_t, ms_t) if ms_t != vw else ""
     )
@@ -688,6 +727,7 @@ def _login_submit_response(
     mandant_slug: str,
     username_raw: str,
     password: str,
+    login_next: str | None = None,
 ):
     ms = mandant_slug.strip().lower()
     if pdb.get(Ortsverband, ms) is None:
@@ -791,6 +831,9 @@ def _login_submit_response(
 
     request.session["user_id"] = pu.id
     request.session["mandant_slug"] = ms
+    safe_next = _safe_login_next_path(login_next)
+    if safe_next:
+        return RedirectResponse(safe_next, status_code=302)
     return RedirectResponse(f"{_mp(request)}/menu", status_code=302)
 
 
@@ -801,8 +844,16 @@ def login_submit(
     pdb: Annotated[Session, Depends(get_platform_db)],
     username: Annotated[str, Form()],
     password: Annotated[str, Form()],
+    login_next: Annotated[str | None, Form()] = None,
 ):
-    return _login_submit_response(pdb, request, mandant_slug, username, password)
+    return _login_submit_response(
+        pdb,
+        request,
+        mandant_slug,
+        username,
+        password,
+        login_next=login_next,
+    )
 
 
 def _mandant_features_for_menu(pdb: Session, mandant_slug: str) -> dict[str, bool]:

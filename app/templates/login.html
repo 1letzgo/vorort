@@ -9,6 +9,9 @@
   {% if error %}<div class="error">{{ error }}</div>{% endif %}
   {% if info %}<div class="info">{{ info }}</div>{% endif %}
   <form method="post" action="{{ request.state.mandanten_prefix }}/login">
+    {% if request.query_params.get('next') %}
+    <input type="hidden" name="login_next" value="{{ request.query_params.get('next') | e }}">
+    {% endif %}
     <label for="username">Benutzername</label>
     <input id="username" name="username" type="text" autocomplete="username" required placeholder="Dein Benutzername aus der Registrierung">
     <label for="password">Passwort</label>

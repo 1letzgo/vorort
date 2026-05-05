@@ -7,6 +7,7 @@
 {% macro termin_karte(row, vergangen=False) %}
 {% set t = row.termin %}
 {% set mp = row.mandanten_prefix | default(request.state.mandanten_prefix) %}
+{% set owner_mp = row.owner_mandanten_prefix | default(mp) %}
 <article class="card card--flush termin-card-list">
   <div class="termin-card-list__shell">
     <header class="ics-popup__head termin-card-list__head">
@@ -25,7 +26,7 @@
       <div class="termin-card-list__media-row">
         {% if t.image_path %}
         <div class="termin-card-list__thumb">
-          <img src="{{ mp }}/media/{{ t.image_path }}" alt="">
+          <img src="{{ owner_mp }}/media/{{ t.image_path }}" alt="">
         </div>
         {% endif %}
         <div class="termin-card-list__columns">
@@ -90,10 +91,10 @@
         </a>
         {% if row.kann_verwalten %}
         <div class="termin-footer-actions__admin">
-          <a href="{{ mp }}/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico" aria-label="Termin bearbeiten" title="Bearbeiten">
+          <a href="{{ owner_mp }}/termine/{{ t.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico" aria-label="Termin bearbeiten" title="Bearbeiten">
             {{ ico.svg_pencil() }}
           </a>
-          <a href="{{ mp }}/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico" aria-label="Termin löschen" title="Löschen">
+          <a href="{{ owner_mp }}/termine/{{ t.id }}/loeschen" class="btn btn-sm btn-danger btn-ico" aria-label="Termin löschen" title="Löschen">
             {{ ico.svg_trash() }}
           </a>
         </div>

@@ -7,6 +7,17 @@
     if (Array.isArray(d) && d.length) return String(d[0]);
     return null;
   }
+
+  function loginHrefFromTeilnahmeAction(form) {
+    try {
+      var u = new URL(form.action, window.location.origin);
+      var basePath = u.pathname.replace(/\/termine\/[^/]+\/(teilnehmen|absagen)\/?$/, '');
+      return basePath + '/login';
+    } catch (e) {
+      return '';
+    }
+  }
+
   document.addEventListener('submit', function (ev) {
     var form = ev.target;
     if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-teilnahme-live')) return;
@@ -21,9 +32,22 @@
       credentials: 'same-origin',
     })
       .then(function (res) {
-        if (res.status === 401 || res.status === 403) {
-          window.location.reload();
+        if (res.status === 401) {
+          var loginHref = loginHrefFromTeilnahmeAction(form);
+          if (loginHref) {
+            var sep = loginHref.indexOf('?') >= 0 ? '&' : '?';
+            var n = window.location.pathname + window.location.search;
+            window.location.href = loginHref + sep + 'next=' + encodeURIComponent(n);
+          } else {
+            window.location.reload();
+          }
           return Promise.reject(new Error('auth'));
+        }
+        if (res.status === 403) {
+          return res.json().catch(function () { return {}; }).then(function (data) {
+            alert(detailFrom(data) || 'Keine Berechtigung.');
+            return Promise.reject(new Error('auth'));
+          });
         }
         return res.json().catch(function () {
           return {};
