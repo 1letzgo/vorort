@@ -28,8 +28,9 @@ class Ortsverband(PlatformBase):
     slug: Mapped[str] = mapped_column(String(80), primary_key=True)
     display_name: Mapped[str] = mapped_column(String(200), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    # Optional: RSS (z. B. RIS „aktuelle Sitzungen“) → automatisch Fraktionstermine
-    fraktion_rss_feed_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Optional: Webcal/ICS-URL → Fraktionstermine; Abruf nur wenn fraktion_cal_abo_active
+    fraktion_cal_feed_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    fraktion_cal_abo_active: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class PlatformUser(PlatformBase):
@@ -74,8 +75,8 @@ class Termin(PlatformBase):
     __table_args__ = (
         UniqueConstraint(
             "mandant_slug",
-            "rss_import_key",
-            name="uq_termine_mandant_rss_import",
+            "cal_import_key",
+            name="uq_termine_mandant_cal_import",
         ),
     )
 
@@ -99,7 +100,7 @@ class Termin(PlatformBase):
     attachments_json: Mapped[str] = mapped_column(Text, default="[]")
     is_fraktion_termin: Mapped[bool] = mapped_column(Boolean, default=False)
     fraktion_vertraulich: Mapped[bool] = mapped_column(Boolean, default=False)
-    rss_import_key: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    cal_import_key: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
 
     creator: Mapped[Optional["PlatformUser"]] = relationship()
     teilnahmen: Mapped[List["TerminTeilnahme"]] = relationship(

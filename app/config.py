@@ -20,11 +20,35 @@ SESSION_COOKIE = "wahlkampf_session"
 ICS_TOKEN = os.environ.get("ICS_TOKEN", "")
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "8"))
 
-# RSS → Fraktionstermine (Hintergrundabruf). 0 = kein automatischer Abruf im Prozess.
-RSS_FRAKTION_IMPORT_INTERVAL_SECONDS = int(
-    os.environ.get("RSS_FRAKTION_IMPORT_INTERVAL_SECONDS", "3600")
+# Fraktions-Kalender-Abo (Webcal/ICS), Hintergrundabruf. 0 = aus.
+# Intervall: CAL_FRAKTION_SYNC_INTERVAL_HOURS (Standard 6) oder Sekunden mit CAL_FRAKTION_SYNC_INTERVAL_SECONDS.
+# Legacy: RSS_FRAKTION_IMPORT_INTERVAL_SECONDS (Sekunden) wird noch akzeptiert, wenn CAL_* nicht gesetzt.
+def _cal_fraktion_sync_interval_seconds() -> int:
+    raw_sec = os.environ.get("CAL_FRAKTION_SYNC_INTERVAL_SECONDS", "").strip()
+    if raw_sec:
+        return max(0, int(raw_sec))
+    legacy = os.environ.get("RSS_FRAKTION_IMPORT_INTERVAL_SECONDS", "").strip()
+    if legacy:
+        return max(0, int(legacy))
+    raw_h = os.environ.get("CAL_FRAKTION_SYNC_INTERVAL_HOURS", "6").strip()
+    if raw_h in ("0", "0.0"):
+        return 0
+    try:
+        h = float(raw_h)
+    except ValueError:
+        h = 6.0
+    sec = int(h * 3600)
+    return max(0, sec)
+
+
+CAL_FRAKTION_SYNC_INTERVAL_SECONDS = _cal_fraktion_sync_interval_seconds()
+
+CAL_FETCH_TIMEOUT_SECONDS = int(
+    os.environ.get(
+        "CAL_FETCH_TIMEOUT_SECONDS",
+        os.environ.get("RSS_FETCH_TIMEOUT_SECONDS", "25"),
+    )
 )
-RSS_FETCH_TIMEOUT_SECONDS = int(os.environ.get("RSS_FETCH_TIMEOUT_SECONDS", "25"))
 
 # Superadmin: Plattform (/admin/ortsverbaende …). Nur über Env (wie PUBLIC_SITE_*), kein Hardcode.
 # SUPERADMIN_USERNAME=einname oder SUPERADMIN_USERNAMES=a,b (Komma/Semikolon).

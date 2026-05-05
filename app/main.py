@@ -36,10 +36,10 @@ from app.platform_models import (
 )
 from app.auth import hash_password, verify_password
 from app.config import (
+    CAL_FRAKTION_SYNC_INTERVAL_SECONDS,
     ICS_TOKEN,
     MAX_UPLOAD_MB,
     PUBLIC_SITE_MANDANT_SLUG,
-    RSS_FRAKTION_IMPORT_INTERVAL_SECONDS,
     SECRET_KEY,
     SESSION_COOKIE,
     is_superadmin_username,
@@ -68,7 +68,7 @@ from app.mandant_features import (
 from app.mandant_host import apply_mandant_host_path_rewrite
 from app.platform_bootstrap import bootstrap_platform
 from app.platform_database import get_platform_db
-from app.rss_fraktion_import import run_all_fraktion_rss_imports
+from app.cal_fraktion_import import run_all_fraktion_cal_subscriptions
 from app.settings_store import (
     ensure_ics_token_for_ui,
     ensure_user_calendar_token,
@@ -96,26 +96,26 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
-_rss_log = logging.getLogger("wahlkampf.rss")
+_cal_log = logging.getLogger("wahlkampf.fraktion_cal")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     bootstrap_platform()
-    interval = RSS_FRAKTION_IMPORT_INTERVAL_SECONDS
+    interval = CAL_FRAKTION_SYNC_INTERVAL_SECONDS
     task: asyncio.Task | None = None
     if interval > 0:
 
-        async def _rss_background():
+        async def _cal_background():
             await asyncio.sleep(45)
             while True:
                 try:
-                    await asyncio.to_thread(run_all_fraktion_rss_imports)
+                    await asyncio.to_thread(run_all_fraktion_cal_subscriptions)
                 except Exception:
-                    _rss_log.exception("RSS-Import Fraktionstermine (Hintergrund)")
+                    _cal_log.exception("Kalender-Abo Fraktionstermine (Hintergrund)")
                 await asyncio.sleep(interval)
 
-        task = asyncio.create_task(_rss_background())
+        task = asyncio.create_task(_cal_background())
     yield
     if task:
         task.cancel()

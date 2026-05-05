@@ -174,8 +174,8 @@ def run_platform_sqlite_migrations(engine: Engine) -> None:
     migrate_termine_drop_vorbereitung_nachbereitung_sqlite(engine)
     migrate_ov_memberships_fraktion_member_sqlite(engine)
     migrate_termine_fraktion_flags_sqlite(engine)
-    migrate_ortsverbaende_fraktion_rss_feed_url_sqlite(engine)
-    migrate_termine_rss_import_key_sqlite(engine)
+    migrate_ortsverbaende_fraktion_calendar_subscription_sqlite(engine)
+    migrate_termine_cal_import_key_sqlite(engine)
 
 
 def migrate_ov_memberships_fraktion_member_sqlite(engine: Engine) -> None:
@@ -197,22 +197,43 @@ def migrate_ov_memberships_fraktion_member_sqlite(engine: Engine) -> None:
         )
 
 
-def migrate_ortsverbaende_fraktion_rss_feed_url_sqlite(engine: Engine) -> None:
-    """Optionaler RSS-Feed-URL je OV (Fraktionstermine-Import)."""
+def migrate_ortsverbaende_fraktion_calendar_subscription_sqlite(engine: Engine) -> None:
+    """ICS/Webcal-URL + Abo-Schalter; übernimmt Legacy-Spalte fraktion_rss_feed_url falls vorhanden."""
     if engine.dialect.name != "sqlite":
         return
     insp = inspect(engine)
     if not insp.has_table("ortsverbaende"):
         return
     cols = {c["name"] for c in insp.get_columns("ortsverbaende")}
-    if "fraktion_rss_feed_url" in cols:
-        return
     with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE ortsverbaende ADD COLUMN fraktion_rss_feed_url TEXT"))
+        if "fraktion_cal_feed_url" not in cols:
+            conn.execute(text("ALTER TABLE ortsverbaende ADD COLUMN fraktion_cal_feed_url TEXT"))
+        if "fraktion_cal_abo_active" not in cols:
+            conn.execute(
+                text(
+                    "ALTER TABLE ortsverbaende ADD COLUMN fraktion_cal_abo_active "
+                    "BOOLEAN NOT NULL DEFAULT 0"
+                ),
+            )
+        if "fraktion_rss_feed_url" in cols:
+            conn.execute(
+                text(
+                    """
+                    UPDATE ortsverbaende SET fraktion_cal_feed_url =
+                        REPLACE(REPLACE(TRIM(fraktion_rss_feed_url), 'webcal://', 'https://'), 'WEBCAL://', 'https://')
+                    WHERE (fraktion_cal_feed_url IS NULL OR TRIM(fraktion_cal_feed_url) = '')
+                      AND fraktion_rss_feed_url IS NOT NULL AND LENGTH(TRIM(fraktion_rss_feed_url)) > 0
+                    """
+                ),
+            )
+            try:
+                conn.execute(text("ALTER TABLE ortsverbaende DROP COLUMN fraktion_rss_feed_url"))
+            except OperationalError:
+                pass
 
 
-def migrate_termine_rss_import_key_sqlite(engine: Engine) -> None:
-    """Dedupe-Schlüssel für aus RSS importierte Fraktionstermine."""
+def migrate_termine_cal_import_key_sqlite(engine: Engine) -> None:
+    """Dedupe-Spalte für Kalenderimport (früher rss_import_key)."""
     if engine.dialect.name != "sqlite":
         return
     insp = inspect(engine)
@@ -220,16 +241,17 @@ def migrate_termine_rss_import_key_sqlite(engine: Engine) -> None:
         return
     cols = {c["name"] for c in insp.get_columns("termine")}
     with engine.begin() as conn:
-        if "rss_import_key" not in cols:
+        conn.execute(text("DROP INDEX IF EXISTS uq_termine_mandant_rss_import"))
+        if "cal_import_key" not in cols and "rss_import_key" in cols:
             conn.execute(
-                text(
-                    "ALTER TABLE termine ADD COLUMN rss_import_key VARCHAR(128)"
-                ),
+                text("ALTER TABLE termine RENAME COLUMN rss_import_key TO cal_import_key"),
             )
+        elif "cal_import_key" not in cols:
+            conn.execute(text("ALTER TABLE termine ADD COLUMN cal_import_key VARCHAR(128)"))
         conn.execute(
             text(
-                "CREATE UNIQUE INDEX IF NOT EXISTS uq_termine_mandant_rss_import "
-                "ON termine (mandant_slug, rss_import_key)"
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_termine_mandant_cal_import "
+                "ON termine (mandant_slug, cal_import_key)"
             ),
         )
 

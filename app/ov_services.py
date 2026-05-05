@@ -73,6 +73,10 @@ def delete_ortsverband_completely(db_platform: Session, slug: str) -> None:
 def register_ortsverband(db_platform: Session, slug: str, display_name: str) -> None:
     slug = slug.strip().lower()
     dn = " ".join(display_name.split()).strip() or slug
-    db_platform.merge(Ortsverband(slug=slug, display_name=dn))
+    ov = db_platform.get(Ortsverband, slug)
+    if ov is None:
+        db_platform.add(Ortsverband(slug=slug, display_name=dn))
+    else:
+        ov.display_name = dn
     db_platform.commit()
     provision_ortsverband_storage(slug)

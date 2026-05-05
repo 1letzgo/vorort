@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Annotated, List, Optional
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -18,7 +18,10 @@ from app.ov_services import (
     register_ortsverband,
     validate_ov_slug,
 )
-from app.rss_fraktion_import import import_fraktion_termine_from_feed
+from app.cal_fraktion_import import (
+    import_fraktion_termine_from_calendar,
+    validate_and_normalize_cal_subscription_url,
+)
 from app.mandant_features import (
     FEATURE_FRAKTION,
     FEATURE_PLAKATE,
@@ -169,18 +172,6 @@ def _sync_ov_memberships_superadmin(
         db.delete(m)
 
 
-def _validate_optional_fraktion_rss_url(raw: str) -> tuple[str | None, str | None]:
-    s = (raw or "").strip()
-    if not s:
-        return None, None
-    if len(s) > 8000:
-        return None, "Die RSS-URL ist zu lang."
-    p = urlparse(s)
-    if p.scheme not in ("http", "https") or not p.netloc:
-        return None, "RSS-URL muss eine gültige http(s)-Adresse sein."
-    return s, None
-
-
 @router.get("/admin", include_in_schema=False)
 def superadmin_root():
     return RedirectResponse("/admin/nutzer", status_code=302)
@@ -214,9 +205,10 @@ def superadmin_ov_new_form(
             "error": None,
             "ov": None,
             "is_new": True,
-            "rss_feed_url_input": None,
-            "rss_flash_created": None,
-            "rss_flash_err": None,
+            "cal_feed_url_input": None,
+            "cal_flash_created": None,
+            "cal_flash_err": None,
+            "flash_ov_gespeichert": False,
         },
     )
 
@@ -238,9 +230,10 @@ def superadmin_ov_new_submit(
                 "error": err,
                 "ov": None,
                 "is_new": True,
-                "rss_feed_url_input": None,
-                "rss_flash_created": None,
-                "rss_flash_err": None,
+                "cal_feed_url_input": None,
+                "cal_flash_created": None,
+                "cal_flash_err": None,
+                "flash_ov_gespeichert": False,
             },
             status_code=400,
         )
@@ -253,9 +246,10 @@ def superadmin_ov_new_submit(
                 "error": "Dieser Slug existiert bereits.",
                 "ov": None,
                 "is_new": True,
-                "rss_feed_url_input": None,
-                "rss_flash_created": None,
-                "rss_flash_err": None,
+                "cal_feed_url_input": None,
+                "cal_flash_created": None,
+                "cal_flash_err": None,
+                "flash_ov_gespeichert": False,
             },
             status_code=400,
         )
@@ -273,11 +267,12 @@ def superadmin_ov_edit_form(
     ov = db.get(Ortsverband, slug.strip().lower())
     if not ov:
         raise HTTPException(status_code=404, detail="Unbekannt")
-    rss_created_raw = request.query_params.get("rss_import_created")
-    rss_flash_created: int | None = None
-    if rss_created_raw is not None and rss_created_raw.isdigit():
-        rss_flash_created = int(rss_created_raw)
-    rss_flash_err = request.query_params.get("rss_import_err") or None
+    cal_created_raw = request.query_params.get("cal_import_created")
+    cal_flash_created: int | None = None
+    if cal_created_raw is not None and cal_created_raw.isdigit():
+        cal_flash_created = int(cal_created_raw)
+    cal_flash_err = request.query_params.get("cal_import_err") or None
+    flash_ov_gespeichert = request.query_params.get("gespeichert") == "1"
     return templates.TemplateResponse(
         request,
         "superadmin_ov_form.html",
@@ -288,9 +283,10 @@ def superadmin_ov_edit_form(
             "feature_plakate": is_mandant_feature_enabled(db, ov.slug, FEATURE_PLAKATE),
             "feature_sharepic": is_mandant_feature_enabled(db, ov.slug, FEATURE_SHAREPIC),
             "feature_fraktion": is_mandant_feature_enabled(db, ov.slug, FEATURE_FRAKTION),
-            "rss_feed_url_input": None,
-            "rss_flash_created": rss_flash_created,
-            "rss_flash_err": rss_flash_err,
+            "cal_feed_url_input": None,
+            "cal_flash_created": cal_flash_created,
+            "cal_flash_err": cal_flash_err,
+            "flash_ov_gespeichert": flash_ov_gespeichert,
         },
     )
 
@@ -305,12 +301,13 @@ def superadmin_ov_edit_submit(
     feature_plakate: Annotated[Optional[str], Form()] = None,
     feature_sharepic: Annotated[Optional[str], Form()] = None,
     feature_fraktion: Annotated[Optional[str], Form()] = None,
-    fraktion_rss_feed_url: Annotated[str, Form()] = "",
+    fraktion_cal_feed_url: Annotated[str, Form()] = "",
+    fraktion_cal_abo_active: Annotated[Optional[str], Form()] = None,
 ):
     ov = db.get(Ortsverband, slug.strip().lower())
     if not ov:
         raise HTTPException(status_code=404, detail="Unbekannt")
-    feed_u, feed_err = _validate_optional_fraktion_rss_url(fraktion_rss_feed_url)
+    feed_u, feed_err = validate_and_normalize_cal_subscription_url(fraktion_cal_feed_url)
     if feed_err:
         return templates.TemplateResponse(
             request,
@@ -322,25 +319,30 @@ def superadmin_ov_edit_submit(
                 "feature_plakate": is_mandant_feature_enabled(db, ov.slug, FEATURE_PLAKATE),
                 "feature_sharepic": is_mandant_feature_enabled(db, ov.slug, FEATURE_SHAREPIC),
                 "feature_fraktion": is_mandant_feature_enabled(db, ov.slug, FEATURE_FRAKTION),
-                "rss_feed_url_input": fraktion_rss_feed_url.strip(),
-                "rss_flash_created": None,
-                "rss_flash_err": None,
+                "cal_feed_url_input": fraktion_cal_feed_url.strip(),
+                "cal_flash_created": None,
+                "cal_flash_err": None,
+                "flash_ov_gespeichert": False,
             },
             status_code=400,
         )
     ov.display_name = " ".join(display_name.split()).strip() or ov.slug
-    ov.fraktion_rss_feed_url = feed_u
+    ov.fraktion_cal_feed_url = feed_u
+    ov.fraktion_cal_abo_active = fraktion_cal_abo_active == "1"
     ms = ov.slug.strip().lower()
     merge_mandant_feature(db, ms, FEATURE_PLAKATE, feature_plakate == "1")
     merge_mandant_feature(db, ms, FEATURE_SHAREPIC, feature_sharepic == "1")
     merge_mandant_feature(db, ms, FEATURE_FRAKTION, feature_fraktion == "1")
     db.add(ov)
     db.commit()
-    return RedirectResponse("/admin/ortsverbaende", status_code=302)
+    return RedirectResponse(
+        f"/admin/ortsverbaende/{ms}/bearbeiten?gespeichert=1",
+        status_code=302,
+    )
 
 
-@router.post("/admin/ortsverbaende/{slug}/fraktion-rss-sync")
-async def superadmin_ov_fraktion_rss_sync(
+@router.post("/admin/ortsverbaende/{slug}/fraktion-cal-sync")
+async def superadmin_ov_fraktion_cal_sync(
     request: Request,
     slug: str,
     db: Annotated[Session, Depends(get_platform_db)],
@@ -351,27 +353,27 @@ async def superadmin_ov_fraktion_rss_sync(
     if not ov:
         raise HTTPException(status_code=404, detail="Unbekannt")
     form = await request.form()
-    raw_feed = form.get("fraktion_rss_feed_url")
+    raw_feed = form.get("fraktion_cal_feed_url")
     if isinstance(raw_feed, str):
         draft = raw_feed.strip()
         if draft:
-            feed_u, feed_err = _validate_optional_fraktion_rss_url(raw_feed)
+            feed_u, feed_err = validate_and_normalize_cal_subscription_url(raw_feed)
             if feed_err:
                 return RedirectResponse(
-                    f"/admin/ortsverbaende/{s}/bearbeiten?rss_import_err={quote(feed_err)}",
+                    f"/admin/ortsverbaende/{s}/bearbeiten?cal_import_err={quote(feed_err)}",
                     status_code=302,
                 )
             feed_url = feed_u or ""
         else:
             feed_url = ""
     else:
-        feed_url = ov.fraktion_rss_feed_url or ""
+        feed_url = ov.fraktion_cal_feed_url or ""
 
-    n, err = import_fraktion_termine_from_feed(db, ov.slug, feed_url)
+    n, err = import_fraktion_termine_from_calendar(db, ov.slug, feed_url)
     base = f"/admin/ortsverbaende/{s}/bearbeiten"
     if err:
-        return RedirectResponse(f"{base}?rss_import_err={quote(err)}", status_code=302)
-    return RedirectResponse(f"{base}?rss_import_created={n}", status_code=302)
+        return RedirectResponse(f"{base}?cal_import_err={quote(err)}", status_code=302)
+    return RedirectResponse(f"{base}?cal_import_created={n}", status_code=302)
 
 
 @router.get("/admin/ortsverbaende/{slug}/loeschen", response_class=HTMLResponse)

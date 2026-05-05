@@ -31,8 +31,9 @@
 
       {% if error %}<div class="error">{{ error }}</div>{% endif %}
       {% if not is_new %}
-      {% if rss_flash_created is not none %}<div class="success" style="margin-bottom: 0.85rem;">{{ rss_flash_created }} neue Termine aus dem RSS übernommen.</div>{% endif %}
-      {% if rss_flash_err %}<div class="error" style="margin-bottom: 0.85rem;">RSS-Abruf: {{ rss_flash_err }}</div>{% endif %}
+      {% if flash_ov_gespeichert %}<div class="success" style="margin-bottom: 0.85rem;">Änderungen gespeichert.</div>{% endif %}
+      {% if cal_flash_created is not none %}<div class="success" style="margin-bottom: 0.85rem;">{{ cal_flash_created }} neue Termine aus dem Kalender übernommen.</div>{% endif %}
+      {% if cal_flash_err %}<div class="error" style="margin-bottom: 0.85rem;">Kalender-Abruf: {{ cal_flash_err }}</div>{% endif %}
       {% endif %}
 
       {% if is_new %}
@@ -70,18 +71,23 @@
         </fieldset>
 
         <fieldset style="margin-top: 1rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem;">
-          <legend class="ics-popup__label" style="padding: 0 0.35rem;">RSS-Feed (Fraktionstermine)</legend>
+          <legend class="ics-popup__label" style="padding: 0 0.35rem;">Kalender-Abo (Fraktionstermine)</legend>
           <p class="muted" style="margin: 0 0 0.65rem; font-size: 0.84rem;">
-            Optional: Öffentlicher RSS-Link (z. B. RIS „Aktuelle Sitzungen“). Wird regelmäßig abgerufen und neue Einträge als Fraktionstermine angelegt. Nur wirksam, wenn „Fraktion“ aktiviert ist.
+            ICS/Webcal-Link (z. B. RIS-Kalender). Als https gespeichert (webcal:// wird umgeschrieben). Mit aktivem Abo wird der Kalender regelmäßig abgerufen und neue Termine angelegt. Zum Beenden Abo deaktivieren oder URL leeren und speichern.
           </p>
-          <label for="fraktion-rss-url">Feed-URL</label>
-          <input id="fraktion-rss-url" name="fraktion_rss_feed_url" type="url" inputmode="url" maxlength="8000"
-            placeholder="https://…"
-            value="{{ rss_feed_url_input if rss_feed_url_input is not none else (ov.fraktion_rss_feed_url or '') }}">
+          <label for="fraktion-cal-url">Kalender-URL</label>
+          {# Erhaltene webcal://-Links werden serverseitig nach https normalisiert #}
+          <input id="fraktion-cal-url" name="fraktion_cal_feed_url" type="text" inputmode="url" maxlength="8000"
+            placeholder="webcal://… oder https://…"
+            value="{{ cal_feed_url_input if cal_feed_url_input is not none else (ov.fraktion_cal_feed_url or '') }}">
+          <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-top: 0.65rem; cursor: pointer;">
+            <input type="checkbox" name="fraktion_cal_abo_active" value="1" {% if ov.fraktion_cal_abo_active %}checked{% endif %}>
+            Kalender-Abo aktiv (automatischer Abruf)
+          </label>
           {% if feature_fraktion %}
           <p style="margin: 0.75rem 0 0;">
-            <button type="submit" formaction="/admin/ortsverbaende/{{ ov.slug }}/fraktion-rss-sync" formmethod="post" class="btn btn-sm btn-ghost btn-with-label" aria-label="RSS jetzt abrufen">
-              <span class="btn-text">RSS jetzt abrufen</span>
+            <button type="submit" formaction="/admin/ortsverbaende/{{ ov.slug }}/fraktion-cal-sync" formmethod="post" class="btn btn-sm btn-ghost btn-with-label" aria-label="Kalender jetzt abrufen">
+              <span class="btn-text">Kalender jetzt abrufen</span>
             </button>
           </p>
           {% endif %}

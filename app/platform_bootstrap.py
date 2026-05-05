@@ -28,7 +28,7 @@ def bootstrap_platform() -> None:
                     continue
                 slug = child.name.strip().lower()
                 if (child / "wahlkampf.db").is_file() and db.get(Ortsverband, slug) is None:
-                    db.merge(
+                    db.add(
                         Ortsverband(
                             slug=slug,
                             display_name=slug.replace("-", " ").replace("_", " ").title(),
