@@ -902,45 +902,17 @@ def _login_submit_response(
     if is_superadmin_username(pu.username):
         pass
     elif mem is None:
-        pdb.add(
-            OvMembership(
-                user_id=pu.id,
-                ov_slug=ms,
-                is_admin=False,
-                is_approved=False,
+        return _login_shell_response(
+            request,
+            pdb,
+            mandant_slug_for_select=ms,
+            error=(
+                "Für diesen Ortsverband bist du noch nicht freigeschaltet. "
+                "Bitte mit einem freigeschalteten OV anmelden und in „Mein Konto“ einen weiteren OV anfragen."
             ),
+            info=None,
+            status_code=403,
         )
-        try:
-            pdb.commit()
-        except IntegrityError:
-            pdb.rollback()
-        else:
-            return _login_shell_response(
-                request,
-                pdb,
-                mandant_slug_for_select=ms,
-                error=None,
-                info=(
-                    "Beitritt zu diesem Ortsverband wurde angefragt. Du nutzt bereits denselben "
-                    "Benutzernamen wie bei einem anderen OV — das ist vorgesehen. Sobald hier eine "
-                    "Administratorin oder ein Administrator dich freischaltet, meldest du dich "
-                    "wie gewohnt mit Benutzername und Passwort an."
-                ),
-            )
-        mem = (
-            pdb.query(OvMembership)
-            .filter(OvMembership.user_id == pu.id, OvMembership.ov_slug == ms)
-            .first()
-        )
-        if mem is None:
-            return _login_shell_response(
-                request,
-                pdb,
-                mandant_slug_for_select=ms,
-                error="Der Beitritt konnte nicht gespeichert werden. Bitte später erneut versuchen.",
-                info=None,
-                status_code=500,
-            )
 
     if not is_superadmin_username(pu.username):
         assert mem is not None
@@ -1072,12 +1044,44 @@ def _profil_template_response(
     request: Request,
     *,
     user: AuthenticatedUser,
+    pdb: Session,
     pu: PlatformUser,
     error: str | None,
+    info: str | None,
     saved: bool,
     display_name_prefill: str,
     status_code: int = 200,
 ):
+    membership_rows = (
+        pdb.query(OvMembership, Ortsverband)
+        .join(Ortsverband, OvMembership.ov_slug == Ortsverband.slug)
+        .filter(OvMembership.user_id == user.id)
+        .order_by(func.lower(Ortsverband.display_name), OvMembership.ov_slug.asc())
+        .all()
+    )
+    memberships = []
+    existing_slugs: set[str] = set()
+    for m, ov in membership_rows:
+        slug = (ov.slug or "").strip().lower()
+        existing_slugs.add(slug)
+        dn = (ov.display_name or "").strip() or slug
+        memberships.append(
+            {
+                "slug": slug,
+                "display_name": dn,
+                "is_admin": bool(m.is_admin),
+                "is_approved": bool(m.is_approved),
+            }
+        )
+
+    requestable_ovs = []
+    for ov in _query_ortsverbaende_sorted(pdb):
+        slug = (ov.slug or "").strip().lower()
+        if slug in existing_slugs:
+            continue
+        dn = (ov.display_name or "").strip() or slug
+        requestable_ovs.append({"slug": slug, "display_name": dn})
+
     return templates.TemplateResponse(
         request,
         "profil.html",
@@ -1085,8 +1089,11 @@ def _profil_template_response(
             "user": user,
             "platform_user": pu,
             "error": error,
+            "info": info,
             "saved": saved,
             "display_name_prefill": display_name_prefill,
+            "profile_memberships": memberships,
+            "profile_requestable_ovs": requestable_ovs,
         },
         status_code=status_code,
     )
@@ -1104,11 +1111,23 @@ def profil_anzeigen(
     if not pu:
         raise HTTPException(status_code=404, detail="Nutzer nicht gefunden")
     dn = (pu.display_name or "").strip()
+    ov_req = (request.query_params.get("ov_req") or "").strip().lower()
+    info_msg: str | None = None
+    if ov_req == "sent":
+        info_msg = "Anfrage wurde gesendet. Sobald ein Admin freischaltet, erscheint der OV im Menü."
+    elif ov_req == "pending":
+        info_msg = "Für diesen Ortsverband läuft bereits eine Anfrage."
+    elif ov_req == "approved":
+        info_msg = "Für diesen Ortsverband bist du bereits freigeschaltet."
+    elif ov_req == "unknown":
+        info_msg = "Der gewählte Ortsverband wurde nicht gefunden."
     return _profil_template_response(
         request,
         user=user,
+        pdb=pdb,
         pu=pu,
         error=None,
+        info=info_msg,
         saved=bool(gespeichert),
         display_name_prefill=dn or user.display_name or user.username,
     )
@@ -1156,8 +1175,10 @@ def profil_speichern(
         return _profil_template_response(
             request,
             user=user,
+            pdb=pdb,
             pu=pu,
             error=err,
+            info=None,
             saved=False,
             display_name_prefill=dn,
             status_code=400,
@@ -1169,6 +1190,42 @@ def profil_speichern(
     pdb.add(pu)
     pdb.commit()
     return RedirectResponse(f"{_mp(request)}/profil?gespeichert=1", status_code=302)
+
+
+@tenant_router.post("/profil/ov-anfragen")
+def profil_ov_anfragen(
+    mandant_slug: str,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    user: CurrentUser,
+    ov_slug: Annotated[str, Form()],
+):
+    _ = mandant_slug
+    ms = (ov_slug or "").strip().lower()
+    if not ms or pdb.get(Ortsverband, ms) is None:
+        return RedirectResponse(f"{_mp(request)}/profil?ov_req=unknown", status_code=302)
+    existing = (
+        pdb.query(OvMembership)
+        .filter(OvMembership.user_id == user.id, OvMembership.ov_slug == ms)
+        .first()
+    )
+    if existing:
+        state = "approved" if existing.is_approved else "pending"
+        return RedirectResponse(f"{_mp(request)}/profil?ov_req={state}", status_code=302)
+    pdb.add(
+        OvMembership(
+            user_id=user.id,
+            ov_slug=ms,
+            is_admin=False,
+            is_approved=False,
+        )
+    )
+    try:
+        pdb.commit()
+    except IntegrityError:
+        pdb.rollback()
+        return RedirectResponse(f"{_mp(request)}/profil?ov_req=pending", status_code=302)
+    return RedirectResponse(f"{_mp(request)}/profil?ov_req=sent", status_code=302)
 
 
 @tenant_router.get("/sharepic", response_class=HTMLResponse)
@@ -1402,9 +1459,8 @@ def registrierung_submit(
             error=(
                 "Dieser Benutzername ist bereits auf der Plattform vergeben — ein zweites Konto "
                 "gibt es nicht. Hast du dich schon woanders registriert und willst diesem "
-                "Ortsverband beitreten? Dann hier nicht erneut registrieren, sondern mit "
-                "Benutzername und Passwort anmelden; danach wird ein Beitritt beantragt oder "
-                "du wirst freigeschaltet."
+                "Ortsverband beitreten? Dann hier nicht erneut registrieren, sondern in einem "
+                "bereits freigeschalteten OV anmelden und in „Mein Konto“ den weiteren OV anfragen."
             ),
             name_value=display_name,
             username_value=username_raw,

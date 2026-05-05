@@ -34,6 +34,62 @@
     display: flex;
     justify-content: flex-end;
   }
+  .profil-ov-card__head {
+    margin: 0;
+    padding: 0.72rem 1.25rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: color-mix(in srgb, var(--border) 35%, transparent);
+    border-bottom: 1px solid var(--border);
+  }
+  .profil-ov-card__body {
+    padding: 0.95rem 1.25rem 1.05rem;
+  }
+  .profil-ov-chip-list {
+    margin: 0 0 0.85rem;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .profil-ov-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    color: var(--text);
+    background: color-mix(in srgb, var(--card) 86%, var(--border) 14%);
+  }
+  .profil-ov-chip--pending {
+    color: var(--muted);
+  }
+  .profil-ov-request-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.55rem;
+    align-items: end;
+  }
+  .profil-ov-request-form label {
+    margin-top: 0;
+  }
+  .profil-ov-request-form .btn {
+    white-space: nowrap;
+  }
+  @media (max-width: 560px) {
+    .profil-ov-request-form {
+      grid-template-columns: 1fr;
+    }
+    .profil-ov-request-form .btn {
+      justify-self: flex-end;
+    }
+  }
 </style>
 {% endblock %}
 {% block body %}
@@ -53,6 +109,7 @@
 
     {% if saved %}<div class="info">Änderungen wurden gespeichert.</div>{% endif %}
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    {% if info %}<div class="info">{{ info }}</div>{% endif %}
 
     <section class="ics-popup__panel ics-popup__panel--accent" aria-label="Anzeigename">
       <h3 class="ics-popup__label">Konto</h3>
@@ -88,6 +145,39 @@
       </div>
     </footer>
   </form>
+</div>
+
+<div class="card card--flush profil-ov-card">
+  <h2 class="profil-ov-card__head">Ortsverbände</h2>
+  <div class="profil-ov-card__body">
+    {% if profile_memberships %}
+    <ul class="profil-ov-chip-list" role="list">
+      {% for m in profile_memberships %}
+      <li class="profil-ov-chip{% if not m.is_approved %} profil-ov-chip--pending{% endif %}">
+        <span>{{ m.display_name }}</span>
+        <span aria-hidden="true">·</span>
+        <span>{% if m.is_approved %}aktiv{% else %}angefragt{% endif %}{% if m.is_admin %} · Admin{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if profile_requestable_ovs %}
+    <form method="post" action="{{ public_tenant_prefix(request) }}/profil/ov-anfragen" class="profil-ov-request-form">
+      <div>
+        <label for="profil-ov-request">Weiteren OV anfragen</label>
+        <select id="profil-ov-request" name="ov_slug" required>
+          {% for ov in profile_requestable_ovs %}
+          <option value="{{ ov.slug }}">{{ ov.display_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="OV anfragen">
+        {{ ico.svg_plus() }}<span class="btn-text">Anfragen</span>
+      </button>
+    </form>
+    {% endif %}
+  </div>
 </div>
 
 <div class="card card--flush profil-logout-card">
