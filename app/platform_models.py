@@ -101,6 +101,7 @@ class Termin(PlatformBase):
     is_fraktion_termin: Mapped[bool] = mapped_column(Boolean, default=False)
     fraktion_vertraulich: Mapped[bool] = mapped_column(Boolean, default=False)
     cal_import_key: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    link_url: Mapped[Optional[str]] = mapped_column(String(2000), nullable=True)
 
     creator: Mapped[Optional["PlatformUser"]] = relationship()
     teilnahmen: Mapped[List["TerminTeilnahme"]] = relationship(

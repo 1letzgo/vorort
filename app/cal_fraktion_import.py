@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 import urllib.request
 from datetime import date, datetime, time, timezone
 from typing import Any
@@ -95,6 +96,68 @@ def _event_import_key(uid: str, starts_at: datetime, recurrence_id: Any) -> str:
     return hashlib.sha256(base).hexdigest()
 
 
+def _norm_url_token(u: str) -> str:
+    return u.strip().rstrip(").,]>;")
+
+
+def extract_description_and_link_from_ics_description(raw: str) -> tuple[str, str | None]:
+    """Entfernt ALLRIS-Boilerplate aus DESCRIPTION und liefert optional den Sitzungs-Link."""
+    text = (raw or "").strip()
+    if not text:
+        return "", None
+
+    urls = [
+        _norm_url_token(m.group(0))
+        for m in re.finditer(r"https?://[^\s<>]+", text, flags=re.I)
+    ]
+    link: str | None = None
+    for u in urls:
+        ul = u.lower()
+        if "si010_e.asp" in ul or "/bi/si010" in ul:
+            link = u
+            break
+    if link is None:
+        for u in reversed(urls):
+            if "ris." in u.lower() and "/bi/" in u.lower():
+                link = u
+                break
+    if link is None and urls:
+        link = urls[-1]
+
+    lines = text.splitlines()
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        st = lines[i].strip()
+        if re.match(r"(?i)^exportiert aus allris am\b", st):
+            i += 1
+            continue
+        if re.match(r"(?i)^die sitzung in allris net:?\s*$", st):
+            i += 1
+            while i < len(lines) and not lines[i].strip():
+                i += 1
+            if i < len(lines):
+                cand = _norm_url_token(lines[i].strip())
+                if cand.lower().startswith("http"):
+                    if link is None:
+                        link = cand
+                    i += 1
+                    continue
+            continue
+        if link and st.lower().startswith("http"):
+            if _norm_url_token(st).lower() == _norm_url_token(link).lower():
+                i += 1
+                continue
+        out.append(lines[i])
+        i += 1
+
+    desc = "\n".join(out).strip()
+    desc = re.sub(r"\n{3,}", "\n\n", desc)
+    if link and len(link) > 2000:
+        link = link[:2000]
+    return desc, link
+
+
 def parse_vevents_from_ics(raw: bytes) -> list[dict]:
     cal = Calendar.from_ical(raw)
     out: list[dict] = []
@@ -123,13 +186,25 @@ def parse_vevents_from_ics(raw: bytes) -> list[dict]:
 
         title = _prop_as_str(component, "summary", 200) or "(Kalender)"
         location = _prop_as_str(component, "location", 300)
-        description = _prop_as_str(component, "description", 20000)
+        desc_raw = _prop_as_str(component, "description", 20000)
+        desc_clean, link_from_desc = extract_description_and_link_from_ics_description(desc_raw)
+
+        link_prop = _prop_as_str(component, "url", 2000).strip()
+        link_final: str | None = None
+        for cand in (link_prop, link_from_desc):
+            if not cand:
+                continue
+            p = urlparse(cand)
+            if p.scheme in ("http", "https") and p.netloc:
+                link_final = cand[:2000]
+                break
 
         out.append(
             {
                 "title": title,
                 "location": location,
-                "description": description,
+                "description": desc_clean,
+                "link_url": link_final,
                 "starts_at": starts_at,
                 "ends_at": ends_at,
                 "import_key": _event_import_key(
@@ -194,6 +269,7 @@ def import_fraktion_termine_from_calendar(
             is_fraktion_termin=True,
             fraktion_vertraulich=False,
             cal_import_key=dedupe,
+            link_url=(ev.get("link_url") or None),
         )
         db.add(termin)
         try:

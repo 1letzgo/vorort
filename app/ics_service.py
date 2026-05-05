@@ -64,6 +64,9 @@ def build_ics_calendar(
             ev.add("description", "\n\n".join(desc_parts))
         if t.location:
             ev.add("location", t.location)
+        link_u = getattr(t, "link_url", None)
+        if link_u:
+            ev.add("url", link_u)
         start = t.starts_at
         if start.tzinfo is None:
             start = start.replace(tzinfo=TZ)

@@ -5,7 +5,7 @@ import logging
 import re
 import uuid
 from contextlib import asynccontextmanager
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from datetime import date, datetime, time
 from pathlib import Path
 from types import SimpleNamespace
@@ -1745,6 +1745,19 @@ def _termin_teilnahme_live_payload(
     }
 
 
+def _termin_link_url_normalized(raw: str) -> tuple[str | None, str | None]:
+    """Leer oder gültige http(s)-URL (max. 2000 Zeichen)."""
+    s = (raw or "").strip()
+    if not s:
+        return None, None
+    if len(s) > 2000:
+        return None, "Link darf höchstens 2000 Zeichen haben."
+    p = urlparse(s)
+    if p.scheme not in ("http", "https") or not p.netloc:
+        return None, "Link muss mit http:// oder https:// beginnen und eine gültige Adresse haben."
+    return s, None
+
+
 def _filter_extern_gast_keys(extern_gast: Optional[List[str]]) -> list[str]:
     if not extern_gast:
         return []
@@ -2119,6 +2132,7 @@ async def termin_create(
     start_uhrzeit: Annotated[str, Form()],
     description: Annotated[str, Form()] = "",
     location: Annotated[str, Form()] = "",
+    link_url: Annotated[str, Form()] = "",
     end_uhrzeit: Annotated[str, Form()] = "",
     extern_gast: Annotated[Optional[List[str]], Form()] = None,
     promoted_all_ovs: Annotated[str | None, Form()] = None,
@@ -2134,6 +2148,22 @@ async def termin_create(
                 user=user,
                 termin=None,
                 error=err,
+                extern_gast=extern_gast,
+                pdb=pdb,
+                mandant_slug=mandant_slug,
+                termin_form_segment="termine",
+            ),
+            status_code=400,
+        )
+    link_u, link_err = _termin_link_url_normalized(link_url)
+    if link_err:
+        return templates.TemplateResponse(
+            request,
+            "termin_form.html",
+            _termin_form_context(
+                user=user,
+                termin=None,
+                error=link_err,
                 extern_gast=extern_gast,
                 pdb=pdb,
                 mandant_slug=mandant_slug,
@@ -2166,6 +2196,7 @@ async def termin_create(
         promoted_all_ovs=promoted,
         is_fraktion_termin=False,
         fraktion_vertraulich=False,
+        link_url=link_u,
     )
     pdb.add(t)
     pdb.flush()
@@ -2310,6 +2341,7 @@ async def fraktion_termin_create(
     start_uhrzeit: Annotated[str, Form()],
     description: Annotated[str, Form()] = "",
     location: Annotated[str, Form()] = "",
+    link_url: Annotated[str, Form()] = "",
     end_uhrzeit: Annotated[str, Form()] = "",
     extern_gast: Annotated[Optional[List[str]], Form()] = None,
     promoted_all_ovs: Annotated[str | None, Form()] = None,
@@ -2327,6 +2359,22 @@ async def fraktion_termin_create(
                 user=user,
                 termin=None,
                 error=err,
+                extern_gast=extern_gast,
+                pdb=pdb,
+                mandant_slug=mandant_slug,
+                termin_form_segment="fraktion/termine",
+            ),
+            status_code=400,
+        )
+    link_u, link_err = _termin_link_url_normalized(link_url)
+    if link_err:
+        return templates.TemplateResponse(
+            request,
+            "termin_form.html",
+            _termin_form_context(
+                user=user,
+                termin=None,
+                error=link_err,
                 extern_gast=extern_gast,
                 pdb=pdb,
                 mandant_slug=mandant_slug,
@@ -2361,6 +2409,7 @@ async def fraktion_termin_create(
         promoted_all_ovs=promoted,
         is_fraktion_termin=True,
         fraktion_vertraulich=confidential,
+        link_url=link_u,
     )
     pdb.add(t)
     pdb.flush()
@@ -2724,6 +2773,7 @@ async def termin_edit_save(
     start_uhrzeit: Annotated[str, Form()],
     description: Annotated[str, Form()] = "",
     location: Annotated[str, Form()] = "",
+    link_url: Annotated[str, Form()] = "",
     end_uhrzeit: Annotated[str, Form()] = "",
     bild_entfernen: Annotated[str, Form()] = "",
     extern_gast: Annotated[Optional[List[str]], Form()] = None,
@@ -2766,6 +2816,22 @@ async def termin_edit_save(
             ),
             status_code=400,
         )
+    link_u, link_err = _termin_link_url_normalized(link_url)
+    if link_err:
+        return templates.TemplateResponse(
+            request,
+            "termin_form.html",
+            _termin_form_context(
+                user=user,
+                termin=t,
+                error=link_err,
+                extern_gast=extern_gast,
+                pdb=pdb,
+                mandant_slug=mandant_slug,
+                termin_form_segment=_termin_path_segment_for_instance(t),
+            ),
+            status_code=400,
+        )
     st = _combine(datum, start_uhrzeit)
     en = _combine(datum, end_uhrzeit) if end_uhrzeit.strip() else None
     if en and en <= st:
@@ -2774,6 +2840,7 @@ async def termin_edit_save(
     t.title = title.strip()
     t.description = description.strip()
     t.location = location.strip()
+    t.link_url = link_u
     t.starts_at = st
     t.ends_at = en
     t.externe_teilnehmer_json = externe_teilnehmer_encode(

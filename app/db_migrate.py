@@ -176,6 +176,7 @@ def run_platform_sqlite_migrations(engine: Engine) -> None:
     migrate_termine_fraktion_flags_sqlite(engine)
     migrate_ortsverbaende_fraktion_calendar_subscription_sqlite(engine)
     migrate_termine_cal_import_key_sqlite(engine)
+    migrate_termine_link_url_sqlite(engine)
 
 
 def migrate_ov_memberships_fraktion_member_sqlite(engine: Engine) -> None:
@@ -254,6 +255,20 @@ def migrate_termine_cal_import_key_sqlite(engine: Engine) -> None:
                 "ON termine (mandant_slug, cal_import_key)"
             ),
         )
+
+
+def migrate_termine_link_url_sqlite(engine: Engine) -> None:
+    """Optionaler Detail-Link je Termin (Web/RIS/…)."""
+    if engine.dialect.name != "sqlite":
+        return
+    insp = inspect(engine)
+    if not insp.has_table("termine"):
+        return
+    cols = {c["name"] for c in insp.get_columns("termine")}
+    if "link_url" in cols:
+        return
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE termine ADD COLUMN link_url VARCHAR(2000)"))
 
 
 def migrate_termine_fraktion_flags_sqlite(engine: Engine) -> None:

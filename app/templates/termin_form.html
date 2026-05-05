@@ -203,7 +203,12 @@
       <textarea id="description" name="description">{{ termin.description if termin else '' }}</textarea>
     </section>
 
-    <section class="ics-popup__panel" aria-label="Externe Gäste">
+    <section class="ics-popup__panel" aria-label="Link">
+      <label for="link_url">Link (optional)</label>
+      <input id="link_url" name="link_url" type="text" inputmode="url" maxlength="2000" placeholder="https://…"
+        value="{{ termin.link_url if termin and termin.link_url else '' }}">
+      <p class="muted termin-form-card__hint" style="margin:0.45rem 0 0;font-size:0.84rem;">Zur Detailseite bei RIS o. Ä.; wird unter der Beschreibung und in der Terminliste angezeigt.</p>
+    </section>
       <h3 class="ics-popup__label">Externe Gäste</h3>
       <div class="termin-form-card__guest-list">
         {% for key, label in externe_optionen %}
