@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_ui_macros.html' import app_header, public_tenant_prefix with context %}
+{% from '_ui_macros.html' import app_header_toolbar, public_tenant_prefix with context %}
 {% from '_termin_macros.html' import teilnehmer_liste, termin_signup_compact_buttons %}
 {% import '_icons.html' as ico %}
 {% set t = row.termin %}
@@ -205,7 +205,11 @@
 </style>
 {% endblock %}
 {% block body %}
-{{ app_header('Termine') }}
+{% call app_header_toolbar('Termine') %}
+  <button type="button" class="btn btn-ghost btn-sm btn-ico btn-with-label" id="ics-open" aria-label="Kalender abonnieren">
+    {{ ico.svg_calendar() }}<span class="btn-text">Abonnieren</span>
+  </button>
+{% endcall %}
 
 <div class="page-toolbar" aria-label="Navigation">
   <a href="{{ request.state.mandanten_prefix }}/{{ twp }}" class="btn btn-sm btn-ico btn-with-label" aria-label="Zur Terminliste">
@@ -307,6 +311,71 @@
   </div>
 </article>
 
+{% if feed_url_my.startswith('https://') %}
+{% set webcal_my = 'webcal://' ~ feed_url_my[8:] %}
+{% elif feed_url_my.startswith('http://') %}
+{% set webcal_my = 'webcal://' ~ feed_url_my[7:] %}
+{% else %}
+{% set webcal_my = feed_url_my %}
+{% endif %}
+{% set google_my = 'https://calendar.google.com/calendar/u/0/r/settings/addbyurl?url=' ~ (feed_url_my|urlencode) %}
+{% if feed_url_all.startswith('https://') %}
+{% set webcal_all = 'webcal://' ~ feed_url_all[8:] %}
+{% elif feed_url_all.startswith('http://') %}
+{% set webcal_all = 'webcal://' ~ feed_url_all[7:] %}
+{% else %}
+{% set webcal_all = feed_url_all %}
+{% endif %}
+{% set google_all = 'https://calendar.google.com/calendar/u/0/r/settings/addbyurl?url=' ~ (feed_url_all|urlencode) %}
+
+<dialog id="ics-dialog" class="popup-dialog ics-popup" aria-labelledby="ics-dialog-title">
+  <form method="dialog" class="ics-popup__form">
+    <header class="ics-popup__head">
+      <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_calendar() }}</div>
+      <div>
+        <h2 id="ics-dialog-title" class="ics-popup__h">Kalender abonnieren</h2>
+        <p class="ics-popup__lead">Apple, Google oder Link kopieren — für jeden Feed einzeln.</p>
+      </div>
+    </header>
+
+    <section class="ics-popup__panel ics-popup__panel--accent" aria-label="Kalender Meine Zusagen">
+      <h3 class="ics-popup__label">{{ ics_my_label }}</h3>
+      <div class="ics-dialog-actions">
+        <a class="btn btn-sm btn-ico btn-with-label" href="{{ webcal_my }}" aria-label="Meine Zusagen: In Apple Kalender abonnieren">
+          {{ ico.svg_calendar() }}<span class="btn-text">Apple</span>
+        </a>
+        <a class="btn btn-sm btn-ico btn-with-label" href="{{ google_my }}" rel="noopener noreferrer" aria-label="Meine Zusagen: In Google Kalender abonnieren">
+          {{ ico.svg_calendar() }}<span class="btn-text">Google</span>
+        </a>
+        <button type="button" class="btn btn-sm btn-ico btn-with-label ics-copy-btn" data-feed-url="{{ feed_url_my }}" aria-label="Link Kalender „Meine Zusagen“ kopieren">
+          {{ ico.svg_copy() }}<span class="btn-text">Kopieren</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="ics-popup__panel" aria-label="Kalender alle Termine">
+      <h3 class="ics-popup__label">{{ ics_all_label }}</h3>
+      <div class="ics-dialog-actions">
+        <a class="btn btn-sm btn-ico btn-with-label" href="{{ webcal_all }}" aria-label="Alle Termine: In Apple Kalender abonnieren">
+          {{ ico.svg_calendar() }}<span class="btn-text">Apple</span>
+        </a>
+        <a class="btn btn-sm btn-ico btn-with-label" href="{{ google_all }}" rel="noopener noreferrer" aria-label="Alle Termine: In Google Kalender abonnieren">
+          {{ ico.svg_calendar() }}<span class="btn-text">Google</span>
+        </a>
+        <button type="button" class="btn btn-sm btn-ico btn-with-label ics-copy-btn" data-feed-url="{{ feed_url_all }}" aria-label="Link Kalender „Alle Termine“ kopieren">
+          {{ ico.svg_copy() }}<span class="btn-text">Kopieren</span>
+        </button>
+      </div>
+    </section>
+
+    <footer class="ics-popup__foot">
+      <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Dialog schließen">
+        {{ ico.svg_x() }}<span class="btn-text">Schließen</span>
+      </button>
+    </footer>
+  </form>
+</dialog>
+
 {% include '_termin_teilnahme_live_script.html' %}
 
 <section class="card card--flush termin-detail-comments" aria-label="Kommentare zum Termin">
@@ -385,6 +454,51 @@
 
 <script>
 (function () {
+  var icsOpen = document.getElementById("ics-open");
+  var icsDialog = document.getElementById("ics-dialog");
+  if (icsOpen && icsDialog) {
+    icsOpen.addEventListener("click", function () {
+      icsDialog.showModal();
+    });
+    function fallbackCopy(text, done) {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        done();
+      } catch (e) {}
+      document.body.removeChild(ta);
+    }
+    document.querySelectorAll("#ics-dialog .ics-copy-btn").forEach(function (copyBtn) {
+      copyBtn.addEventListener("click", function () {
+        var feedUrl = copyBtn.getAttribute("data-feed-url") || "";
+        function ok() {
+          var t = copyBtn.querySelector(".btn-text");
+          if (!t) return;
+          var prev = t.textContent;
+          t.textContent = "Kopiert";
+          copyBtn.disabled = true;
+          window.setTimeout(function () {
+            t.textContent = prev;
+            copyBtn.disabled = false;
+          }, 1600);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(feedUrl).then(ok).catch(function () {
+            fallbackCopy(feedUrl, ok);
+          });
+        } else {
+          fallbackCopy(feedUrl, ok);
+        }
+      });
+    });
+  }
+
   var pathPrefix = {{ path_prefix | tojson }};
   var tenantBase = {{ request.state.mandanten_prefix | tojson }};
   var terminId = {{ t.id }};

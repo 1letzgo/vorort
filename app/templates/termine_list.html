@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_ui_macros.html' import app_header, public_tenant_prefix with context %}
+{% from '_ui_macros.html' import app_header_toolbar, public_tenant_prefix with context %}
 {% from '_termin_macros.html' import teilnehmer_liste, termin_signup_compact_buttons %}
 {% import '_icons.html' as ico %}
 {% block title %}{{ page_title }} — Wahlkampf{% endblock %}
@@ -201,18 +201,16 @@
 {% endblock %}
 
 {% block body %}
-{{ app_header(page_title) }}
-
-<div class="page-toolbar" aria-label="Aktionen für Termine">
-  <button type="button" class="btn btn-sm btn-ico btn-with-label" id="ics-open" aria-label="Kalender abonnieren">
-    {{ ico.svg_calendar() }}<span class="btn-text">Abonnieren</span>
-  </button>
+{% call app_header_toolbar(page_title) %}
   {% if show_neuer_termin_button %}
-  <a href="{{ neuer_termin_href | default(request.state.mandanten_prefix ~ '/termine/neu') }}" class="btn btn-sm btn-ico btn-with-label" aria-label="{{ neuer_termin_button_label | default('Neuer Termin') }}">
+  <a href="{{ neuer_termin_href | default(request.state.mandanten_prefix ~ '/termine/neu') }}" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="{{ neuer_termin_button_label | default('Neuer Termin') }}">
     {{ ico.svg_plus() }}<span class="btn-text">{{ neuer_termin_button_label | default('Neuer Termin') }}</span>
   </a>
   {% endif %}
-</div>
+  <button type="button" class="btn btn-ghost btn-sm btn-ico btn-with-label" id="ics-open" aria-label="Kalender abonnieren">
+    {{ ico.svg_calendar() }}<span class="btn-text">Abonnieren</span>
+  </button>
+{% endcall %}
 
 {% if feed_url_my.startswith('https://') %}
 {% set webcal_my = 'webcal://' ~ feed_url_my[8:] %}

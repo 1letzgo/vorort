@@ -41,11 +41,10 @@
     {% else %}
       {% set bh = brand_href %}
     {% endif %}
-    <a href="{{ bh }}" class="header-brand">SPD vor Ort</a>
+    <a href="{{ bh }}" class="header-brand">SPD vor Ort{% if title %} - {{ title }}{% endif %}</a>
     <nav class="header-toolbar" aria-label="Seitenaktionen">
       {{ caller() }}
     </nav>
-    <h1 class="header-page-title">{{ title }}</h1>
   </div>
 </header>
 {% endmacro %}

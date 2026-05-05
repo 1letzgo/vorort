@@ -2651,6 +2651,12 @@ def termin_detail(
         raise HTTPException(status_code=404, detail="Termin nicht gefunden")
     termin_vergangen = row["termin"].starts_at < datetime.utcnow()
     kommentare = _termin_kommentare_public(pdb, termin_id, user, termin=row["termin"])
+    token = ensure_ics_token_for_ui(pdb, mandant_slug, ICS_TOKEN)
+    base = str(request.base_url).rstrip("/")
+    my_token = ensure_user_calendar_token(pdb, user.platform_user)
+    mp = _mp(request)
+    feed_url_my = f"{base}{mp}/calendar/me.ics?t={my_token}"
+    feed_url_all = f"{base}{mp}/calendar.ics?t={token}"
     return templates.TemplateResponse(
         request,
         "termin_detail.html",
@@ -2660,6 +2666,10 @@ def termin_detail(
             "termin_vergangen": termin_vergangen,
             "termin_kommentare": kommentare,
             "termin_anhaenge": attachments_decode(row["termin"].attachments_json),
+            "feed_url_my": feed_url_my,
+            "feed_url_all": feed_url_all,
+            "ics_my_label": "Meine Zusagen",
+            "ics_all_label": "Alle Termine",
         },
     )
 
