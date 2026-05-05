@@ -4,92 +4,11 @@
 {% block title %}Mein Konto — Wahlkampf{% endblock %}
 {% block head %}
 <style>
-  .termin-form-card.card--flush .termin-form-card__form {
-    padding: 1.15rem 1.2rem 1.1rem;
-  }
-  .termin-form-card .ics-popup__head {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.85rem;
-    margin: 0 0 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .termin-form-card .ics-popup__head-icon {
-    flex-shrink: 0;
-    width: 2.85rem;
-    height: 2.85rem;
-    border-radius: 12px;
-    background: linear-gradient(
-      145deg,
-      rgba(196, 30, 58, 0.14),
-      rgba(196, 30, 58, 0.06)
-    );
-    color: var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .termin-form-card .ics-popup__head-icon .ico {
-    width: 1.4rem;
-    height: 1.4rem;
-  }
-  .termin-form-card .ics-popup__h {
-    margin: 0;
-    font-size: 1.14rem;
-    font-weight: 650;
-    line-height: 1.25;
-    letter-spacing: -0.02em;
-    color: var(--text);
-  }
-  .termin-form-card .ics-popup__lead {
-    margin: 0.35rem 0 0;
-    font-size: 0.84rem;
-    color: var(--muted);
-    line-height: 1.45;
-  }
-  .termin-form-card .error,
-  .termin-form-card .info {
-    margin-bottom: 1rem;
-  }
-  .termin-form-card .ics-popup__panel {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.8rem 0.85rem 0.85rem;
-    margin-top: 0.65rem;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
-  }
-  .termin-form-card form > .ics-popup__panel:first-of-type {
-    margin-top: 0;
-  }
-  .termin-form-card .ics-popup__panel--accent {
-    border-color: rgba(196, 30, 58, 0.22);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.65),
-      0 0 0 1px rgba(196, 30, 58, 0.06);
-  }
-  .termin-form-card .ics-popup__panel .ics-popup__label {
-    margin: 0 0 0.55rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.055em;
-    color: var(--muted);
-  }
-  .termin-form-card .ics-popup__panel > label:first-of-type {
-    margin-top: 0;
-  }
   .termin-form-card .profil-panel-intro {
     margin: 0 0 0.65rem;
     font-size: 0.88rem;
     color: var(--muted);
     line-height: 1.45;
-  }
-  .termin-form-card .ics-popup__foot {
-    margin-top: 1.1rem;
-    padding-top: 0.95rem;
-    border-top: 1px solid var(--border);
   }
   .termin-form-card__actions {
     display: flex;

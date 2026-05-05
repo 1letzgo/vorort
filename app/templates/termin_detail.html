@@ -9,9 +9,6 @@
 {% block title %}{{ t.title }} — Termin — Wahlkampf{% endblock %}
 {% block head %}
 <style>
-  .termin-card-list__shell {
-    padding: 1.15rem 1.2rem 1.1rem;
-  }
   .termin-card-list .termin-card-list__body {
     padding: 0;
   }
@@ -39,7 +36,7 @@
     width: 140px;
     max-width: 100%;
     height: auto;
-    border-radius: 8px;
+    border-radius: var(--radius-thumb);
     border: 1px solid var(--border);
     vertical-align: middle;
   }
@@ -75,77 +72,8 @@
     padding-top: 0.95rem;
     border-top: 1px solid var(--border);
   }
-  .ics-popup__head {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.85rem;
-    margin: 0 0 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .ics-popup__head-icon {
-    flex-shrink: 0;
-    width: 2.85rem;
-    height: 2.85rem;
-    border-radius: 12px;
-    background: linear-gradient(
-      145deg,
-      rgba(196, 30, 58, 0.14),
-      rgba(196, 30, 58, 0.06)
-    );
-    color: var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .ics-popup__head-icon .ico {
-    width: 1.4rem;
-    height: 1.4rem;
-  }
-  .ics-popup__h {
-    margin: 0;
-    font-size: 1.14rem;
-    font-weight: 650;
-    line-height: 1.25;
-    letter-spacing: -0.02em;
-    color: var(--text);
-  }
-  .ics-popup__lead {
-    margin: 0.35rem 0 0;
-    font-size: 0.84rem;
-    color: var(--muted);
-    line-height: 1.45;
-  }
-  .ics-popup__panel {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.8rem 0.85rem 0.85rem;
-    margin-top: 0.65rem;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
-  }
-  .ics-popup__panel:first-of-type {
-    margin-top: 0;
-  }
-  .ics-popup__panel--accent {
-    border-color: rgba(196, 30, 58, 0.22);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.65),
-      0 0 0 1px rgba(196, 30, 58, 0.06);
-  }
-  .ics-popup__label {
-    margin: 0 0 0.55rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.055em;
-    color: var(--muted);
-  }
   .termin-detail-comments {
     margin-top: 1.15rem;
-  }
-  .termin-detail-comments__shell {
-    padding: 1.15rem 1.2rem 1.1rem;
   }
   .termin-detail-comments__shell > .ics-popup__head {
     margin-bottom: 1rem;
@@ -283,112 +211,6 @@
     margin-top: 0.75rem;
     width: 100%;
     max-width: 100%;
-  }
-  dialog.termin-kommentar-dialog.popup-dialog {
-    z-index: 10000;
-    border: none;
-    box-shadow:
-      0 4px 6px rgba(0, 0, 0, 0.04),
-      0 18px 48px rgba(0, 0, 0, 0.14);
-    padding: 0;
-    overflow: hidden;
-    max-width: min(100vw - 1.5rem, 420px);
-  }
-  dialog.termin-kommentar-dialog::backdrop {
-    background: rgba(26, 26, 26, 0.42);
-    -webkit-backdrop-filter: blur(3px);
-    backdrop-filter: blur(3px);
-  }
-  .termin-kommentar-dialog .ics-popup__form {
-    padding: 1.15rem 1.2rem 1.1rem;
-  }
-  .termin-kommentar-dialog .ics-popup__head {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.85rem;
-    margin: 0 0 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .termin-kommentar-dialog .ics-popup__head-icon {
-    flex-shrink: 0;
-    width: 2.85rem;
-    height: 2.85rem;
-    border-radius: 12px;
-    background: linear-gradient(
-      145deg,
-      rgba(196, 30, 58, 0.14),
-      rgba(196, 30, 58, 0.06)
-    );
-    color: var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .termin-kommentar-dialog .ics-popup__head-icon .ico {
-    width: 1.4rem;
-    height: 1.4rem;
-  }
-  .termin-kommentar-dialog .ics-popup__h {
-    margin: 0;
-    font-size: 1.14rem;
-    font-weight: 650;
-    line-height: 1.25;
-    letter-spacing: -0.02em;
-    color: var(--text);
-  }
-  .termin-kommentar-dialog .ics-popup__lead {
-    margin: 0.35rem 0 0;
-    font-size: 0.84rem;
-    color: var(--muted);
-    line-height: 1.45;
-  }
-  .termin-kommentar-dialog .ics-popup__panel {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.8rem 0.85rem 0.85rem;
-    margin-top: 0.65rem;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
-  }
-  .termin-kommentar-dialog .ics-popup__panel--accent {
-    border-color: rgba(196, 30, 58, 0.22);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.65),
-      0 0 0 1px rgba(196, 30, 58, 0.06);
-    margin-top: 0;
-  }
-  .termin-kommentar-dialog .ics-popup__panel .ics-popup__label {
-    margin: 0 0 0.55rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.055em;
-    color: var(--muted);
-  }
-  .termin-kommentar-dialog .ics-popup__panel textarea#termin-kommentar-text {
-    min-height: 140px;
-    resize: vertical;
-    margin-top: 0;
-  }
-  .termin-kommentar-dialog .ics-popup__foot {
-    margin-top: 1.1rem;
-    padding-top: 0.95rem;
-    border-top: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.65rem;
-  }
-  .termin-kommentar-popup-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    justify-content: flex-end;
-  }
-  .termin-kommentar-dialog #termin-kommentar-msg {
-    margin: 0;
-    font-size: 0.85rem;
   }
 </style>
 {% endblock %}
@@ -577,7 +399,7 @@
       <textarea id="termin-kommentar-text" name="body" rows="5" maxlength="4000" required placeholder="Dein Kommentar …"></textarea>
     </section>
 
-    <footer class="ics-popup__foot">
+    <footer class="ics-popup__foot ics-popup__foot--stacked">
       <div class="termin-kommentar-popup-actions">
         <button type="button" class="btn btn-ghost btn-sm btn-ico btn-with-label" id="termin-kommentar-cancel" aria-label="Abbrechen">
           {{ ico.svg_x() }}<span class="btn-text">Abbrechen</span>

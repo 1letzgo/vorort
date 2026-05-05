@@ -5,70 +5,11 @@
 {% block head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-  .plakate-page .ics-popup__head,
-  .plakate-add-dialog .ics-popup__head {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.85rem;
-    margin: 0 0 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .plakate-page .ics-popup__head-icon,
-  .plakate-add-dialog .ics-popup__head-icon {
-    flex-shrink: 0;
-    width: 2.85rem;
-    height: 2.85rem;
-    border-radius: 12px;
-    background: linear-gradient(
-      145deg,
-      rgba(196, 30, 58, 0.14),
-      rgba(196, 30, 58, 0.06)
-    );
-    color: var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .plakate-page .ics-popup__head-icon .ico,
-  .plakate-add-dialog .ics-popup__head-icon .ico {
-    width: 1.4rem;
-    height: 1.4rem;
-  }
-  .plakate-page .ics-popup__h,
-  .plakate-add-dialog .ics-popup__h {
-    margin: 0;
-    font-size: 1.14rem;
-    font-weight: 650;
-    line-height: 1.25;
-    letter-spacing: -0.02em;
-    color: var(--text);
-  }
-  .plakate-page .ics-popup__lead,
-  .plakate-add-dialog .ics-popup__lead {
-    margin: 0.35rem 0 0;
-    font-size: 0.84rem;
-    color: var(--muted);
-    line-height: 1.45;
-  }
-  .plakate-map-card__shell,
-  .plakate-table-card__shell {
-    padding: 1.15rem 1.2rem 1.1rem;
-  }
   .plakate-map-card__map-area {
     overflow: hidden;
     border-radius: var(--radius);
     border: 1px solid var(--border);
     background: var(--bg);
-  }
-  .plakate-page .ics-popup__foot {
-    margin-top: 1.1rem;
-    padding-top: 0.95rem;
-    border-top: 1px solid var(--border);
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 0.5rem;
   }
   #plakate-map {
     height: min(55vh, 420px);
@@ -76,58 +17,6 @@
     border: none;
     border-radius: 0;
     z-index: 1;
-  }
-  .plakate-add-dialog.popup-dialog {
-    z-index: 10000;
-    border: none;
-    box-shadow:
-      0 4px 6px rgba(0, 0, 0, 0.04),
-      0 18px 48px rgba(0, 0, 0, 0.14);
-    padding: 0;
-    overflow: hidden;
-    max-width: min(100vw - 1.5rem, 420px);
-  }
-  .plakate-add-dialog::backdrop {
-    background: rgba(26, 26, 26, 0.42);
-    -webkit-backdrop-filter: blur(3px);
-    backdrop-filter: blur(3px);
-  }
-  .plakate-add-dialog .ics-popup__form {
-    padding: 1.15rem 1.2rem 1.1rem;
-  }
-  .plakate-add-dialog .ics-popup__panel {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.8rem 0.85rem 0.85rem;
-    margin-top: 0.65rem;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
-  }
-  .plakate-add-dialog .ics-popup__panel:first-of-type {
-    margin-top: 0;
-  }
-  .plakate-add-dialog .ics-popup__panel--accent {
-    border-color: rgba(196, 30, 58, 0.22);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.65),
-      0 0 0 1px rgba(196, 30, 58, 0.06);
-  }
-  .plakate-add-dialog .ics-popup__label {
-    margin: 0 0 0.55rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.055em;
-    color: var(--muted);
-  }
-  .plakate-add-dialog .ics-popup__foot {
-    margin-top: 1.1rem;
-    padding-top: 0.95rem;
-    border-top: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.65rem;
   }
   .plakate-dialog-actions {
     display: flex;
@@ -222,7 +111,7 @@
       <input id="plakate-foto" name="foto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
     </section>
 
-    <footer class="ics-popup__foot">
+    <footer class="ics-popup__foot ics-popup__foot--stacked">
       <div class="plakate-dialog-actions">
         <button type="button" class="btn btn-ghost btn-sm btn-ico btn-with-label" id="plakate-dialog-cancel" aria-label="Abbrechen">
           {{ ico.svg_x() }}<span class="btn-text">Abbrechen</span>
