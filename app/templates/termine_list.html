@@ -368,7 +368,7 @@
 {% else %}
 <div class="termin-tablist" role="tablist" aria-label="Terminansicht">
   {% for t in termin_tabs %}
-  <button type="button" class="termin-tab" role="tab" id="termin-tabhead-{{ loop.index0 }}" aria-selected="{{ 'true' if t.id == default_tab_id else 'false' }}" aria-controls="termin-panel-{{ loop.index0 }}" data-tab="{{ t.id }}">{{ t.label }}{% if t.kind == 'archiv' and t.termin_past|length %} ({{ t.termin_past|length }}){% endif %}</button>
+  <button type="button" class="termin-tab" role="tab" id="termin-tabhead-{{ loop.index0 }}" aria-selected="{{ 'true' if t.id == default_tab_id else 'false' }}" aria-controls="termin-panel-{{ loop.index0 }}" data-tab="{{ t.id }}">{{ t.label }}</button>
   {% endfor %}
 </div>
 
