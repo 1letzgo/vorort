@@ -41,14 +41,14 @@
           </thead>
           <tbody>
             {% for u in users %}
-            <tr>
+            <tr class="{% if not u.shadow_superadmin and not u.is_approved %}admin-users-tr--pending{% endif %}">
               <td data-label="Name" class="admin-users-td-name">
                 <strong>{{ u.display_name or u.username }}</strong>
                 {% if u.username != u.display_name and u.display_name %}
                 <br><span class="muted" style="font-size:0.8rem;">{{ u.username }}</span>
                 {% endif %}
               </td>
-              <td data-label="Status">
+              <td data-label="Status" class="admin-users-td-status">
                 {% if u.shadow_superadmin %}
                 <span style="white-space:nowrap;">Freigegeben</span>
                 <br><span class="muted" style="font-size:0.8rem;">Plattform-Superadmin · alle OVs</span>
@@ -56,7 +56,7 @@
                 {% if u.is_approved %}
                 <span style="white-space:nowrap;">Freigegeben</span>
                 {% else %}
-                <span style="white-space:nowrap; color:var(--accent-dim); font-weight:600;">Ausstehend</span>
+                <span class="pending-flag" role="status">Freigabe erforderlich</span>
                 {% endif %}
                 {% if u.is_admin %}
                 <br><span class="muted" style="font-size:0.8rem;">Administrator</span>

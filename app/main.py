@@ -638,6 +638,10 @@ def _my_ovs_menu_items(
         feature_fraktion = is_mandant_feature_enabled(pdb, slug, FEATURE_FRAKTION)
         feature_plakate = is_mandant_feature_enabled(pdb, slug, FEATURE_PLAKATE)
         feature_sharepic = is_mandant_feature_enabled(pdb, slug, FEATURE_SHAREPIC)
+        has_feature_links = bool(feature_fraktion or feature_plakate or feature_sharepic)
+        # Admins ohne OV-Menüpunkte: Karte ausblenden (Administration über eigene Card).
+        # Normale Mitglieder: Karte immer zeigen, auch ohne Features (Zugehörigkeit sichtbar).
+        show_ov_menu_card = bool(has_feature_links or not is_adm)
         out_members.append(
             {
                 "slug": slug,
@@ -647,7 +651,8 @@ def _my_ovs_menu_items(
                 "feature_plakate": feature_plakate,
                 "feature_sharepic": feature_sharepic,
                 "feature_fraktion": feature_fraktion,
-                "has_menu_entries": bool(feature_fraktion or feature_plakate or feature_sharepic),
+                "has_feature_links": has_feature_links,
+                "show_ov_menu_card": show_ov_menu_card,
                 "termine_fraktion_tab_query": (
                     urlencode({"tab": _termin_tab_fraktion_id(slug)})
                     if feature_fraktion

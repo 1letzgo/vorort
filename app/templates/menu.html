@@ -83,6 +83,22 @@
   .menu-ov-card .menu-list li:last-child a {
     border-bottom: none;
   }
+  .menu-list-placeholder {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .menu-list-placeholder .muted {
+    display: block;
+    padding: 0.85rem 1.25rem;
+    font-weight: 500;
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+  .menu-ov-card .menu-list li:last-child.menu-list-placeholder {
+    border-bottom: none;
+  }
 </style>
 {% endblock %}
 {% block body %}
@@ -104,7 +120,7 @@
 {% endif %}
 
 {% for o in my_ovs %}
-{% if o.has_menu_entries %}
+{% if o.show_ov_menu_card %}
 {% set op = public_tenant_prefix(request, '/m/' ~ o.slug) %}
 <div class="card card--flush menu-ov-card">
   <details
@@ -125,6 +141,9 @@
       {% endif %}
       {% if o.feature_sharepic | default(true) %}
       <li><a href="{{ op }}/sharepic"><span class="menu-list__main">{{ ico.svg_image() }}<span>Sharepic</span></span></a></li>
+      {% endif %}
+      {% if not o.has_feature_links %}
+      <li class="menu-list-placeholder"><span class="muted">Keine weiteren Bereiche für diesen Verband.</span></li>
       {% endif %}
     </ul>
   </details>
