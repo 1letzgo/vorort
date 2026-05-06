@@ -644,7 +644,6 @@ def _my_ovs_menu_items(
                 "feature_plakate": is_mandant_feature_enabled(pdb, slug, FEATURE_PLAKATE),
                 "feature_sharepic": is_mandant_feature_enabled(pdb, slug, FEATURE_SHAREPIC),
                 "feature_fraktion": is_mandant_feature_enabled(pdb, slug, FEATURE_FRAKTION),
-                "termine_ov_tab_query": urlencode({"tab": _termin_tab_ov_id(slug)}),
                 "termine_fraktion_tab_query": (
                     urlencode({"tab": _termin_tab_fraktion_id(slug)})
                     if is_mandant_feature_enabled(pdb, slug, FEATURE_FRAKTION)
@@ -2390,7 +2389,7 @@ def _build_termin_tabs_for_user(
                 "id": fid,
                 "kind": "fraktion",
                 "ov_slug": s,
-                "label": f"Fraktion · {labels.get(s, s)}",
+                "label": f"{labels.get(s, s)} - Fraktion",
                 "termin_upcoming": up_f,
                 "termin_past": [],
                 **tb,

@@ -55,52 +55,11 @@
   .menu-ov-card .menu-ov-details__summary::-webkit-details-marker {
     display: none;
   }
-  .menu-ov-summary__controls {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    flex-shrink: 0;
-  }
-  .menu-ov-admin-chip {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    margin: 0;
-    padding: 0;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
+  .menu-admin-pending-hint {
+    margin-left: 0.35rem;
+    font-size: 0.82rem;
+    font-weight: 600;
     color: var(--accent);
-    cursor: pointer;
-    text-decoration: none !important;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .menu-ov-admin-chip:hover {
-    background: rgba(196, 30, 58, 0.09);
-    color: var(--accent-dim);
-  }
-  .menu-ov-admin-chip:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-  .menu-ov-admin-chip .ico {
-    width: 1.2rem;
-    height: 1.2rem;
-    flex-shrink: 0;
-  }
-  .menu-ov-admin-chip .menu-pending-badge {
-    position: absolute;
-    top: -0.12rem;
-    right: -0.12rem;
-    min-width: 1rem;
-    height: 1rem;
-    padding: 0 0.28rem;
-    font-size: 0.6rem;
-    font-weight: 700;
-    line-height: 1rem;
   }
   .menu-ov-details__chevron {
     flex-shrink: 0;
@@ -139,7 +98,7 @@
     <li class="menu-list-section">
       <h2 class="menu-list-section__label" id="menu-uebersicht-heading">Übersicht</h2>
     </li>
-    <li><a href="{{ request.state.mandanten_prefix }}/termine?tab=alle"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Alle Termine</span></span></a></li>
+    <li><a href="{{ request.state.mandanten_prefix }}/termine?tab=alle"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Termine</span></span></a></li>
   </ul>
 </div>
 {% endif %}
@@ -154,18 +113,9 @@
   >
     <summary class="menu-ov-details__summary" id="menu-ov-{{ o.slug }}-heading">
       <span class="menu-ov-details__title">{{ o.display_name }}</span>
-      <span class="menu-ov-summary__controls">
-        {% if o.is_admin %}
-        <a href="{{ op }}/admin/benutzer" class="menu-ov-admin-chip" onclick="event.stopPropagation();" aria-label="Administration{% if o.admin_pending_count %} — {{ o.admin_pending_count }} ausstehend{% endif %}">
-          {{ ico.svg_cog() }}
-          {% if o.admin_pending_count %}<span class="menu-pending-badge" aria-hidden="true">{{ o.admin_pending_count }}</span>{% endif %}
-        </a>
-        {% endif %}
-        <span class="menu-ov-details__chevron" aria-hidden="true"></span>
-      </span>
+      <span class="menu-ov-details__chevron" aria-hidden="true"></span>
     </summary>
     <ul class="menu-list" role="list" aria-labelledby="menu-ov-{{ o.slug }}-heading">
-      <li><a href="{{ op }}/termine?{{ o.termine_ov_tab_query }}"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Termine</span></span></a></li>
       {% if o.feature_fraktion %}
       <li><a href="{{ op }}/termine?{{ o.termine_fraktion_tab_query }}"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Fraktion</span></span></a></li>
       {% endif %}
@@ -174,6 +124,13 @@
       {% endif %}
       {% if o.feature_sharepic | default(true) %}
       <li><a href="{{ op }}/sharepic"><span class="menu-list__main">{{ ico.svg_image() }}<span>Sharepic</span></span></a></li>
+      {% endif %}
+      {% if o.is_admin %}
+      <li>
+        <a href="{{ op }}/admin/benutzer">
+          <span class="menu-list__main">{{ ico.svg_user() }}<span>Administration</span>{% if o.admin_pending_count %}<span class="menu-admin-pending-hint" aria-label="{{ o.admin_pending_count }} ausstehend">({{ o.admin_pending_count }})</span>{% endif %}</span>
+        </a>
+      </li>
       {% endif %}
     </ul>
   </details>
