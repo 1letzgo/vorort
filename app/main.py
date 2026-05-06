@@ -1391,6 +1391,7 @@ async def plakate_hinzufuegen(
 def plakate_abhaengen(
     mandant_slug: str,
     plakat_id: int,
+    request: Request,
     pdb: Annotated[Session, Depends(get_platform_db)],
     user: CurrentUser,
 ):

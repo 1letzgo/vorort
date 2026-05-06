@@ -60,6 +60,7 @@
       {% if flash_ov_gespeichert %}<div class="success" style="margin-bottom: 0.85rem;">Änderungen gespeichert.</div>{% endif %}
       {% if cal_flash_created is not none %}<div class="success" style="margin-bottom: 0.85rem;">{{ cal_flash_created }} neue Termine aus dem Kalender übernommen.</div>{% endif %}
       {% if cal_flash_err %}<div class="error" style="margin-bottom: 0.85rem;">Kalender-Abruf: {{ cal_flash_err }}</div>{% endif %}
+      {% if request.query_params.get("plakate") == "geloescht" %}<div class="success" style="margin-bottom: 0.85rem;">Alle Plakate dieses Verbands wurden gelöscht.</div>{% endif %}
       {% endif %}
 
       {% if is_new %}
@@ -171,6 +172,11 @@
       </fieldset>
 
       <footer style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+        <form method="post" action="/admin/ortsverbaende/{{ ov.slug }}/plakate-loeschen" style="margin: 0 0 0.75rem;" onsubmit="return confirm('Wirklich alle Plakate dieses Verbands löschen? Dieser Schritt kann nicht rückgängig gemacht werden.');">
+          <button type="submit" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="Alle Plakate dieses Ortsverbands löschen">
+            {{ ico.svg_trash() }}<span class="btn-text">Alle Plakate löschen</span>
+          </button>
+        </form>
         <p class="muted" style="margin: 0 0 0.65rem; font-size: 0.84rem;">Unwiderruflich: Eintrag unter Ortsverbände, SQLite und alle Uploads dieses OV.</p>
         <a href="/admin/ortsverbaende/{{ ov.slug }}/loeschen" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="Ortsverband löschen">
           {{ ico.svg_trash() }}<span class="btn-text">Ortsverband löschen…</span>

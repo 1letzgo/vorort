@@ -31,6 +31,7 @@ from app.mandant_features import (
 )
 from app.platform_database import get_platform_db
 from app.platform_models import (
+    MandantPlakat,
     Ortsverband,
     OvMembership,
     PlatformUser,
@@ -497,6 +498,26 @@ async def superadmin_ov_fraktion_cal_sync(
     if err:
         return RedirectResponse(f"{base}?cal_import_err={quote(err)}", status_code=302)
     return RedirectResponse(f"{base}?cal_import_created={n}", status_code=302)
+
+
+@router.post("/admin/ortsverbaende/{slug}/plakate-loeschen")
+def superadmin_ov_plakate_loeschen(
+    slug: str,
+    db: Annotated[Session, Depends(get_platform_db)],
+    _: LetzgoSuperadmin,
+):
+    s = slug.strip().lower()
+    ov = db.get(Ortsverband, s)
+    if not ov:
+        raise HTTPException(status_code=404, detail="Unbekannt")
+    db.query(MandantPlakat).filter(MandantPlakat.mandant_slug == s).delete(
+        synchronize_session=False,
+    )
+    db.commit()
+    return RedirectResponse(
+        f"/admin/ortsverbaende/{s}/bearbeiten?plakate=geloescht",
+        status_code=302,
+    )
 
 
 @router.get("/admin/ortsverbaende/{slug}/loeschen", response_class=HTMLResponse)
