@@ -942,6 +942,23 @@ dialog.popup-dialog::backdrop {
   outline-offset: 2px;
 }
 
+/* Administration: gleiches vertikales Raster wie Terminliste (Abstand nur über .termin-tablist margin-bottom) */
+.administration-hub-panel > :first-child {
+  margin-top: 0;
+}
+
+.administration-hub-panel > :last-child {
+  margin-bottom: 0;
+}
+
+.administration-hub-panel__lead {
+  margin-bottom: 0;
+}
+
+.administration-hub-panel__cta {
+  margin-top: 1rem;
+}
+
 /* Terminformular / Profil: paneelbezogene Feinheiten */
 .termin-form-card .error,
 .termin-form-card .info {

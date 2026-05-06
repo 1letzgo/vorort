@@ -7,17 +7,18 @@
 {% call app_header_toolbar(page_title) %}
 {% endcall %}
 
-<div class="card card--flush">
-  <div class="termin-tablist" role="tablist" aria-label="Administration je Ortsverband">
-    {% for t in admin_tabs %}
-    <button type="button" class="termin-tab" role="tab" id="admin-tabhead-{{ loop.index0 }}" aria-selected="{{ 'true' if t.id == default_tab_id else 'false' }}" aria-controls="admin-panel-{{ loop.index0 }}" data-tab="{{ t.id }}">{{ t.label }}{% if t.admin_pending_count %} ({{ t.admin_pending_count }}){% endif %}</button>
-    {% endfor %}
-  </div>
-
+{# Wie termine_list: Tab-Leiste auf Seitenhintergrund, darunter eigene Karte — kein gemeinsames card--flush um beides #}
+<div class="termin-tablist" role="tablist" aria-label="Administration je Ortsverband">
   {% for t in admin_tabs %}
-  <div id="admin-panel-{{ loop.index0 }}" class="termin-tab-panel" role="tabpanel" aria-labelledby="admin-tabhead-{{ loop.index0 }}" tabindex="0" data-tab="{{ t.id }}"{% if t.id != default_tab_id %} hidden{% endif %}>
+  <button type="button" class="termin-tab" role="tab" id="admin-tabhead-{{ loop.index0 }}" aria-selected="{{ 'true' if t.id == default_tab_id else 'false' }}" aria-controls="admin-panel-{{ loop.index0 }}" data-tab="{{ t.id }}">{{ t.label }}{% if t.admin_pending_count %} ({{ t.admin_pending_count }}){% endif %}</button>
+  {% endfor %}
+</div>
+
+{% for t in admin_tabs %}
+<div id="admin-panel-{{ loop.index0 }}" class="termin-tab-panel" role="tabpanel" aria-labelledby="admin-tabhead-{{ loop.index0 }}" tabindex="0" data-tab="{{ t.id }}"{% if t.id != default_tab_id %} hidden{% endif %}>
+  <div class="card administration-hub-panel">
     {% if t.admin_pending_count %}
-    <p class="info" style="margin-top:0;">
+    <p class="info">
       {% if t.admin_pending_count == 1 %}
       Es liegt eine ausstehende Mitgliedschaftsanfrage vor.
       {% else %}
@@ -25,15 +26,15 @@
       {% endif %}
     </p>
     {% endif %}
-    <p class="muted" style="margin-bottom:0;">Mitgliedschaften freigeben und Administratoren dieses Ortsverbands verwalten.</p>
-    <p style="margin-top:1rem;">
+    <p class="muted administration-hub-panel__lead">Mitgliedschaften freigeben und Administratoren dieses Ortsverbands verwalten.</p>
+    <p class="administration-hub-panel__cta">
       <a href="{{ t.benutzer_href }}" class="btn btn-ico btn-with-label btn-block" aria-label="Benutzer und Freigaben für {{ t.label }}">
         {{ ico.svg_user() }}<span class="btn-text">Benutzer &amp; Freigaben</span>
       </a>
     </p>
   </div>
-  {% endfor %}
 </div>
+{% endfor %}
 
 <script>
   (function () {
