@@ -261,6 +261,9 @@
       <p class="ics-popup__lead" style="margin-top:0;">
         Datum und Uhrzeit erscheinen oben rechts (wie der frühere Slogan-Bereich), der Titel im mittleren roten Balken, der Ort unten — dann JPEG erzeugen; wirksam nach „Speichern“.
       </p>
+      <label for="termin-sharepic-upload">Eigenes Hintergrundbild (optional)</label>
+      <input id="termin-sharepic-upload" type="file" accept="image/jpeg,image/png,image/webp">
+      <p class="muted termin-form-card__hint" style="margin:0.35rem 0 0.65rem;font-size:0.84rem;">Falls gesetzt, wird dieses Bild statt einer Vorlage verwendet.</p>
       <label for="termin-sharepic-vorlage">Hintergrundvorlage</label>
       <select id="termin-sharepic-vorlage" autocomplete="off" class="termin-form-card__sharepic-select">
         <option value="">Keine Vorlage (einfarbig)</option>
@@ -281,7 +284,7 @@
     {% endif %}
 
     <section class="ics-popup__panel" aria-label="{% if termin %}Neues Foto{% else %}Foto{% endif %}">
-      <label for="bild">{% if termin %}Neues Foto (optional, ersetzt das alte){% else %}Foto (optional, JPEG/PNG/WebP, max. {{ max_mb }} MB){% endif %}</label>
+      <label for="bild">{% if termin %}Neues Foto statt Sharepic (optional, ersetzt das alte){% else %}Foto statt Sharepic (optional, JPEG/PNG/WebP, max. {{ max_mb }} MB){% endif %}</label>
       <input id="bild" name="bild" type="file" accept="image/jpeg,image/png,image/webp">
     </section>
 
@@ -356,6 +359,7 @@
   var btn = document.getElementById("termin-sharepic-generate-btn");
   var statusEl = document.getElementById("termin-sharepic-status");
   var vorlageSel = document.getElementById("termin-sharepic-vorlage");
+  var sharepicUploadInput = document.getElementById("termin-sharepic-upload");
   var bildInput = document.getElementById("bild");
   var titleEl = document.getElementById("title");
   var locationEl = document.getElementById("location");
@@ -365,7 +369,7 @@
   var previewWrap = document.getElementById("termin-sharepic-preview-wrap");
   var previewImg = document.getElementById("termin-sharepic-preview-img");
   var previewObjectUrl = null;
-  if (!cfgEl || !btn || !vorlageSel || !bildInput || !WG || !WG.renderToBlob) return;
+  if (!cfgEl || !btn || !vorlageSel || !sharepicUploadInput || !bildInput || !WG || !WG.renderToBlob) return;
   var cfg = {};
   try {
     cfg = JSON.parse(cfgEl.textContent || "{}");
@@ -411,6 +415,12 @@
     }
   }
 
+  function selectedSharepicBackgroundUrl() {
+    var f = sharepicUploadInput.files && sharepicUploadInput.files[0];
+    if (f) return URL.createObjectURL(f);
+    return (vorlageSel.value || "").trim() || null;
+  }
+
   function showPreviewFromBlob(blob) {
     if (!previewWrap || !previewImg) return;
     revokePreviewObjectUrl();
@@ -433,6 +443,18 @@
     previewImg.removeAttribute("src");
   });
 
+  sharepicUploadInput.addEventListener("change", function () {
+    if (sharepicUploadInput.files && sharepicUploadInput.files.length) {
+      vorlageSel.value = "";
+    }
+  });
+
+  vorlageSel.addEventListener("change", function () {
+    if ((vorlageSel.value || "").trim()) {
+      sharepicUploadInput.value = "";
+    }
+  });
+
   window.addEventListener("pagehide", revokePreviewObjectUrl);
 
   btn.addEventListener("click", function () {
@@ -452,13 +474,15 @@
     var text2 = (locationEl && locationEl.value) ? locationEl.value.trim() : "";
     showStatus("");
     btn.disabled = true;
+    var bgUrl = selectedSharepicBackgroundUrl();
+    var objectUrlUsed = !!(sharepicUploadInput.files && sharepicUploadInput.files[0]);
     WG.renderToBlob({
       maskSrc: maskSrc,
       ovDisplayName: cfg.ovDisplay || "",
       slogan: slogan,
       midText: midText,
       text2: text2,
-      backgroundImageUrl: (vorlageSel.value || "").trim() || null,
+      backgroundImageUrl: bgUrl,
     }).then(function (blob) {
       var file = new File([blob], "termin-sharepic.jpg", { type: "image/jpeg" });
       var dt = new DataTransfer();
@@ -469,6 +493,7 @@
     }).catch(function (err) {
       showStatus((err && err.message) ? err.message : "Sharepic konnte nicht erzeugt werden.", true);
     }).finally(function () {
+      if (objectUrlUsed && bgUrl) URL.revokeObjectURL(bgUrl);
       btn.disabled = false;
     });
   });

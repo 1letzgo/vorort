@@ -261,7 +261,7 @@
 {% else %}
 {% set webcal_my = feed_url_my %}
 {% endif %}
-{% set google_my = 'https://calendar.google.com/calendar/u/0/r/settings/addbyurl?url=' ~ (feed_url_my|urlencode) %}
+{% set google_my = 'https://calendar.google.com/calendar/u/0/r/settings/addbyurl?cid=' ~ (feed_url_my|urlencode) %}
 {% if feed_url_all.startswith('https://') %}
 {% set webcal_all = 'webcal://' ~ feed_url_all[8:] %}
 {% elif feed_url_all.startswith('http://') %}
@@ -269,7 +269,7 @@
 {% else %}
 {% set webcal_all = feed_url_all %}
 {% endif %}
-{% set google_all = 'https://calendar.google.com/calendar/u/0/r/settings/addbyurl?url=' ~ (feed_url_all|urlencode) %}
+{% set google_all = 'https://calendar.google.com/calendar/u/0/r/settings/addbyurl?cid=' ~ (feed_url_all|urlencode) %}
 
 <dialog id="ics-dialog" class="popup-dialog ics-popup" aria-labelledby="ics-dialog-title">
   <form method="dialog" class="ics-popup__form">

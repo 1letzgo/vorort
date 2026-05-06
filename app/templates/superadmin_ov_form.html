@@ -75,6 +75,11 @@
         <input id="ov-slug" name="slug" type="text" required pattern="[a-z0-9][a-z0-9_-]{1,79}" placeholder="z. B. westerstede" autocomplete="off">
         <label for="ov-display">Anzeigename</label>
         <input id="ov-display" name="display_name" type="text" required maxlength="200" placeholder="Name im OV-Header">
+        <p style="margin: 1rem 0 0;">
+          <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Ortsverband anlegen">
+            {{ ico.svg_check() }}<span class="btn-text">Anlegen</span>
+          </button>
+        </p>
       </form>
       {% else %}
       <form id="superadmin-ov-edit-form" method="post" action="/admin/ortsverbaende/{{ ov.slug }}/bearbeiten">
@@ -120,6 +125,12 @@
           </p>
           {% endif %}
         </fieldset>
+
+        <p style="margin: 1rem 0 0;">
+          <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Änderungen speichern">
+            {{ ico.svg_check() }}<span class="btn-text">Speichern</span>
+          </button>
+        </p>
 
       </form>
 
