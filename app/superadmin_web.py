@@ -45,6 +45,7 @@ from app.sharepic_templates import (
     list_templates,
     upload_template,
 )
+from app.settings_store import save_sharepic_slogan_default, sharepic_slogan_default_value
 
 TEMPLATES_DIR = __import__("pathlib").Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -88,11 +89,17 @@ def _ov_edit_form_ctx(
     *,
     error: str | None = None,
     cal_feed_url_input: str | None = None,
+    sharepic_slogan_input: str | None = None,
     cal_flash_created: int | None = None,
     cal_flash_err: str | None = None,
     flash_ov_gespeichert: bool = False,
 ) -> dict:
     vs_ok, vs_err = _vorlage_flash_from_query(request)
+    slogan_default = (
+        sharepic_slogan_input
+        if sharepic_slogan_input is not None
+        else sharepic_slogan_default_value(db, ov.slug, ov.display_name or ov.slug)
+    )
     return {
         "error": error,
         "ov": ov,
@@ -101,6 +108,7 @@ def _ov_edit_form_ctx(
         "feature_sharepic": is_mandant_feature_enabled(db, ov.slug, FEATURE_SHAREPIC),
         "feature_fraktion": is_mandant_feature_enabled(db, ov.slug, FEATURE_FRAKTION),
         "cal_feed_url_input": cal_feed_url_input,
+        "sharepic_slogan_default": slogan_default,
         "cal_flash_created": cal_flash_created,
         "cal_flash_err": cal_flash_err,
         "flash_ov_gespeichert": flash_ov_gespeichert,
@@ -364,6 +372,7 @@ def superadmin_ov_edit_submit(
     feature_plakate: Annotated[Optional[str], Form()] = None,
     feature_sharepic: Annotated[Optional[str], Form()] = None,
     feature_fraktion: Annotated[Optional[str], Form()] = None,
+    sharepic_slogan_default: Annotated[Optional[str], Form()] = None,
     fraktion_cal_feed_url: Annotated[str, Form()] = "",
     fraktion_cal_abo_active: Annotated[Optional[str], Form()] = None,
 ):
@@ -381,6 +390,7 @@ def superadmin_ov_edit_submit(
                 ov,
                 error=feed_err,
                 cal_feed_url_input=fraktion_cal_feed_url.strip(),
+                sharepic_slogan_input=sharepic_slogan_default,
                 cal_flash_created=None,
                 cal_flash_err=None,
                 flash_ov_gespeichert=False,
@@ -394,6 +404,8 @@ def superadmin_ov_edit_submit(
     merge_mandant_feature(db, ms, FEATURE_PLAKATE, feature_plakate == "1")
     merge_mandant_feature(db, ms, FEATURE_SHAREPIC, feature_sharepic == "1")
     merge_mandant_feature(db, ms, FEATURE_FRAKTION, feature_fraktion == "1")
+    if sharepic_slogan_default is not None:
+        save_sharepic_slogan_default(db, ms, sharepic_slogan_default)
     db.add(ov)
     db.commit()
     return RedirectResponse(

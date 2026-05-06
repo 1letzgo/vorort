@@ -71,6 +71,7 @@ from app.platform_database import get_platform_db
 from app.cal_fraktion_import import run_all_fraktion_cal_subscriptions
 from app.settings_store import (
     ensure_user_calendar_token,
+    sharepic_slogan_default_value,
     verify_ics_token,
 )
 from app.superadmin_web import router as superadmin_router
@@ -1280,6 +1281,7 @@ def sharepic_creator(
     ov_display = (getattr(request.state, "ortsverband_name", None) or "").strip()
     if not ov_display:
         ov_display = mandant_slug.strip().lower()
+    slogan_default = sharepic_slogan_default_value(pdb, mandant_slug, ov_display)
     return templates.TemplateResponse(
         request,
         "sharepic.html",
@@ -1288,7 +1290,7 @@ def sharepic_creator(
             "path_prefix": _app_path_prefix(request),
             "mask_src_suffix": sharepic_mask_url(),
             "sharepic_ov_display_name": ov_display,
-            "sharepic_slogan_default": f"Für {ov_display}.\nFür Dich.",
+            "sharepic_slogan_default": slogan_default,
             "sharepic_vorlagen": _sharepic_vorlagen_for_creator(request, mandant_slug),
         },
     )
@@ -2036,7 +2038,7 @@ def _termin_sharepic_form_fields(
     ov_display = ((ov.display_name or "").strip() if ov else "") or ms
     pfx = _app_path_prefix(request)
     mp = getattr(request.state, "mandanten_prefix", "") or ""
-    slogan_default = f"Für {ov_display}.\nFür Dich."
+    slogan_default = sharepic_slogan_default_value(pdb, ms, ov_display)
     ensure_sharepic_templates_dir(ms)
     tpl = list_sharepic_templates(ms)
     templates_ui = [

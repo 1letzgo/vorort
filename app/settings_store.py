@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.platform_models import MandantAppSetting, PlatformUser
 
 ICS_KEY = "ics_token"
+SHAREPIC_SLOGAN_DEFAULT_KEY = "sharepic_slogan_default"
 
 
 def ics_token_value(pdb: Session, mandant_slug: str, env_token: str) -> str | None:
@@ -62,3 +63,45 @@ def ensure_user_calendar_token(pdb: Session, user: PlatformUser) -> str:
             pdb.refresh(user)
             return token
     raise RuntimeError("Kalender-Token konnte nicht erzeugt werden.")
+
+
+def _default_sharepic_slogan(ov_display_name: str) -> str:
+    ovn = (ov_display_name or "").strip() or "deinen Verband"
+    return f"Für {ovn}.\nFür Dich."
+
+
+def sharepic_slogan_default_value(
+    pdb: Session,
+    mandant_slug: str,
+    ov_display_name: str,
+) -> str:
+    slug = mandant_slug.strip().lower()
+    row = pdb.get(MandantAppSetting, (slug, SHAREPIC_SLOGAN_DEFAULT_KEY))
+    if row and (row.value or "").strip():
+        return row.value
+    return _default_sharepic_slogan(ov_display_name)
+
+
+def save_sharepic_slogan_default(
+    pdb: Session,
+    mandant_slug: str,
+    slogan: str,
+) -> None:
+    slug = mandant_slug.strip().lower()
+    raw = (slogan or "").replace("\r\n", "\n").replace("\r", "\n")
+    lines = [ln.rstrip() for ln in raw.split("\n")]
+    normalized = "\n".join(lines).strip()
+    if len(normalized) > 500:
+        normalized = normalized[:500].rstrip()
+    row = pdb.get(MandantAppSetting, (slug, SHAREPIC_SLOGAN_DEFAULT_KEY))
+    if normalized:
+        pdb.merge(
+            MandantAppSetting(
+                mandant_slug=slug,
+                key=SHAREPIC_SLOGAN_DEFAULT_KEY,
+                value=normalized,
+            )
+        )
+        return
+    if row:
+        pdb.delete(row)

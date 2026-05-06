@@ -97,6 +97,11 @@
             <input type="checkbox" name="feature_fraktion" value="1" {% if feature_fraktion %}checked{% endif %}>
             Fraktion (eigene Terminliste, vertrauliche Sitzungen)
           </label>
+          {% if feature_sharepic %}
+          <label for="sharepic-slogan-default" style="margin-top:0.75rem;">Standard-Slogan für Sharepic</label>
+          <textarea id="sharepic-slogan-default" name="sharepic_slogan_default" rows="3" maxlength="500" placeholder="z. B. Für Westerstede.&#10;Für Dich.">{{ sharepic_slogan_default }}</textarea>
+          <p class="muted" style="margin: 0.4rem 0 0; font-size: 0.84rem;">Wird als Vorgabe im Sharepic-Tool und im Termin-Sharepic-Generator verwendet.</p>
+          {% endif %}
         </fieldset>
 
         <fieldset style="margin-top: 1rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem;">
