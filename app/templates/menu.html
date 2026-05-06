@@ -117,9 +117,6 @@
       <span class="menu-ov-details__chevron" aria-hidden="true"></span>
     </summary>
     <ul class="menu-list" role="list" aria-labelledby="menu-ov-{{ o.slug }}-heading">
-      {% if o.feature_fraktion %}
-      <li><a href="{{ op }}/termine?{{ o.termine_fraktion_tab_query }}"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Fraktion</span></span></a></li>
-      {% endif %}
       {% if o.feature_plakate | default(true) %}
       <li><a href="{{ op }}/plakate"><span class="menu-list__main">{{ ico.svg_map_pin() }}<span>Plakate</span></span></a></li>
       {% endif %}
@@ -140,7 +137,7 @@
     </li>
     <li>
       <a href="{{ request.state.mandanten_prefix }}/administration">
-        <span class="menu-list__main">{{ ico.svg_user() }}<span>Verbände verwalten</span>{% if administration_pending_total | default(0) %}<span class="menu-admin-pending-hint" aria-label="{{ administration_pending_total }} ausstehend">({{ administration_pending_total }})</span>{% endif %}</span>
+        <span class="menu-list__main">{{ ico.svg_user() }}<span>Benutzer verwalten</span>{% if administration_pending_total | default(0) %}<span class="menu-admin-pending-hint" aria-label="{{ administration_pending_total }} ausstehend">({{ administration_pending_total }})</span>{% endif %}</span>
       </a>
     </li>
   </ul>

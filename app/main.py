@@ -640,7 +640,8 @@ def _my_ovs_menu_items(
         feature_fraktion = is_mandant_feature_enabled(pdb, slug, FEATURE_FRAKTION)
         feature_plakate = is_mandant_feature_enabled(pdb, slug, FEATURE_PLAKATE)
         feature_sharepic = is_mandant_feature_enabled(pdb, slug, FEATURE_SHAREPIC)
-        has_feature_links = bool(feature_fraktion or feature_plakate or feature_sharepic)
+        # Menü-OV-Karten zeigen nur noch eigenständige Features; "Fraktion" läuft über Termine-Tabs.
+        has_feature_links = bool(feature_plakate or feature_sharepic)
         out_members.append(
             {
                 "slug": slug,
@@ -2472,8 +2473,6 @@ def _build_termin_tabs_for_user(
     for s in slugs:
         if not is_mandant_feature_enabled(pdb, s, FEATURE_FRAKTION):
             continue
-        if not user_is_fraktionsmitglied(pdb, user.id, s):
-            continue
         rows_f = _termin_list_rows_fraktion(pdb, s, user)
         up_f, _ = _split_termine_upcoming_past(rows_f)
         fid = _termin_tab_fraktion_id(s)
@@ -2501,11 +2500,7 @@ def _build_termin_tabs_for_user(
     for s in slugs:
         _, p_ov = _split_termine_upcoming_past(_termin_list_rows(pdb, s, user))
         past_lists.append(p_ov)
-        if is_mandant_feature_enabled(pdb, s, FEATURE_FRAKTION) and user_is_fraktionsmitglied(
-            pdb,
-            user.id,
-            s,
-        ):
+        if is_mandant_feature_enabled(pdb, s, FEATURE_FRAKTION):
             _, p_fr = _split_termine_upcoming_past(_termin_list_rows_fraktion(pdb, s, user))
             past_lists.append(p_fr)
     archiv = _merge_unique_past_rows(past_lists)
