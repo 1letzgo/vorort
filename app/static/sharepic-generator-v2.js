@@ -17,7 +17,7 @@
 
   var SLOGAN_MAX_LINES = 3;
   var SLOGAN_RIGHT_PAD = 20;
-  var SLOGAN_MAX_WIDTH_FRAC = 0.48;
+  var SLOGAN_MAX_WIDTH_FRAC = 0.78;
   var MID_MAX_LINES = 1;
   var MID_CHAR_LIMIT = 30;
   var TEXT2_LH = 50;
