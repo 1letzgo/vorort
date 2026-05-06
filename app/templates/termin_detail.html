@@ -363,31 +363,31 @@
       </div>
     </header>
 
-    <section class="ics-popup__panel ics-popup__panel--accent" aria-label="Kalender Meine Zusagen">
+    <section class="ics-popup__panel ics-popup__panel--accent" aria-label="Kalender {{ ics_my_label }}">
       <h3 class="ics-popup__label">{{ ics_my_label }}</h3>
       <div class="ics-dialog-actions">
-        <a class="btn btn-sm btn-ico btn-with-label" href="{{ webcal_my }}" aria-label="Meine Zusagen: In Apple Kalender abonnieren">
+        <a class="btn btn-sm btn-ico btn-with-label" href="{{ webcal_my }}" aria-label="{{ ics_my_label }}: In Apple Kalender abonnieren">
           {{ ico.svg_calendar() }}<span class="btn-text">Apple</span>
         </a>
-        <a class="btn btn-sm btn-ico btn-with-label" href="{{ google_my }}" rel="noopener noreferrer" aria-label="Meine Zusagen: In Google Kalender abonnieren">
+        <a class="btn btn-sm btn-ico btn-with-label" href="{{ google_my }}" rel="noopener noreferrer" aria-label="{{ ics_my_label }}: In Google Kalender abonnieren">
           {{ ico.svg_calendar() }}<span class="btn-text">Google</span>
         </a>
-        <button type="button" class="btn btn-sm btn-ico btn-with-label ics-copy-btn" data-feed-url="{{ feed_url_my }}" aria-label="Link Kalender „Meine Zusagen“ kopieren">
+        <button type="button" class="btn btn-sm btn-ico btn-with-label ics-copy-btn" data-feed-url="{{ feed_url_my }}" aria-label="Link Kalender „{{ ics_my_label }}“ kopieren">
           {{ ico.svg_copy() }}<span class="btn-text">Kopieren</span>
         </button>
       </div>
     </section>
 
-    <section class="ics-popup__panel" aria-label="Kalender alle Termine">
+    <section class="ics-popup__panel" aria-label="Kalender {{ ics_all_label }}">
       <h3 class="ics-popup__label">{{ ics_all_label }}</h3>
       <div class="ics-dialog-actions">
-        <a class="btn btn-sm btn-ico btn-with-label" href="{{ webcal_all }}" aria-label="Alle Termine: In Apple Kalender abonnieren">
+        <a class="btn btn-sm btn-ico btn-with-label" href="{{ webcal_all }}" aria-label="{{ ics_all_label }}: In Apple Kalender abonnieren">
           {{ ico.svg_calendar() }}<span class="btn-text">Apple</span>
         </a>
-        <a class="btn btn-sm btn-ico btn-with-label" href="{{ google_all }}" rel="noopener noreferrer" aria-label="Alle Termine: In Google Kalender abonnieren">
+        <a class="btn btn-sm btn-ico btn-with-label" href="{{ google_all }}" rel="noopener noreferrer" aria-label="{{ ics_all_label }}: In Google Kalender abonnieren">
           {{ ico.svg_calendar() }}<span class="btn-text">Google</span>
         </a>
-        <button type="button" class="btn btn-sm btn-ico btn-with-label ics-copy-btn" data-feed-url="{{ feed_url_all }}" aria-label="Link Kalender „Alle Termine“ kopieren">
+        <button type="button" class="btn btn-sm btn-ico btn-with-label ics-copy-btn" data-feed-url="{{ feed_url_all }}" aria-label="Link Kalender „{{ ics_all_label }}“ kopieren">
           {{ ico.svg_copy() }}<span class="btn-text">Kopieren</span>
         </button>
       </div>

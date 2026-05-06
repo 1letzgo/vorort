@@ -57,7 +57,6 @@ from app.ics_service import (
     all_termine_for_feed,
     all_termine_multi_mandanten,
     build_ics_calendar,
-    termine_for_user_teilnahmen,
     termine_zugesagt_multi_mandanten,
 )
 from app.mandant_features import (
@@ -71,7 +70,6 @@ from app.platform_bootstrap import bootstrap_platform
 from app.platform_database import get_platform_db
 from app.cal_fraktion_import import run_all_fraktion_cal_subscriptions
 from app.settings_store import (
-    ensure_ics_token_for_ui,
     ensure_user_calendar_token,
     verify_ics_token,
 )
@@ -2541,20 +2539,13 @@ def termine_list(
     termin_fallback_neu_href = (
         None if termin_multi_ov_mode else _href_under_ov(request, mandant_slug.strip().lower(), "termine/neu")
     )
-    token = ensure_ics_token_for_ui(pdb, mandant_slug, ICS_TOKEN)
     base = str(request.base_url).rstrip("/")
     my_token = ensure_user_calendar_token(pdb, user.platform_user)
     mp = _mp(request)
-    if slugs:
-        feed_url_my = f"{base}{mp}/calendar/zusagen-alle.ics?t={my_token}"
-        feed_url_all = f"{base}{mp}/calendar/termine-alle.ics?t={my_token}"
-        ics_my_label = "Meine Zusagen (alle Verbände)"
-        ics_all_label = "Alle Termine (alle Verbände)"
-    else:
-        feed_url_my = f"{base}{mp}/calendar/me.ics?t={my_token}"
-        feed_url_all = f"{base}{mp}/calendar.ics?t={token}"
-        ics_my_label = "Meine Zusagen"
-        ics_all_label = "Alle Termine"
+    feed_url_my = f"{base}{mp}/calendar/zusagen-alle.ics?t={my_token}"
+    feed_url_all = f"{base}{mp}/calendar/termine-alle.ics?t={my_token}"
+    ics_my_label = "Zugesagt"
+    ics_all_label = "ALLE"
     return templates.TemplateResponse(
         request,
         "termine_list.html",
@@ -2967,12 +2958,11 @@ def termin_detail(
         raise HTTPException(status_code=404, detail="Termin nicht gefunden")
     termin_vergangen = row["termin"].starts_at < datetime.utcnow()
     kommentare = _termin_kommentare_public(pdb, termin_id, user, termin=row["termin"])
-    token = ensure_ics_token_for_ui(pdb, mandant_slug, ICS_TOKEN)
     base = str(request.base_url).rstrip("/")
     my_token = ensure_user_calendar_token(pdb, user.platform_user)
     mp = _mp(request)
-    feed_url_my = f"{base}{mp}/calendar/me.ics?t={my_token}"
-    feed_url_all = f"{base}{mp}/calendar.ics?t={token}"
+    feed_url_my = f"{base}{mp}/calendar/zusagen-alle.ics?t={my_token}"
+    feed_url_all = f"{base}{mp}/calendar/termine-alle.ics?t={my_token}"
     return templates.TemplateResponse(
         request,
         "termin_detail.html",
@@ -2984,8 +2974,8 @@ def termin_detail(
             "termin_anhaenge": attachments_decode(row["termin"].attachments_json),
             "feed_url_my": feed_url_my,
             "feed_url_all": feed_url_all,
-            "ics_my_label": "Meine Zusagen",
-            "ics_all_label": "Alle Termine",
+            "ics_my_label": "Zugesagt",
+            "ics_all_label": "ALLE",
         },
     )
 
@@ -3556,31 +3546,8 @@ def calendar_ics_me(
     pdb: Annotated[Session, Depends(get_platform_db)],
     t: Optional[str] = None,
 ):
-    """Persönlicher Feed: nur Termine mit Zusage (Teilnahme) für den zugehörigen Account."""
-    if not t:
-        raise HTTPException(status_code=404, detail="Not found")
-    owner = (
-        pdb.query(PlatformUser)
-        .filter(PlatformUser.calendar_token == t)
-        .first()
-    )
-    if not owner:
-        raise HTTPException(status_code=404, detail="Not found")
-    termine = termine_for_user_teilnahmen(pdb, owner.id, mandant_slug)
-    ks = kreis_ov_slug()
-    labels = None
-    if ks and termine:
-        slugs = sorted({x.mandant_slug.strip().lower() for x in termine})
-        labels = _ov_display_labels_for_slugs(pdb, slugs)
-    body = build_ics_calendar(termine, cal_name="Meine Zusagen — Wahlkampf", ov_labels_for_mandant_slug=labels)
-    return Response(
-        content=body,
-        media_type="text/calendar; charset=utf-8",
-        headers={
-            "Content-Disposition": 'attachment; filename="meine-termine.ics"',
-            "Cache-Control": "no-store",
-        },
-    )
+    """Legacy-Alias: früher single-OV Zusagen, jetzt auf Zusagen-alle vereinheitlicht."""
+    return calendar_ics_zusagen_alle(mandant_slug=mandant_slug, pdb=pdb, t=t)
 
 
 @tenant_router.get("/calendar/zusagen-alle.ics")
