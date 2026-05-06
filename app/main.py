@@ -570,6 +570,7 @@ def _pending_approval_count(pdb: Session, mandant_slug: str, user: Authenticated
     ms = mandant_slug.strip().lower()
     return (
         pdb.query(OvMembership)
+        .join(PlatformUser, OvMembership.user_id == PlatformUser.id)
         .filter(
             OvMembership.ov_slug == ms,
             OvMembership.is_approved.is_(False),
@@ -629,6 +630,7 @@ def _my_ovs_menu_items(
         if is_adm:
             pend = (
                 pdb.query(OvMembership)
+                .join(PlatformUser, OvMembership.user_id == PlatformUser.id)
                 .filter(
                     OvMembership.ov_slug == slug,
                     OvMembership.is_approved.is_(False),
@@ -1548,6 +1550,7 @@ def _ov_user_rows_for_admin(pdb: Session, mandant_slug: str) -> list:
     ms = mandant_slug.strip().lower()
     memberships = (
         pdb.query(OvMembership)
+        .join(PlatformUser, OvMembership.user_id == PlatformUser.id)
         .filter(OvMembership.ov_slug == ms)
         .order_by(OvMembership.id.asc())
         .all()
@@ -1567,7 +1570,7 @@ def _ov_user_rows_for_admin(pdb: Session, mandant_slug: str) -> list:
                 display_name=pu.display_name,
                 created_at=pu.created_at,
                 is_admin=bool(m.is_admin or sup),
-                is_approved=m.is_approved,
+                is_approved=bool(m.is_approved),
                 fraktion_member=bool(getattr(m, "fraktion_member", False)),
                 shadow_superadmin=False,
                 platform_superadmin=sup,
@@ -1634,6 +1637,7 @@ def _build_admin_hub_tabs(
         dn = (ov.display_name or "").strip() or slug.replace("-", " ").replace("_", " ").title()
         pend = (
             pdb.query(OvMembership)
+            .join(PlatformUser, OvMembership.user_id == PlatformUser.id)
             .filter(
                 OvMembership.ov_slug == slug,
                 OvMembership.is_approved.is_(False),

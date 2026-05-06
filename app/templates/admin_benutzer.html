@@ -68,54 +68,52 @@
               </td>
               <td data-label="Seit" class="muted admin-users-td-date">{{ u.created_at.strftime('%d.%m.%Y') }}</td>
               <td data-label="Aktionen" class="admin-users-td-actions">
-                <div>
-                  {% if not u.shadow_superadmin %}
+                <div class="admin-users-action-stack">
+                  {% if u.shadow_superadmin %}
+                  <span class="muted" style="font-size:0.82rem;">Keine OV-Aktionen</span>
+                  {% else %}
                   {% if not u.is_approved %}
-                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/freigeben" style="margin:0;">
-                    <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Nutzer {{ u.display_name or u.username }} freigeben">
+                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/freigeben" class="admin-users-action-form" style="margin:0;">
+                    <button type="submit" class="btn btn-sm btn-ico btn-with-label btn-block admin-users-freigeben-btn" aria-label="Nutzer {{ u.display_name or u.username }} freigeben">
                       {{ ico.svg_check() }}<span class="btn-text">Freigeben</span>
                     </button>
                   </form>
                   {% endif %}
-                  {% if feature_fraktion %}
-                  {% if u.is_approved %}
+                  {% if feature_fraktion and u.is_approved %}
                   {% if u.fraktion_member %}
-                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/fraktion-kein-mitglied" style="margin:0;">
-                    <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Fraktionsmitgliedschaft für {{ u.display_name or u.username }} entfernen">
+                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/fraktion-kein-mitglied" class="admin-users-action-form" style="margin:0;">
+                    <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label btn-block" aria-label="Fraktionsmitgliedschaft für {{ u.display_name or u.username }} entfernen">
                       {{ ico.svg_minus_circle() }}<span class="btn-text">Kein Fraktionsmitglied</span>
                     </button>
                   </form>
                   {% else %}
-                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/fraktion-mitglied" style="margin:0;">
-                    <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="{{ u.display_name or u.username }} zur Fraktion hinzufügen">
+                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/fraktion-mitglied" class="admin-users-action-form" style="margin:0;">
+                    <button type="submit" class="btn btn-sm btn-ico btn-with-label btn-block" aria-label="{{ u.display_name or u.username }} zur Fraktion hinzufügen">
                       {{ ico.svg_user_plus() }}<span class="btn-text">Fraktionsmitglied</span>
                     </button>
                   </form>
                   {% endif %}
                   {% endif %}
-                  {% endif %}
                   {% if not u.is_admin %}
-                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/admin-ernennen" style="margin:0;">
-                    <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Nutzer {{ u.display_name or u.username }} zum Admin machen">
+                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/admin-ernennen" class="admin-users-action-form" style="margin:0;">
+                    <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label btn-block" aria-label="Nutzer {{ u.display_name or u.username }} zum Admin machen">
                       {{ ico.svg_user_plus() }}<span class="btn-text">Admin</span>
                     </button>
                   </form>
                   {% elif admin_count > 1 %}
-                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/admin-entfernen" style="margin:0;">
-                    <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Admin-Rechte von {{ u.display_name or u.username }} entfernen">
+                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/admin-entfernen" class="admin-users-action-form" style="margin:0;">
+                    <button type="submit" class="btn btn-ghost btn-sm btn-ico btn-with-label btn-block" aria-label="Admin-Rechte von {{ u.display_name or u.username }} entfernen">
                       {{ ico.svg_minus_circle() }}<span class="btn-text">Kein Admin</span>
                     </button>
                   </form>
                   {% endif %}
                   {% if u.id != user.id and (not u.is_admin or admin_count > 1) %}
-                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/zugriff-entziehen" style="margin:0;" onsubmit="return confirm('Zugriff auf dieses OV für diesen Nutzer entziehen? (Konto bleibt für andere OVs bestehen.)');">
-                    <button type="submit" class="btn btn-danger btn-sm btn-ico btn-with-label" aria-label="Zugriff für {{ u.display_name or u.username }} auf dieses OV entziehen">
+                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/zugriff-entziehen" class="admin-users-action-form" style="margin:0;" onsubmit="return confirm('Zugriff auf dieses OV für diesen Nutzer entziehen? (Konto bleibt für andere OVs bestehen.)');">
+                    <button type="submit" class="btn btn-danger btn-sm btn-ico btn-with-label btn-block" aria-label="Zugriff für {{ u.display_name or u.username }} auf dieses OV entziehen">
                       {{ ico.svg_logout() }}<span class="btn-text">Zugriff entziehen</span>
                     </button>
                   </form>
                   {% endif %}
-                  {% else %}
-                  <span class="muted" style="font-size:0.82rem;">Keine OV-Aktionen</span>
                   {% endif %}
                 </div>
               </td>

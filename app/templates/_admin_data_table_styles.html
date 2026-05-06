@@ -74,6 +74,9 @@
     gap: 0.5rem;
     justify-content: flex-end;
   }
+  .admin-users-table--tenant-benutzer .admin-users-freigeben-btn .btn-text {
+    display: inline !important;
+  }
   .admin-users-td-status .pending-flag {
     display: inline-block;
     margin-top: 0.15rem;
@@ -205,8 +208,10 @@
       width: auto;
       justify-content: center;
     }
-    /* /admin/benutzer mobil: beschriftete Buttons, untereinander, volle Zeilenbreite */
-    .admin-users-table--tenant-benutzer .admin-users-td-actions > div {
+    .admin-users-table--tenant-benutzer .admin-users-freigeben-btn {
+      min-height: 3rem;
+      font-weight: 650;
+    }
       display: flex;
       flex-direction: column;
       align-items: stretch;
