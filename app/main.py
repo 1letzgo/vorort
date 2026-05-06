@@ -1677,17 +1677,14 @@ def administration_hub(
     admin_tabs = _build_admin_hub_tabs(pdb, request, user)
     if not admin_tabs:
         return RedirectResponse(f"{_mp(request)}/menu", status_code=302)
+    ms = mandant_slug.strip().lower()
     default_tab_id = _admin_hub_resolve_default_tab(admin_tabs, tab)
-    return templates.TemplateResponse(
-        request,
-        "administration_hub.html",
-        {
-            "user": user,
-            "admin_tabs": admin_tabs,
-            "default_tab_id": default_tab_id,
-            "page_title": "Administration",
-        },
-    )
+    selected = next((t for t in admin_tabs if t["id"] == default_tab_id), None)
+    if tab is None:
+        selected = next((t for t in admin_tabs if t["slug"] == ms), selected)
+    if not selected:
+        selected = admin_tabs[0]
+    return RedirectResponse(selected["benutzer_href"], status_code=302)
 
 
 @tenant_router.get("/admin/benutzer", response_class=HTMLResponse)
