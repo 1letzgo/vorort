@@ -23,6 +23,37 @@
   .termin-card-list__meta {
     margin: 0.35rem 0 0;
   }
+  .termin-anhang-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+  .termin-anhang-list__item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+  .termin-anhang-list__icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    color: var(--muted);
+  }
+  .termin-anhang-list__icon .ico {
+    width: 1.05em;
+    height: 1.05em;
+  }
+  .termin-anhang-list__link {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
   .termin-card-list__media-row {
     display: flex;
     gap: 1rem;
@@ -253,9 +284,12 @@
           {% if termin_anhaenge|length %}
           <section class="ics-popup__panel" aria-label="Dateianhänge">
             <h3 class="ics-popup__label">Dateien</h3>
-            <ul style="margin:0;padding-left:1.15rem;line-height:1.5;font-size:0.95rem;">
+            <ul class="termin-anhang-list" aria-label="Dateianhänge">
               {% for a in termin_anhaenge %}
-              <li><a href="{{ owner_mp }}/media/{{ a.path }}" download>{{ a.name }}</a></li>
+              <li class="termin-anhang-list__item">
+                <span class="termin-anhang-list__icon" aria-hidden="true">{{ ico.svg_document() }}</span>
+                <a href="{{ owner_mp }}/media/{{ a.path }}" download class="termin-anhang-list__link">{{ a.name }}</a>
+              </li>
               {% endfor %}
             </ul>
           </section>
