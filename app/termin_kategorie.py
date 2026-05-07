@@ -55,11 +55,6 @@ def user_is_vorstandsmitglied(pdb: Session, user_id: int, ov_slug: str) -> bool:
     return m is not None and bool(getattr(m, "vorstand_member", False))
 
 
-def user_is_ov_admin_in(pdb: Session, user_id: int, ov_slug: str) -> bool:
-    m = _membership_approved(pdb, user_id, ov_slug)
-    return m is not None and bool(m.is_admin)
-
-
 def user_darf_kategorie_anlegen(
     pdb: Session,
     *,
@@ -67,18 +62,14 @@ def user_darf_kategorie_anlegen(
     ov_slug: str,
     kategorie: str,
 ) -> bool:
-    """Wer darf einen Termin dieser Kategorie neu anlegen."""
+    """Wer darf einen Termin dieser Kategorie neu anlegen (gleiche Logik wie Sichtbarkeit, ohne Admin-Bypass)."""
     kat = normalize_termin_kategorie(kategorie)
     if kat == TERMIN_KAT_VERBAND:
         return _membership_approved(pdb, user_id, ov_slug) is not None
     if kat == TERMIN_KAT_VORSTAND:
-        return user_is_vorstandsmitglied(pdb, user_id, ov_slug) or user_is_ov_admin_in(
-            pdb, user_id, ov_slug
-        )
+        return user_is_vorstandsmitglied(pdb, user_id, ov_slug)
     if kat == TERMIN_KAT_FRAKTION:
-        return user_is_fraktionsmitglied(pdb, user_id, ov_slug) or user_is_ov_admin_in(
-            pdb, user_id, ov_slug
-        )
+        return user_is_fraktionsmitglied(pdb, user_id, ov_slug)
     return False
 
 
