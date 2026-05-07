@@ -231,6 +231,19 @@ header.site-header .header-brand:hover {
   background: #5c1622;
 }
 
+/* Positives Bestätigen (z. B. Mitglied freigeben) — bewusst grün statt Akzent-Rot */
+.btn-success {
+  background: #15803d;
+  border-color: #166534;
+  color: #fff !important;
+}
+
+.btn-success:hover {
+  background: #166534;
+  border-color: #14532d;
+  color: #fff !important;
+}
+
 .btn-admin {
   background: #1e7a4c;
   color: #fff !important;
