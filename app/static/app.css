@@ -778,6 +778,34 @@ dialog.popup-dialog::backdrop {
   height: 1.4rem;
 }
 
+/* Termin-Kategorie: Kachel hinter Kalender-Icon (Listen + Detail) */
+.ics-popup__head-icon.termin-kat-icon--verband {
+  background: linear-gradient(
+    145deg,
+    rgba(180, 83, 9, 0.26),
+    rgba(180, 83, 9, 0.09)
+  );
+  color: #b45309;
+}
+
+.ics-popup__head-icon.termin-kat-icon--vorstand {
+  background: linear-gradient(
+    145deg,
+    rgba(21, 128, 61, 0.26),
+    rgba(21, 128, 61, 0.09)
+  );
+  color: #15803d;
+}
+
+.ics-popup__head-icon.termin-kat-icon--fraktion {
+  background: linear-gradient(
+    145deg,
+    rgba(29, 78, 216, 0.26),
+    rgba(29, 78, 216, 0.09)
+  );
+  color: #1d4ed8;
+}
+
 .ics-popup__h {
   margin: 0;
   font-size: 1.14rem;

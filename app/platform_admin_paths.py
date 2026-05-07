@@ -7,4 +7,6 @@ def is_platform_superadmin_scope_path(rel: str) -> bool:
         return True
     if rel.startswith("/admin/nutzer"):
         return True
+    if rel.startswith("/admin/kalender-abos"):
+        return True
     return rel.startswith("/admin/ortsverbaende")

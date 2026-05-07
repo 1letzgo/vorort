@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import CAL_FETCH_TIMEOUT_SECONDS
-from app.platform_models import Ortsverband, Termin
+from app.platform_models import ExternCalSubscription, Termin
 from app.termin_kategorie import TERMIN_KAT_VERBAND, apply_kategorie_to_termin_row
 
 logger = logging.getLogger(__name__)
@@ -336,7 +336,7 @@ def import_fraktion_termine_from_calendar(
 
 
 def run_all_fraktion_cal_subscriptions() -> None:
-    """Alle aktiven Kalender-Abos (URL + Abo an) am Ortsverband."""
+    """Alle aktiven Plattform-Kalender-Abos (URL + Abo an) → Ziel-Ortsverband."""
     from sqlalchemy.orm import sessionmaker
 
     from app.platform_database import platform_engine
@@ -344,28 +344,35 @@ def run_all_fraktion_cal_subscriptions() -> None:
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=platform_engine())
     db = SessionLocal()
     try:
-        ovs = (
-            db.query(Ortsverband)
+        subs = (
+            db.query(ExternCalSubscription)
             .filter(
-                Ortsverband.fraktion_cal_feed_url.isnot(None),
-                Ortsverband.fraktion_cal_feed_url != "",
-                Ortsverband.fraktion_cal_abo_active.is_(True),
+                ExternCalSubscription.feed_url.isnot(None),
+                ExternCalSubscription.feed_url != "",
+                ExternCalSubscription.abo_active.is_(True),
             )
             .all()
         )
-        for ov in ovs:
-            url = (ov.fraktion_cal_feed_url or "").strip()
+        for sub in subs:
+            url = (sub.feed_url or "").strip()
             if not url:
                 continue
-            n, err = import_fraktion_termine_from_calendar(db, ov.slug, url)
+            ms = sub.mandant_slug.strip().lower()
+            n, err = import_fraktion_termine_from_calendar(db, ms, url)
             if err:
                 logger.info(
-                    "Kalender mandant=%s created=%s msg=%s",
-                    ov.slug,
+                    "Kalender sub_id=%s mandant=%s created=%s msg=%s",
+                    sub.id,
+                    ms,
                     n,
                     err,
                 )
             elif n:
-                logger.info("Kalender mandant=%s created=%s", ov.slug, n)
+                logger.info(
+                    "Kalender sub_id=%s mandant=%s created=%s",
+                    sub.id,
+                    ms,
+                    n,
+                )
     finally:
         db.close()

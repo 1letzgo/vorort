@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% from '_ui_macros.html' import app_header_toolbar with context %}
+{% import '_icons.html' as ico %}
+{% block title %}Kalender-Abos (RIS / extern){% endblock %}
+{% block head %}
+{% include '_admin_shell_styles.html' %}
+{% include '_admin_data_table_styles.html' %}
+<style>
+  @media (min-width: 640px) {
+    .superadmin-cal-table .admin-users-col-name { width: 14%; }
+    .superadmin-cal-table .admin-users-col-status { width: 30%; }
+    .superadmin-cal-table .admin-users-col-url { width: 36%; }
+    .superadmin-cal-table .admin-users-col-actions { width: 20%; }
+  }
+  .cal-sub-url-cell {
+    max-width: 42rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.82rem;
+  }
+  .cal-sub-url-cell code { word-break: break-all; white-space: normal; }
+</style>
+{% endblock %}
+{% block body %}
+{% set path_prefix = request.scope.get('root_path') or '' %}
+{% call app_header_toolbar('Kalender-Abos') %}
+  <a href="{{ path_prefix }}/admin/kalender-abos/neu" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Neues Kalender-Abo">
+    {{ ico.svg_plus() }}<span class="btn-text">Neues Abo</span>
+  </a>
+{% endcall %}
+
+{% include '_superadmin_platform_nav.html' %}
+
+<div class="admin-page">
+  <div class="card card--flush admin-users-card">
+    <div class="admin-users-shell">
+      <header class="ics-popup__head">
+        <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_calendar() }}</div>
+        <div>
+          <h2 class="ics-popup__h">RIS / externe ICS-Feeds</h2>
+          <p class="ics-popup__lead">
+            Mehrere Abos pro Plattform; Ziel ist jeweils ein <strong>Ortsverband</strong>. Importierte Termine sind <strong>Verbandstermine</strong> (für freigegebene Mitglieder sichtbar). Aktive Abos werden im Hintergrund abgerufen.
+          </p>
+        </div>
+      </header>
+
+      {% if not subs %}
+      <p class="muted" style="margin: 0;">Noch keine Kalender-Abos angelegt.</p>
+      {% else %}
+      <div class="admin-users-table-wrap">
+        <table class="admin-users-table superadmin-cal-table">
+          <colgroup>
+            <col class="admin-users-col-name">
+            <col class="admin-users-col-status">
+            <col class="admin-users-col-url">
+            <col class="admin-users-col-actions">
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Ortsverband</th>
+              <th scope="col">Kalender-URL</th>
+              <th scope="col" class="admin-users-th-actions">Aktionen</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in subs %}
+            {% set o = ovs.get(s.mandant_slug) %}
+            <tr>
+              <td data-label="ID"><code>{{ s.id }}</code></td>
+              <td data-label="Ortsverband">
+                <strong>{{ s.label.strip() if s.label and s.label.strip() else '(ohne Bezeichnung)' }}</strong>
+                <br><code class="muted" style="font-size:0.8rem;">{{ s.mandant_slug }}</code>
+                {% if o %}<br><span class="muted" style="font-size:0.8rem;">{{ o.display_name }}</span>{% endif %}
+                <br>
+                {% if s.abo_active %}
+                <span style="font-size:0.75rem;font-weight:700;color:#15803d;">Abo aktiv</span>
+                {% else %}
+                <span class="muted" style="font-size:0.75rem;">Abo aus</span>
+                {% endif %}
+              </td>
+              <td data-label="URL" class="cal-sub-url-cell">
+                {% if s.feed_url %}<code>{{ s.feed_url }}</code>{% else %}<span class="muted">—</span>{% endif %}
+              </td>
+              <td data-label="Aktionen" class="admin-users-td-actions">
+                <div style="display:flex;flex-wrap:wrap;gap:0.35rem;">
+                  <a href="{{ path_prefix }}/admin/kalender-abos/{{ s.id }}/bearbeiten" class="btn btn-sm btn-ico btn-with-label" aria-label="Abo {{ s.id }} bearbeiten">
+                    {{ ico.svg_pencil() }}<span class="btn-text">Bearbeiten</span>
+                  </a>
+                  <form method="post" action="{{ path_prefix }}/admin/kalender-abos/{{ s.id }}/sync" style="margin:0;display:inline;">
+                    <button type="submit" class="btn btn-sm btn-ghost btn-with-label" aria-label="Kalender jetzt abrufen für Abo {{ s.id }}">Jetzt abrufen</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

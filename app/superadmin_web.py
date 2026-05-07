@@ -36,6 +36,7 @@ from app.platform_user_admin import (
 )
 from app.platform_database import get_platform_db
 from app.platform_models import (
+    ExternCalSubscription,
     MandantPlakat,
     Ortsverband,
     OvMembership,
@@ -58,10 +59,7 @@ def _ov_edit_form_ctx(
     ov: Ortsverband,
     *,
     error: str | None = None,
-    cal_feed_url_input: str | None = None,
     sharepic_slogan_input: str | None = None,
-    cal_flash_created: int | None = None,
-    cal_flash_err: str | None = None,
     flash_ov_gespeichert: bool = False,
 ) -> dict:
     slogan_default = (
@@ -75,10 +73,7 @@ def _ov_edit_form_ctx(
         "is_new": False,
         "feature_plakate": is_mandant_feature_enabled(db, ov.slug, FEATURE_PLAKATE),
         "feature_sharepic": is_mandant_feature_enabled(db, ov.slug, FEATURE_SHAREPIC),
-        "cal_feed_url_input": cal_feed_url_input,
         "sharepic_slogan_default": slogan_default,
-        "cal_flash_created": cal_flash_created,
-        "cal_flash_err": cal_flash_err,
         "flash_ov_gespeichert": flash_ov_gespeichert,
         "max_upload_mb": MAX_UPLOAD_MB,
     }
@@ -150,9 +145,6 @@ def superadmin_ov_new_form(
             "error": None,
             "ov": None,
             "is_new": True,
-            "cal_feed_url_input": None,
-            "cal_flash_created": None,
-            "cal_flash_err": None,
             "flash_ov_gespeichert": False,
         },
     )
@@ -175,9 +167,6 @@ def superadmin_ov_new_submit(
                 "error": err,
                 "ov": None,
                 "is_new": True,
-                "cal_feed_url_input": None,
-                "cal_flash_created": None,
-                "cal_flash_err": None,
                 "flash_ov_gespeichert": False,
             },
             status_code=400,
@@ -191,9 +180,6 @@ def superadmin_ov_new_submit(
                 "error": "Dieser Slug existiert bereits.",
                 "ov": None,
                 "is_new": True,
-                "cal_feed_url_input": None,
-                "cal_flash_created": None,
-                "cal_flash_err": None,
                 "flash_ov_gespeichert": False,
             },
             status_code=400,
@@ -212,11 +198,6 @@ def superadmin_ov_edit_form(
     ov = db.get(Ortsverband, slug.strip().lower())
     if not ov:
         raise HTTPException(status_code=404, detail="Unbekannt")
-    cal_created_raw = request.query_params.get("cal_import_created")
-    cal_flash_created: int | None = None
-    if cal_created_raw is not None and cal_created_raw.isdigit():
-        cal_flash_created = int(cal_created_raw)
-    cal_flash_err = request.query_params.get("cal_import_err") or None
     flash_ov_gespeichert = request.query_params.get("gespeichert") == "1"
     return templates.TemplateResponse(
         request,
@@ -226,9 +207,6 @@ def superadmin_ov_edit_form(
             db,
             ov,
             error=None,
-            cal_feed_url_input=None,
-            cal_flash_created=cal_flash_created,
-            cal_flash_err=cal_flash_err,
             flash_ov_gespeichert=flash_ov_gespeichert,
         ),
     )
@@ -244,33 +222,11 @@ def superadmin_ov_edit_submit(
     feature_plakate: Annotated[Optional[str], Form()] = None,
     feature_sharepic: Annotated[Optional[str], Form()] = None,
     sharepic_slogan_default: Annotated[Optional[str], Form()] = None,
-    fraktion_cal_feed_url: Annotated[str, Form()] = "",
-    fraktion_cal_abo_active: Annotated[Optional[str], Form()] = None,
 ):
     ov = db.get(Ortsverband, slug.strip().lower())
     if not ov:
         raise HTTPException(status_code=404, detail="Unbekannt")
-    feed_u, feed_err = validate_and_normalize_cal_subscription_url(fraktion_cal_feed_url)
-    if feed_err:
-        return templates.TemplateResponse(
-            request,
-            "superadmin_ov_form.html",
-            _ov_edit_form_ctx(
-                request,
-                db,
-                ov,
-                error=feed_err,
-                cal_feed_url_input=fraktion_cal_feed_url.strip(),
-                sharepic_slogan_input=sharepic_slogan_default,
-                cal_flash_created=None,
-                cal_flash_err=None,
-                flash_ov_gespeichert=False,
-            ),
-            status_code=400,
-        )
     ov.display_name = " ".join(display_name.split()).strip() or ov.slug
-    ov.fraktion_cal_feed_url = feed_u
-    ov.fraktion_cal_abo_active = fraktion_cal_abo_active == "1"
     ms = ov.slug.strip().lower()
     merge_mandant_feature(db, ms, FEATURE_PLAKATE, feature_plakate == "1")
     merge_mandant_feature(db, ms, FEATURE_SHAREPIC, feature_sharepic == "1")
@@ -284,39 +240,317 @@ def superadmin_ov_edit_submit(
     )
 
 
-@router.post("/admin/ortsverbaende/{slug}/fraktion-cal-sync")
-async def superadmin_ov_fraktion_cal_sync(
+@router.get("/admin/kalender-abos", response_class=HTMLResponse)
+def superadmin_cal_sub_list(
     request: Request,
-    slug: str,
     db: Annotated[Session, Depends(get_platform_db)],
     _: LetzgoSuperadmin,
 ):
-    s = slug.strip().lower()
-    ov = db.get(Ortsverband, s)
-    if not ov:
-        raise HTTPException(status_code=404, detail="Unbekannt")
-    form = await request.form()
-    raw_feed = form.get("fraktion_cal_feed_url")
-    if isinstance(raw_feed, str):
-        draft = raw_feed.strip()
-        if draft:
-            feed_u, feed_err = validate_and_normalize_cal_subscription_url(raw_feed)
-            if feed_err:
-                return RedirectResponse(
-                    f"/admin/ortsverbaende/{s}/bearbeiten?cal_import_err={quote(feed_err)}",
-                    status_code=302,
-                )
-            feed_url = feed_u or ""
-        else:
-            feed_url = ""
-    else:
-        feed_url = ov.fraktion_cal_feed_url or ""
+    subs = (
+        db.query(ExternCalSubscription)
+        .order_by(ExternCalSubscription.mandant_slug.asc(), ExternCalSubscription.id.asc())
+        .all()
+    )
+    ovs = {o.slug: o for o in db.query(Ortsverband).all()}
+    return templates.TemplateResponse(
+        request,
+        "superadmin_cal_subscriptions.html",
+        {"subs": subs, "ovs": ovs},
+    )
 
-    n, err = import_fraktion_termine_from_calendar(db, ov.slug, feed_url)
-    base = f"/admin/ortsverbaende/{s}/bearbeiten"
+
+@router.get("/admin/kalender-abos/neu", response_class=HTMLResponse)
+def superadmin_cal_sub_new_form(
+    request: Request,
+    db: Annotated[Session, Depends(get_platform_db)],
+    _: LetzgoSuperadmin,
+):
+    ovs = db.query(Ortsverband).order_by(Ortsverband.slug.asc()).all()
+    return templates.TemplateResponse(
+        request,
+        "superadmin_cal_subscription_form.html",
+        {
+            "sub": None,
+            "ovs": ovs,
+            "error": None,
+            "feed_url_input": None,
+            "flash_ok": False,
+            "cal_flash_created": None,
+            "cal_flash_err": None,
+        },
+    )
+
+
+@router.post("/admin/kalender-abos/neu", response_class=HTMLResponse)
+def superadmin_cal_sub_new_submit(
+    request: Request,
+    db: Annotated[Session, Depends(get_platform_db)],
+    _: LetzgoSuperadmin,
+    mandant_slug: Annotated[str, Form()],
+    label: Annotated[str, Form()] = "",
+    feed_url: Annotated[str, Form()] = "",
+    abo_active: Annotated[Optional[str], Form()] = None,
+):
+    ms = mandant_slug.strip().lower()
+    ov = db.get(Ortsverband, ms)
+    ovs = db.query(Ortsverband).order_by(Ortsverband.slug.asc()).all()
+    if not ov:
+        return templates.TemplateResponse(
+            request,
+            "superadmin_cal_subscription_form.html",
+            {
+                "sub": None,
+                "ovs": ovs,
+                "error": "Ortsverband nicht gefunden.",
+                "feed_url_input": feed_url,
+                "flash_ok": False,
+                "cal_flash_created": None,
+                "cal_flash_err": None,
+            },
+            status_code=400,
+        )
+    feed_u, feed_err = validate_and_normalize_cal_subscription_url(feed_url)
+    if feed_err:
+        return templates.TemplateResponse(
+            request,
+            "superadmin_cal_subscription_form.html",
+            {
+                "sub": None,
+                "ovs": ovs,
+                "error": feed_err,
+                "feed_url_input": feed_url.strip(),
+                "flash_ok": False,
+                "cal_flash_created": None,
+                "cal_flash_err": None,
+            },
+            status_code=400,
+        )
+    want_active = abo_active == "1"
+    if want_active and not (feed_u or "").strip():
+        return templates.TemplateResponse(
+            request,
+            "superadmin_cal_subscription_form.html",
+            {
+                "sub": None,
+                "ovs": ovs,
+                "error": "Für ein aktives Abo ist eine Kalender-URL erforderlich.",
+                "feed_url_input": feed_url.strip(),
+                "flash_ok": False,
+                "cal_flash_created": None,
+                "cal_flash_err": None,
+            },
+            status_code=400,
+        )
+    sub = ExternCalSubscription(
+        mandant_slug=ms,
+        label=" ".join(label.split()).strip()[:200],
+        feed_url=feed_u,
+        abo_active=want_active,
+    )
+    db.add(sub)
+    db.commit()
+    db.refresh(sub)
+    return RedirectResponse(
+        f"/admin/kalender-abos/{sub.id}/bearbeiten?gespeichert=1",
+        status_code=302,
+    )
+
+
+def _cal_sub_form_ctx(
+    *,
+    sub: ExternCalSubscription | None,
+    ovs: list,
+    error: str | None,
+    feed_url_input: str | None,
+    flash_ok: bool,
+    cal_flash_created: int | None,
+    cal_flash_err: str | None,
+) -> dict:
+    return {
+        "sub": sub,
+        "ovs": ovs,
+        "error": error,
+        "feed_url_input": feed_url_input,
+        "flash_ok": flash_ok,
+        "cal_flash_created": cal_flash_created,
+        "cal_flash_err": cal_flash_err,
+    }
+
+
+@router.get("/admin/kalender-abos/{sub_id}/bearbeiten", response_class=HTMLResponse)
+def superadmin_cal_sub_edit_form(
+    sub_id: int,
+    request: Request,
+    db: Annotated[Session, Depends(get_platform_db)],
+    _: LetzgoSuperadmin,
+):
+    sub = db.get(ExternCalSubscription, sub_id)
+    if not sub:
+        raise HTTPException(status_code=404, detail="Abo nicht gefunden")
+    ovs = db.query(Ortsverband).order_by(Ortsverband.slug.asc()).all()
+    flash_ok = request.query_params.get("gespeichert") == "1"
+    cal_created_raw = request.query_params.get("cal_import_created")
+    cal_flash_created: int | None = None
+    if cal_created_raw is not None and cal_created_raw.isdigit():
+        cal_flash_created = int(cal_created_raw)
+    cal_flash_err = request.query_params.get("cal_import_err") or None
+    return templates.TemplateResponse(
+        request,
+        "superadmin_cal_subscription_form.html",
+        _cal_sub_form_ctx(
+            sub=sub,
+            ovs=ovs,
+            error=None,
+            feed_url_input=None,
+            flash_ok=flash_ok,
+            cal_flash_created=cal_flash_created,
+            cal_flash_err=cal_flash_err,
+        ),
+    )
+
+
+@router.post("/admin/kalender-abos/{sub_id}/bearbeiten", response_class=HTMLResponse)
+def superadmin_cal_sub_edit_submit(
+    sub_id: int,
+    request: Request,
+    db: Annotated[Session, Depends(get_platform_db)],
+    _: LetzgoSuperadmin,
+    mandant_slug: Annotated[str, Form()],
+    label: Annotated[str, Form()] = "",
+    feed_url: Annotated[str, Form()] = "",
+    abo_active: Annotated[Optional[str], Form()] = None,
+):
+    sub = db.get(ExternCalSubscription, sub_id)
+    if not sub:
+        raise HTTPException(status_code=404, detail="Abo nicht gefunden")
+    ovs = db.query(Ortsverband).order_by(Ortsverband.slug.asc()).all()
+    ms = mandant_slug.strip().lower()
+    ov = db.get(Ortsverband, ms)
+    if not ov:
+        return templates.TemplateResponse(
+            request,
+            "superadmin_cal_subscription_form.html",
+            _cal_sub_form_ctx(
+                sub=sub,
+                ovs=ovs,
+                error="Ortsverband nicht gefunden.",
+                feed_url_input=feed_url,
+                flash_ok=False,
+                cal_flash_created=None,
+                cal_flash_err=None,
+            ),
+            status_code=400,
+        )
+    feed_u, feed_err = validate_and_normalize_cal_subscription_url(feed_url)
+    if feed_err:
+        return templates.TemplateResponse(
+            request,
+            "superadmin_cal_subscription_form.html",
+            _cal_sub_form_ctx(
+                sub=sub,
+                ovs=ovs,
+                error=feed_err,
+                feed_url_input=feed_url.strip(),
+                flash_ok=False,
+                cal_flash_created=None,
+                cal_flash_err=None,
+            ),
+            status_code=400,
+        )
+    want_active = abo_active == "1"
+    if want_active and not (feed_u or "").strip():
+        return templates.TemplateResponse(
+            request,
+            "superadmin_cal_subscription_form.html",
+            _cal_sub_form_ctx(
+                sub=sub,
+                ovs=ovs,
+                error="Für ein aktives Abo ist eine Kalender-URL erforderlich.",
+                feed_url_input=feed_url.strip(),
+                flash_ok=False,
+                cal_flash_created=None,
+                cal_flash_err=None,
+            ),
+            status_code=400,
+        )
+    sub.mandant_slug = ms
+    sub.label = " ".join(label.split()).strip()[:200]
+    sub.feed_url = feed_u
+    sub.abo_active = want_active
+    db.add(sub)
+    db.commit()
+    return RedirectResponse(
+        f"/admin/kalender-abos/{sub_id}/bearbeiten?gespeichert=1",
+        status_code=302,
+    )
+
+
+@router.post("/admin/kalender-abos/{sub_id}/sync")
+def superadmin_cal_sub_sync_now(
+    sub_id: int,
+    db: Annotated[Session, Depends(get_platform_db)],
+    _: LetzgoSuperadmin,
+):
+    sub = db.get(ExternCalSubscription, sub_id)
+    if not sub:
+        raise HTTPException(status_code=404, detail="Abo nicht gefunden")
+    url = (sub.feed_url or "").strip()
+    if not url:
+        return RedirectResponse(
+            f"/admin/kalender-abos/{sub_id}/bearbeiten?cal_import_err={quote('Keine Kalender-URL gespeichert.')}",
+            status_code=302,
+        )
+    n, err = import_fraktion_termine_from_calendar(db, sub.mandant_slug, url)
+    base = f"/admin/kalender-abos/{sub_id}/bearbeiten"
     if err:
         return RedirectResponse(f"{base}?cal_import_err={quote(err)}", status_code=302)
     return RedirectResponse(f"{base}?cal_import_created={n}", status_code=302)
+
+
+@router.get("/admin/kalender-abos/{sub_id}/loeschen", response_class=HTMLResponse)
+def superadmin_cal_sub_delete_form(
+    sub_id: int,
+    request: Request,
+    db: Annotated[Session, Depends(get_platform_db)],
+    _: LetzgoSuperadmin,
+):
+    sub = db.get(ExternCalSubscription, sub_id)
+    if not sub:
+        raise HTTPException(status_code=404, detail="Abo nicht gefunden")
+    ov = db.get(Ortsverband, sub.mandant_slug)
+    return templates.TemplateResponse(
+        request,
+        "superadmin_cal_subscription_loeschen.html",
+        {"sub": sub, "ov": ov, "error": None},
+    )
+
+
+@router.post("/admin/kalender-abos/{sub_id}/loeschen")
+def superadmin_cal_sub_delete_submit(
+    sub_id: int,
+    request: Request,
+    db: Annotated[Session, Depends(get_platform_db)],
+    _: LetzgoSuperadmin,
+    confirm_id: Annotated[str, Form()],
+):
+    sub = db.get(ExternCalSubscription, sub_id)
+    if not sub:
+        raise HTTPException(status_code=404, detail="Abo nicht gefunden")
+    if confirm_id.strip() != str(sub_id):
+        ov = db.get(Ortsverband, sub.mandant_slug)
+        return templates.TemplateResponse(
+            request,
+            "superadmin_cal_subscription_loeschen.html",
+            {
+                "sub": sub,
+                "ov": ov,
+                "error": "Zur Bestätigung bitte exakt die Abo-ID eingeben.",
+            },
+            status_code=400,
+        )
+    db.delete(sub)
+    db.commit()
+    return RedirectResponse("/admin/kalender-abos", status_code=302)
 
 
 @router.post("/admin/ortsverbaende/{slug}/plakate-loeschen")

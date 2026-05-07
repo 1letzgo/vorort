@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from '_ui_macros.html' import app_header_toolbar with context %}
+{% import '_icons.html' as ico %}
+{% block title %}Kalender-Abo löschen — Wahlkampf{% endblock %}
+{% block head %}
+{% include '_admin_shell_styles.html' %}
+{% endblock %}
+{% block body %}
+{% set path_prefix = request.scope.get('root_path') or '' %}
+{% call app_header_toolbar('Kalender-Abo löschen') %}
+  <a href="{{ path_prefix }}/admin/kalender-abos/{{ sub.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Abbrechen">
+    {{ ico.svg_x() }}<span class="btn-text">Abbrechen</span>
+  </a>
+{% endcall %}
+
+<div class="admin-page">
+  <div class="card card--flush admin-users-card">
+    <div class="admin-users-shell">
+      <header class="ics-popup__head">
+        <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_trash() }}</div>
+        <div>
+          <h2 class="ics-popup__h">Kalender-Abo entfernen?</h2>
+          <p class="ics-popup__lead">
+            Abo <strong>#{{ sub.id }}</strong>
+            {% if sub.label and sub.label.strip() %} — {{ sub.label }}{% endif %}
+            · Ziel-OV <code>{{ sub.mandant_slug }}</code>
+            {% if ov %}({{ ov.display_name }}){% endif %}
+          </p>
+        </div>
+      </header>
+
+      <div class="info" style="margin-bottom: 1rem;">
+        Bereits importierte Termine bleiben im Ortsverband bestehen; es wird nur die Abo-Konfiguration gelöscht.
+      </div>
+
+      {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+      <form method="post" action="{{ path_prefix }}/admin/kalender-abos/{{ sub.id }}/loeschen">
+        <label for="confirm-cal-id">Zur Bestätigung die Abo-ID <code>{{ sub.id }}</code> eingeben</label>
+        <input id="confirm-cal-id" name="confirm_id" type="text" required autocomplete="off" placeholder="{{ sub.id }}">
+        <p style="margin-top: 1.25rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+          <button type="submit" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="Abo endgültig löschen">
+            {{ ico.svg_trash() }}<span class="btn-text">Endgültig löschen</span>
+          </button>
+          <a href="{{ path_prefix }}/admin/kalender-abos/{{ sub.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico btn-with-label" aria-label="Abbrechen">
+            {{ ico.svg_x() }}<span class="btn-text">Abbrechen</span>
+          </a>
+        </p>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

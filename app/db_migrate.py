@@ -186,6 +186,67 @@ def run_platform_sqlite_migrations(engine: Engine) -> None:
     migrate_termine_link_url_sqlite(engine)
     migrate_ov_memberships_vorstand_member_sqlite(engine)
     migrate_termine_kategorie_sqlite(engine)
+    migrate_extern_cal_subscriptions_sqlite(engine)
+
+
+def migrate_extern_cal_subscriptions_sqlite(engine: Engine) -> None:
+    """Eigene Tabelle für Kalender-Abos (mehrere pro OV); übernimmt Legacy aus ortsverbaende.*."""
+    if engine.dialect.name != "sqlite":
+        return
+    insp = inspect(engine)
+    if not insp.has_table("ortsverbaende"):
+        return
+    with engine.begin() as conn:
+        if not insp.has_table("extern_cal_subscriptions"):
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE extern_cal_subscriptions (
+                      id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                      mandant_slug VARCHAR(80) NOT NULL,
+                      label VARCHAR(200) NOT NULL DEFAULT '',
+                      feed_url TEXT,
+                      abo_active BOOLEAN NOT NULL DEFAULT 0,
+                      created_at DATETIME NOT NULL,
+                      FOREIGN KEY(mandant_slug) REFERENCES ortsverbaende (slug) ON DELETE CASCADE
+                    )
+                    """
+                ),
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_extern_cal_sub_mandant "
+                    "ON extern_cal_subscriptions (mandant_slug)"
+                ),
+            )
+        conn.execute(
+            text(
+                """
+                INSERT INTO extern_cal_subscriptions (mandant_slug, label, feed_url, abo_active, created_at)
+                SELECT slug, '', TRIM(fraktion_cal_feed_url),
+                       CASE WHEN fraktion_cal_abo_active THEN 1 ELSE 0 END,
+                       datetime('now')
+                FROM ortsverbaende
+                WHERE fraktion_cal_feed_url IS NOT NULL
+                  AND LENGTH(TRIM(fraktion_cal_feed_url)) > 0
+                  AND NOT EXISTS (
+                    SELECT 1 FROM extern_cal_subscriptions e
+                    WHERE e.mandant_slug = ortsverbaende.slug
+                      AND IFNULL(TRIM(e.feed_url), '') = TRIM(ortsverbaende.fraktion_cal_feed_url)
+                  )
+                """
+            ),
+        )
+        conn.execute(
+            text(
+                """
+                UPDATE ortsverbaende
+                SET fraktion_cal_feed_url = NULL, fraktion_cal_abo_active = 0
+                WHERE fraktion_cal_feed_url IS NOT NULL
+                  AND LENGTH(TRIM(fraktion_cal_feed_url)) > 0
+                """
+            ),
+        )
 
 
 def migrate_ov_memberships_fraktion_member_sqlite(engine: Engine) -> None:

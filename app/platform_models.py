@@ -28,9 +28,32 @@ class Ortsverband(PlatformBase):
     slug: Mapped[str] = mapped_column(String(80), primary_key=True)
     display_name: Mapped[str] = mapped_column(String(200), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    # Optional: Webcal/ICS-URL → Fraktionstermine; Abruf nur wenn fraktion_cal_abo_active
+    # Legacy: früher ein Kalender-Abo pro OV; Abos liegen in extern_cal_subscriptions.
     fraktion_cal_feed_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     fraktion_cal_abo_active: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    extern_cal_subscriptions: Mapped[List["ExternCalSubscription"]] = relationship(
+        back_populates="ortsverband",
+    )
+
+
+class ExternCalSubscription(PlatformBase):
+    """Plattform: ICS/Webcal-Abo → Verbandstermine am gewählten Ortsverband (z. B. RIS)."""
+
+    __tablename__ = "extern_cal_subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    mandant_slug: Mapped[str] = mapped_column(
+        String(80),
+        ForeignKey("ortsverbaende.slug", ondelete="CASCADE"),
+        index=True,
+    )
+    label: Mapped[str] = mapped_column(String(200), default="")
+    feed_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    abo_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    ortsverband: Mapped["Ortsverband"] = relationship(back_populates="extern_cal_subscriptions")
 
 
 class PlatformUser(PlatformBase):

@@ -58,8 +58,6 @@
       {% if error %}<div class="error">{{ error }}</div>{% endif %}
       {% if not is_new %}
       {% if flash_ov_gespeichert %}<div class="success" style="margin-bottom: 0.85rem;">Änderungen gespeichert.</div>{% endif %}
-      {% if cal_flash_created is not none %}<div class="success" style="margin-bottom: 0.85rem;">{{ cal_flash_created }} neue Termine aus dem Kalender übernommen.</div>{% endif %}
-      {% if cal_flash_err %}<div class="error" style="margin-bottom: 0.85rem;">Kalender-Abruf: {{ cal_flash_err }}</div>{% endif %}
       {% if request.query_params.get("plakate") == "geloescht" %}<div class="success" style="margin-bottom: 0.85rem;">Alle Plakate dieses Verbands wurden gelöscht.</div>{% endif %}
       {% endif %}
 
@@ -98,26 +96,10 @@
           {% endif %}
         </fieldset>
 
-        <fieldset style="margin-top: 1rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem;">
-          <legend class="ics-popup__label" style="padding: 0 0.35rem;">Kalender-Abo (RIS / extern)</legend>
-          <p class="muted" style="margin: 0 0 0.65rem; font-size: 0.84rem;">
-            ICS/Webcal-Link (z. B. RIS). Neue Termine werden dem Ortsverband als <strong>Verbandstermine</strong> hinzugefügt (für alle freigegebenen Mitglieder sichtbar). Mit aktivem Abo wird der Kalender regelmäßig abgerufen.
-          </p>
-          <label for="fraktion-cal-url">Kalender-URL</label>
-          {# Erhaltene webcal://-Links werden serverseitig nach https normalisiert #}
-          <input id="fraktion-cal-url" name="fraktion_cal_feed_url" type="text" inputmode="url" maxlength="8000"
-            placeholder="webcal://… oder https://…"
-            value="{{ cal_feed_url_input if cal_feed_url_input is not none else (ov.fraktion_cal_feed_url or '') }}">
-          <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-top: 0.65rem; cursor: pointer;">
-            <input type="checkbox" name="fraktion_cal_abo_active" value="1" {% if ov.fraktion_cal_abo_active %}checked{% endif %}>
-            Kalender-Abo aktiv (automatischer Abruf)
-          </label>
-          <p style="margin: 0.75rem 0 0;">
-            <button type="submit" formaction="/admin/ortsverbaende/{{ ov.slug }}/fraktion-cal-sync" formmethod="post" class="btn btn-sm btn-ghost btn-with-label" aria-label="Kalender jetzt abrufen">
-              <span class="btn-text">Kalender jetzt abrufen</span>
-            </button>
-          </p>
-        </fieldset>
+        <p class="muted" style="margin: 1rem 0 0; font-size: 0.84rem;">
+          Externe Kalender (RIS/ICS) verwaltest du plattformweit unter
+          <a href="{{ path_prefix }}/admin/kalender-abos">Kalender-Abos</a> — mehrere Feeds pro Ortsverband möglich.
+        </p>
 
         <p style="margin: 1rem 0 0;">
           <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Änderungen speichern">

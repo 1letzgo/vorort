@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% from '_ui_macros.html' import app_header with context %}
+{% import '_icons.html' as ico %}
+{% block title %}{% if sub %}Kalender-Abo bearbeiten{% else %}Neues Kalender-Abo{% endif %} — Wahlkampf{% endblock %}
+{% block head %}
+{% include '_admin_shell_styles.html' %}
+{% endblock %}
+{% block body %}
+{% set path_prefix = request.scope.get('root_path') or '' %}
+{{ app_header('Kalender-Abo bearbeiten' if sub else 'Neues Kalender-Abo') }}
+
+<div class="page-toolbar" aria-label="Navigation">
+  <a href="{{ path_prefix }}/admin/kalender-abos" class="btn btn-sm btn-ico btn-with-label" aria-label="Zurück zur Liste">
+    {{ ico.svg_arrow_left() }}<span class="btn-text">Kalender-Abos</span>
+  </a>
+</div>
+
+{% include '_superadmin_platform_nav.html' %}
+
+<div class="admin-page">
+  <div class="card card--flush admin-users-card">
+    <div class="admin-users-shell">
+      <header class="ics-popup__head">
+        <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_calendar() }}</div>
+        <div>
+          <h2 class="ics-popup__h">{% if sub %}Abo #{{ sub.id }}{% else %}Neues Abo{% endif %}</h2>
+          <p class="ics-popup__lead">
+            ICS/Webcal (z. B. RIS). Termine werden am gewählten Ortsverband als <strong>Verbandstermine</strong> angelegt.
+          </p>
+        </div>
+      </header>
+
+      {% if error %}<div class="error" style="margin-bottom:0.85rem;">{{ error }}</div>{% endif %}
+      {% if sub %}
+      {% if flash_ok %}<div class="success" style="margin-bottom:0.85rem;">Gespeichert.</div>{% endif %}
+      {% if cal_flash_created is not none %}<div class="success" style="margin-bottom:0.85rem;">{{ cal_flash_created }} neue Termine übernommen.</div>{% endif %}
+      {% if cal_flash_err %}<div class="error" style="margin-bottom:0.85rem;">Kalender-Abruf: {{ cal_flash_err }}</div>{% endif %}
+      {% endif %}
+
+      <form method="post" action="{% if sub %}{{ path_prefix }}/admin/kalender-abos/{{ sub.id }}/bearbeiten{% else %}{{ path_prefix }}/admin/kalender-abos/neu{% endif %}">
+        <label for="cal-sub-mandant">Ortsverband (Ziel)</label>
+        <select id="cal-sub-mandant" name="mandant_slug" required>
+          {% for o in ovs %}
+          <option value="{{ o.slug }}"{% if sub and sub.mandant_slug == o.slug %} selected{% elif not sub and loop.first %} selected{% endif %}>{{ o.display_name or o.slug }} ({{ o.slug }})</option>
+          {% endfor %}
+        </select>
+
+        <label for="cal-sub-label" style="margin-top:0.85rem;">Bezeichnung <span class="muted">(optional, nur Verwaltung)</span></label>
+        <input id="cal-sub-label" name="label" type="text" maxlength="200" placeholder="z. B. RIS Stadtrat"
+          value="{% if sub %}{{ sub.label or '' }}{% endif %}">
+
+        <label for="cal-sub-url" style="margin-top:0.85rem;">Kalender-URL</label>
+        <input id="cal-sub-url" name="feed_url" type="text" inputmode="url" maxlength="8000"
+          placeholder="webcal://… oder https://…"
+          value="{{ feed_url_input if feed_url_input is not none else (sub.feed_url or '' if sub else '') }}">
+
+        <label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;margin-top:0.65rem;cursor:pointer;">
+          <input type="checkbox" name="abo_active" value="1" {% if sub and sub.abo_active %}checked{% endif %}>
+          Abo aktiv (automatischer Abruf)
+        </label>
+
+        <p style="margin:1rem 0 0;display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;">
+          <button type="submit" class="btn btn-sm btn-ico btn-with-label">{{ ico.svg_check() }}<span class="btn-text">Speichern</span></button>
+          {% if sub %}
+          <button type="submit" formaction="{{ path_prefix }}/admin/kalender-abos/{{ sub.id }}/sync" formmethod="post" class="btn btn-sm btn-ghost btn-with-label">Kalender jetzt abrufen</button>
+          {% endif %}
+        </p>
+      </form>
+
+      {% if sub %}
+      <footer style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border);">
+        <a href="{{ path_prefix }}/admin/kalender-abos/{{ sub.id }}/loeschen" class="btn btn-sm btn-danger btn-ico btn-with-label">{{ ico.svg_trash() }}<span class="btn-text">Abo löschen…</span></a>
+      </footer>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
