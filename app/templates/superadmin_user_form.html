@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from '_ui_macros.html' import app_header with context %}
 {% import '_icons.html' as ico %}
+{% set nutzer_base = nutzer_admin_base | default('/admin/nutzer') %}
 {% block title %}Nutzer bearbeiten — Nutzerverwaltung{% endblock %}
 {% block head %}
 {% include '_admin_shell_styles.html' %}
@@ -22,6 +23,7 @@
   .superadmin-user-form .superadmin-ov-grid th { font-weight: 700; color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
   .superadmin-user-form .superadmin-ov-grid input[type="checkbox"] { width: 1.1rem; height: 1.1rem; }
   .superadmin-user-form .superadmin-ov-grid .col-check { width: 2.75rem; text-align: center; }
+  .superadmin-user-form .superadmin-ov-grid .col-vorstand { width: 5rem; text-align: center; }
   .superadmin-user-form .superadmin-ov-grid .col-fraktion { width: 5rem; text-align: center; }
   .superadmin-user-form .superadmin-ov-grid .col-admin { width: 6rem; text-align: center; }
 </style>
@@ -30,7 +32,7 @@
 {{ app_header('Nutzerverwaltung') }}
 
 <div class="page-toolbar" aria-label="Navigation">
-  <a href="/admin/nutzer" class="btn btn-sm btn-ico btn-with-label" aria-label="Zurück zur Nutzerliste">
+  <a href="{{ nutzer_base }}" class="btn btn-sm btn-ico btn-with-label" aria-label="Zurück zur Nutzerliste">
     {{ ico.svg_arrow_left() }}<span class="btn-text">Nutzer</span>
   </a>
 </div>
@@ -43,7 +45,9 @@
         <div>
           <h2 class="ics-popup__h"><code>{{ edit_user.username }}</code></h2>
           <p class="ics-popup__lead">
-            {% if platform_superadmin %}
+            {% if tenant_mandant_slug %}
+            Rollen für diesen Ortsverband: <strong>Mitglied</strong> (besteht), optional <strong>Vorstand</strong>, <strong>Fraktion</strong>, <strong>Administrator</strong>.
+            {% elif platform_superadmin %}
             Plattform-Superadmin — Zuordnung zu Mandanten ist optional (Zugriff ohne Freigabe über Konfiguration).
             {% else %}
             Hier gesetzte Mitgliedschaften gelten als <strong>freigegeben</strong>.
@@ -59,7 +63,7 @@
       <div class="error" style="margin-bottom: 1rem;">{{ error }}</div>
       {% endif %}
 
-      <form method="post" action="/admin/nutzer/{{ edit_user.id }}/bearbeiten">
+      <form method="post" action="{{ nutzer_base }}/{{ edit_user.id }}/bearbeiten">
         <section class="ics-popup__panel ics-popup__panel--accent" style="margin-bottom: 1rem;">
           <h3 class="ics-popup__label">Profil</h3>
           <label for="display_name">Anzeigename</label>
@@ -73,9 +77,29 @@
           <p class="muted" style="margin:0.5rem 0 0;">Mindestens 8 Zeichen. Leer lassen, um das Passwort nicht zu ändern.</p>
         </section>
 
+        {% if tenant_mandant_slug %}
+        {% set m = mem_by_slug.get(tenant_mandant_slug.lower()) %}
+        {% set ov = ovs[0] if ovs else none %}
+        <section class="ics-popup__panel" style="margin-bottom: 1rem;">
+          <h3 class="ics-popup__label">Rollen ({{ ov.display_name or tenant_mandant_slug }})</h3>
+          <p class="muted" style="margin:0 0 0.75rem;">Die Mitgliedschaft in diesem Verband bleibt bestehen; hier nur Zusatzrollen.</p>
+          <label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;margin-bottom:0.5rem;">
+            <input type="checkbox" name="ov_vorstand" value="1"{% if m and m.vorstand_member %} checked{% endif %}>
+            Vorstand
+          </label>
+          <label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;margin-bottom:0.5rem;">
+            <input type="checkbox" name="ov_fraktion" value="1"{% if m and m.fraktion_member %} checked{% endif %}>
+            Fraktion
+          </label>
+          <label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;">
+            <input type="checkbox" name="ov_admin" value="1"{% if m and m.is_admin %} checked{% endif %}>
+            Administrator
+          </label>
+        </section>
+        {% else %}
         <section class="ics-popup__panel" style="margin-bottom: 1rem;">
           <h3 class="ics-popup__label">Mitgliedschaften</h3>
-          <p class="muted" style="margin:0 0 0.5rem;">Mitglied · durch Superadmin immer freigegeben · optional Mandanten-Administrator · optional Fraktionsmitglied (Untergruppe im OV)</p>
+          <p class="muted" style="margin:0 0 0.5rem;">Mitglied · durch Superadmin immer freigegeben · Vorstand · Fraktion · Mandanten-Administrator</p>
           {% if not ovs %}
           <p class="muted">Keine Mandanten angelegt.</p>
           {% else %}
@@ -84,6 +108,7 @@
               <tr>
                 <th scope="col">OV</th>
                 <th scope="col" class="col-check">Mitglied</th>
+                <th scope="col" class="col-vorstand">Vorstand</th>
                 <th scope="col" class="col-fraktion">Fraktion</th>
                 <th scope="col" class="col-admin">Admin</th>
               </tr>
@@ -95,6 +120,9 @@
                 <td><strong>{{ ov.display_name or ov.slug }}</strong><br><code class="muted" style="font-size:0.8rem;">{{ ov.slug }}</code></td>
                 <td class="col-check">
                   <input type="checkbox" name="ov_member" value="{{ ov.slug }}" class="js-sa-ov-member" data-slug="{{ ov.slug }}"{% if m %} checked{% endif %}>
+                </td>
+                <td class="col-vorstand">
+                  <input type="checkbox" name="ov_vorstand" value="{{ ov.slug }}" class="js-sa-ov-vorstand" data-slug="{{ ov.slug }}"{% if m and m.vorstand_member %} checked{% endif %}{% if not m %} disabled{% endif %} aria-label="Vorstand {{ ov.slug }}">
                 </td>
                 <td class="col-fraktion">
                   <input type="checkbox" name="ov_fraktion" value="{{ ov.slug }}" class="js-sa-ov-fraktion" data-slug="{{ ov.slug }}"{% if m and m.fraktion_member %} checked{% endif %}{% if not m %} disabled{% endif %} aria-label="Fraktionsmitglied {{ ov.slug }}">
@@ -108,14 +136,15 @@
           </table>
           {% endif %}
         </section>
+        {% endif %}
 
         <div style="display:flex; flex-wrap:wrap; gap:0.5rem; justify-content:flex-end; align-items:center;">
-          <a href="/admin/nutzer" class="btn btn-ghost btn-sm btn-ico btn-with-label"><span class="btn-text">Abbrechen</span></a>
+          <a href="{{ nutzer_base }}" class="btn btn-ghost btn-sm btn-ico btn-with-label"><span class="btn-text">Abbrechen</span></a>
           <button type="submit" class="btn btn-sm btn-ico btn-with-label">{{ ico.svg_check() }}<span class="btn-text">Speichern</span></button>
         </div>
       </form>
 
-      {% if show_delete_link %}
+      {% if show_delete_link and not tenant_mandant_slug %}
       <section class="ics-popup__panel" style="margin-top: 1.25rem; border-color: rgba(196, 30, 58, 0.25);">
         <h3 class="ics-popup__label">Gefahrenbereich</h3>
         <p class="muted" style="margin:0 0 0.65rem;">Konto dauerhaft entfernen — nicht rückgängig zu machen.</p>
@@ -126,6 +155,7 @@
   </div>
 </div>
 
+{% if not tenant_mandant_slug %}
 <script>
   (function () {
     document.querySelectorAll(".js-sa-ov-member").forEach(function (mem) {
@@ -134,6 +164,7 @@
         if (!row) return;
         var adm = row.querySelector(".js-sa-ov-admin");
         var fr = row.querySelector(".js-sa-ov-fraktion");
+        var vo = row.querySelector(".js-sa-ov-vorstand");
         if (!adm) return;
         adm.disabled = !mem.checked;
         if (!mem.checked) adm.checked = false;
@@ -141,10 +172,15 @@
           fr.disabled = !mem.checked;
           if (!mem.checked) fr.checked = false;
         }
+        if (vo) {
+          vo.disabled = !mem.checked;
+          if (!mem.checked) vo.checked = false;
+        }
       }
       mem.addEventListener("change", sync);
       sync();
     });
   })();
 </script>
+{% endif %}
 {% endblock %}

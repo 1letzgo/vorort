@@ -65,6 +65,7 @@ class OvMembership(PlatformBase):
     )
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    vorstand_member: Mapped[bool] = mapped_column(Boolean, default=False)
     fraktion_member: Mapped[bool] = mapped_column(Boolean, default=False)
 
     user: Mapped["PlatformUser"] = relationship(back_populates="memberships")
@@ -100,6 +101,9 @@ class Termin(PlatformBase):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     promoted_all_ovs: Mapped[bool] = mapped_column(Boolean, default=False)
     attachments_json: Mapped[str] = mapped_column(Text, default="[]")
+    termin_kategorie: Mapped[str] = mapped_column(
+        String(32), default="verband"
+    )
     is_fraktion_termin: Mapped[bool] = mapped_column(Boolean, default=False)
     fraktion_vertraulich: Mapped[bool] = mapped_column(Boolean, default=False)
     cal_import_key: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)

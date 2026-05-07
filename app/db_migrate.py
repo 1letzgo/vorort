@@ -184,6 +184,8 @@ def run_platform_sqlite_migrations(engine: Engine) -> None:
     migrate_ortsverbaende_fraktion_calendar_subscription_sqlite(engine)
     migrate_termine_cal_import_key_sqlite(engine)
     migrate_termine_link_url_sqlite(engine)
+    migrate_ov_memberships_vorstand_member_sqlite(engine)
+    migrate_termine_kategorie_sqlite(engine)
 
 
 def migrate_ov_memberships_fraktion_member_sqlite(engine: Engine) -> None:
@@ -301,6 +303,58 @@ def migrate_termine_fraktion_flags_sqlite(engine: Engine) -> None:
                     "BOOLEAN NOT NULL DEFAULT 0"
                 ),
             )
+
+
+def migrate_ov_memberships_vorstand_member_sqlite(engine: Engine) -> None:
+    if engine.dialect.name != "sqlite":
+        return
+    insp = inspect(engine)
+    if not insp.has_table("ov_memberships"):
+        return
+    cols = {c["name"] for c in insp.get_columns("ov_memberships")}
+    if "vorstand_member" in cols:
+        return
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE ov_memberships ADD COLUMN vorstand_member "
+                "BOOLEAN NOT NULL DEFAULT 0"
+            ),
+        )
+
+
+def migrate_termine_kategorie_sqlite(engine: Engine) -> None:
+    if engine.dialect.name != "sqlite":
+        return
+    insp = inspect(engine)
+    if not insp.has_table("termine"):
+        return
+    cols = {c["name"] for c in insp.get_columns("termine")}
+    with engine.begin() as conn:
+        if "termin_kategorie" not in cols:
+            conn.execute(
+                text(
+                    "ALTER TABLE termine ADD COLUMN termin_kategorie "
+                    "VARCHAR(32) NOT NULL DEFAULT 'verband'"
+                ),
+            )
+        conn.execute(
+            text(
+                "UPDATE termine SET termin_kategorie = 'fraktion' "
+                "WHERE is_fraktion_termin = 1 AND fraktion_vertraulich = 1 "
+                "AND (termin_kategorie IS NULL OR termin_kategorie = '' "
+                "OR termin_kategorie = 'verband')"
+            ),
+        )
+        conn.execute(
+            text(
+                "UPDATE termine SET termin_kategorie = 'verband' "
+                "WHERE is_fraktion_termin = 1 AND (fraktion_vertraulich = 0 "
+                "OR fraktion_vertraulich IS NULL) "
+                "AND (termin_kategorie IS NULL OR termin_kategorie = '' "
+                "OR termin_kategorie = 'verband')"
+            ),
+        )
 
 
 def migrate_termine_drop_vorbereitung_nachbereitung_sqlite(engine: Engine) -> None:

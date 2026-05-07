@@ -91,10 +91,6 @@
             <input type="checkbox" name="feature_sharepic" value="1" {% if feature_sharepic %}checked{% endif %}>
             Sharepic
           </label>
-          <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
-            <input type="checkbox" name="feature_fraktion" value="1" {% if feature_fraktion %}checked{% endif %}>
-            Fraktion (eigene Terminliste, vertrauliche Sitzungen)
-          </label>
           {% if feature_sharepic %}
           <label for="sharepic-slogan-default" style="margin-top:0.75rem;">Standard-Slogan für Sharepic</label>
           <textarea id="sharepic-slogan-default" name="sharepic_slogan_default" rows="3" maxlength="500" placeholder="z. B. Für Westerstede.&#10;Für Dich.">{{ sharepic_slogan_default }}</textarea>
@@ -103,9 +99,9 @@
         </fieldset>
 
         <fieldset style="margin-top: 1rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem;">
-          <legend class="ics-popup__label" style="padding: 0 0.35rem;">Kalender-Abo (Fraktionstermine)</legend>
+          <legend class="ics-popup__label" style="padding: 0 0.35rem;">Kalender-Abo (RIS / extern)</legend>
           <p class="muted" style="margin: 0 0 0.65rem; font-size: 0.84rem;">
-            ICS/Webcal-Link (z. B. RIS-Kalender). Als https gespeichert (webcal:// wird umgeschrieben). Mit aktivem Abo wird der Kalender regelmäßig abgerufen und neue Termine angelegt. Zum Beenden Abo deaktivieren oder URL leeren und speichern.
+            ICS/Webcal-Link (z. B. RIS). Neue Termine werden dem Ortsverband als <strong>Verbandstermine</strong> hinzugefügt (für alle freigegebenen Mitglieder sichtbar). Mit aktivem Abo wird der Kalender regelmäßig abgerufen.
           </p>
           <label for="fraktion-cal-url">Kalender-URL</label>
           {# Erhaltene webcal://-Links werden serverseitig nach https normalisiert #}
@@ -116,13 +112,11 @@
             <input type="checkbox" name="fraktion_cal_abo_active" value="1" {% if ov.fraktion_cal_abo_active %}checked{% endif %}>
             Kalender-Abo aktiv (automatischer Abruf)
           </label>
-          {% if feature_fraktion %}
           <p style="margin: 0.75rem 0 0;">
             <button type="submit" formaction="/admin/ortsverbaende/{{ ov.slug }}/fraktion-cal-sync" formmethod="post" class="btn btn-sm btn-ghost btn-with-label" aria-label="Kalender jetzt abrufen">
               <span class="btn-text">Kalender jetzt abrufen</span>
             </button>
           </p>
-          {% endif %}
         </fieldset>
 
         <p style="margin: 1rem 0 0;">

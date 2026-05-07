@@ -23,6 +23,21 @@
   .termin-card-list__meta {
     margin: 0.35rem 0 0;
   }
+  .termin-kat-icon--vorstand {
+    color: #15803d;
+  }
+  .termin-kat-icon--fraktion {
+    color: #1d4ed8;
+  }
+  .termin-kat-badge {
+    display: inline-block;
+    margin-left: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+  }
   .termin-anhang-list {
     list-style: none;
     margin: 0;
@@ -265,24 +280,24 @@
 </style>
 {% endblock %}
 {% block body %}
-{% call app_header_toolbar('Fraktion' if twp == 'fraktion/termine' else 'Termine') %}
+{% call app_header_toolbar('Termine') %}
   <button type="button" class="btn btn-ghost btn-sm btn-ico btn-with-label" id="ics-open" aria-label="Kalender abonnieren">
     {{ ico.svg_calendar() }}<span class="btn-text">Abonnieren</span>
   </button>
 {% endcall %}
 
 <div class="page-toolbar" aria-label="Navigation">
-  <a href="{{ request.state.mandanten_prefix }}/{{ twp }}" class="btn btn-sm btn-ico btn-with-label" aria-label="Zur Terminliste">
-    {{ ico.svg_arrow_left() }}<span class="btn-text">{% if twp == 'fraktion/termine' %}Fraktion{% else %}Termine{% endif %}</span>
+  <a href="{{ request.state.mandanten_prefix }}/termine" class="btn btn-sm btn-ico btn-with-label" aria-label="Zur Terminliste">
+    {{ ico.svg_arrow_left() }}<span class="btn-text">Termine</span>
   </a>
 </div>
 
 <article class="card card--flush termin-card-list">
   <div class="termin-card-list__shell">
     <header class="ics-popup__head termin-card-list__head">
-      <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_calendar() }}</div>
+      <div class="ics-popup__head-icon termin-kat-icon {{ row.termin_kat_icon_class }}" aria-hidden="true">{{ ico.svg_calendar() }}</div>
       <div class="termin-card-list__head-main">
-        <h1 class="ics-popup__h termin-card-list__title">{{ t.title }}</h1>
+        <h1 class="ics-popup__h termin-card-list__title">{{ t.title }}{% if row.termin_kategorie_label %}<span class="termin-kat-badge">{{ row.termin_kategorie_label }}</span>{% endif %}</h1>
         <p class="ics-popup__lead termin-card-list__meta">
           {{ t.starts_at.strftime('%d.%m.%Y') }} · {{ t.starts_at.strftime('%H:%M') }}
           {% if t.ends_at %}– {{ t.ends_at.strftime('%H:%M') }}{% endif %}

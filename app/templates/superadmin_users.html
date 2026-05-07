@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% from '_ui_macros.html' import app_header with context %}
 {% import '_icons.html' as ico %}
-{% block title %}Nutzerverwaltung{% endblock %}
+{% set nutzer_base = nutzer_admin_base | default('/admin/nutzer') %}
+{% set ph = page_heading | default('Nutzerverwaltung') %}
+{% set pl = page_lead | default('Passwort und Mandanten-Zuordnung. Über diese Oberfläche zugewiesene Mitgliedschaften sind <strong>freigegeben</strong> — keine gesonderte Freigabe im OV nötig.') %}
+{% block title %}{{ ph }}{% endblock %}
 {% block head %}
 {% include '_admin_shell_styles.html' %}
 {% include '_admin_data_table_styles.html' %}
@@ -21,18 +24,30 @@
 </style>
 {% endblock %}
 {% block body %}
-{{ app_header('Nutzerverwaltung') }}
+{{ app_header(ph) }}
 
 <div class="admin-page">
+  {% if admin_tabs and admin_tabs|length > 1 %}
+  <nav class="termin-tablist admin-users-ov-tablist" aria-label="Ortsverband wechseln">
+    {% for t in admin_tabs %}
+    <a
+      href="{{ t.benutzer_href }}"
+      class="termin-tab admin-users-ov-tab"
+      role="tab"
+      aria-selected="{{ 'true' if t.id == current_admin_tab_id else 'false' }}"
+      {% if t.id == current_admin_tab_id %}aria-current="page"{% endif %}
+    >{{ t.label }}{% if t.admin_pending_count %} ({{ t.admin_pending_count }}){% endif %}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+
   <div class="card card--flush admin-users-card">
     <div class="admin-users-shell">
       <header class="ics-popup__head">
         <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_user_plus() }}</div>
         <div>
-          <h2 class="ics-popup__h">Konten</h2>
-          <p class="ics-popup__lead">
-            Passwort und Mandanten-Zuordnung. Über diese Oberfläche zugewiesene Mitgliedschaften sind <strong>freigegeben</strong> — keine gesonderte Freigabe im OV nötig.
-          </p>
+          <h2 class="ics-popup__h">{% if tenant_ov_slug %}Mitglieder{% else %}Konten{% endif %}</h2>
+          <p class="ics-popup__lead">{{ pl | safe }}</p>
         </div>
       </header>
 
@@ -53,7 +68,7 @@
           <thead>
             <tr>
               <th scope="col">Benutzer</th>
-              <th scope="col">Mandanten</th>
+              <th scope="col">{% if tenant_ov_slug %}Rollen{% else %}Mandanten{% endif %}</th>
               <th scope="col" class="admin-users-th-actions">Aktionen</th>
             </tr>
           </thead>
@@ -68,10 +83,18 @@
                 <br><span class="muted" style="font-size:0.8rem;">Plattform-Superadmin</span>
                 {% endif %}
               </td>
-              <td data-label="Mandanten">
+              <td data-label="{% if tenant_ov_slug %}Rollen{% else %}Mandanten{% endif %}">
                 {% if row.memberships %}
+                  {% set ns = namespace(first_shown=true) %}
                   {% for m in row.memberships %}
-                  <span style="white-space: nowrap;"><code>{{ m.ov_slug }}</code>{% if m.is_admin %} · Admin{% endif %}</span>{% if not loop.last %}<br>{% endif %}
+                  {% if not tenant_ov_slug or (m.ov_slug|lower == tenant_ov_slug|lower) %}
+                  {% if not ns.first_shown %}<br>{% endif %}
+                  <span style="white-space: nowrap;">
+                    {% if not tenant_ov_slug %}<code>{{ m.ov_slug }}</code> · {% endif %}
+                    Mitglied{% if m.vorstand_member %} · <span style="color:#15803d;font-weight:600;">Vorstand</span>{% endif %}{% if m.fraktion_member %} · <span style="color:#1d4ed8;font-weight:600;">Fraktion</span>{% endif %}{% if m.is_admin %} · Admin{% endif %}
+                  </span>
+                  {% set ns.first_shown = false %}
+                  {% endif %}
                   {% endfor %}
                 {% else %}
                 <span class="muted">—</span>
@@ -79,7 +102,7 @@
               </td>
               <td data-label="Aktionen" class="admin-users-td-actions">
                 <div>
-                  <a href="/admin/nutzer/{{ u.id }}/bearbeiten" class="btn btn-sm btn-ico btn-with-label" aria-label="Nutzer {{ u.username }} bearbeiten">
+                  <a href="{{ nutzer_base }}/{{ u.id }}/bearbeiten" class="btn btn-sm btn-ico btn-with-label" aria-label="Nutzer {{ u.username }} bearbeiten">
                     {{ ico.svg_pencil() }}<span class="btn-text">Bearbeiten</span>
                   </a>
                 </div>

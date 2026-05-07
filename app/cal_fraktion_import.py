@@ -1,4 +1,4 @@
-"""ICS/Webcal-Abo → Fraktionstermine (dedupliziert über cal_import_key)."""
+"""ICS/Webcal-Abo → Termine am Ortsverband (Verband-Kategorie, z. B. RIS)."""
 
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import CAL_FETCH_TIMEOUT_SECONDS
-from app.mandant_features import FEATURE_FRAKTION, is_mandant_feature_enabled
 from app.platform_models import Ortsverband, Termin
+from app.termin_kategorie import TERMIN_KAT_VERBAND, apply_kategorie_to_termin_row
 
 logger = logging.getLogger(__name__)
 
@@ -280,11 +280,8 @@ def import_fraktion_termine_from_calendar(
     mandant_slug: str,
     cal_url: str,
 ) -> tuple[int, str | None]:
-    """Legt fehlende Fraktionstermine aus ICS/Webcal an."""
+    """Legt fehlende Termine aus ICS/Webcal an (öffentlich für alle OV-Mitglieder)."""
     ms = mandant_slug.strip().lower()
-    if not is_mandant_feature_enabled(db, ms, FEATURE_FRAKTION):
-        return 0, "Fraktion ist für diesen Ortsverband nicht aktiviert."
-
     url = cal_url.strip()
     if not url:
         return 0, "Keine Kalender-URL konfiguriert."
@@ -324,11 +321,10 @@ def import_fraktion_termine_from_calendar(
             starts_at=ev["starts_at"],
             ends_at=ev["ends_at"],
             created_by_id=None,
-            is_fraktion_termin=True,
-            fraktion_vertraulich=False,
             cal_import_key=dedupe,
             link_url=(ev.get("link_url") or None),
         )
+        apply_kategorie_to_termin_row(termin, TERMIN_KAT_VERBAND)
         db.add(termin)
         try:
             db.commit()
@@ -340,7 +336,7 @@ def import_fraktion_termine_from_calendar(
 
 
 def run_all_fraktion_cal_subscriptions() -> None:
-    """Alle aktiven Abos (URL + Abo an + FEATURE_FRAKTION)."""
+    """Alle aktiven Kalender-Abos (URL + Abo an) am Ortsverband."""
     from sqlalchemy.orm import sessionmaker
 
     from app.platform_database import platform_engine
@@ -360,8 +356,6 @@ def run_all_fraktion_cal_subscriptions() -> None:
         for ov in ovs:
             url = (ov.fraktion_cal_feed_url or "").strip()
             if not url:
-                continue
-            if not is_mandant_feature_enabled(db, ov.slug, FEATURE_FRAKTION):
                 continue
             n, err = import_fraktion_termine_from_calendar(db, ov.slug, url)
             if err:

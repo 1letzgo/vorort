@@ -121,7 +121,7 @@
 {% endif %}
 {% endblock %}
 {% block body %}
-{% set tseg = termin_form_segment | default('termine') %}
+{% set tseg = 'termine' %}
 {{ app_header('Termin bearbeiten' if termin else 'Neuer Termin') }}
 
 <div class="page-toolbar" aria-label="Navigation">
@@ -130,20 +130,20 @@
     {{ ico.svg_arrow_left() }}<span class="btn-text">Zurück</span>
   </a>
   {% else %}
-  <a href="{{ mp }}/{{ tseg }}" class="btn btn-sm btn-ico btn-with-label" aria-label="Zur Terminliste">
-    {{ ico.svg_arrow_left() }}<span class="btn-text">{% if tseg == 'fraktion/termine' %}Fraktion{% else %}Termine{% endif %}</span>
+  <a href="{{ mp }}/termine" class="btn btn-sm btn-ico btn-with-label" aria-label="Zur Terminliste">
+    {{ ico.svg_arrow_left() }}<span class="btn-text">Termine</span>
   </a>
   {% endif %}
 </div>
 
 <div class="card card--flush termin-form-card">
-  <form method="post" class="ics-popup__form termin-form-card__form" id="termin-main-form" action="{% if termin %}{{ mp }}/{{ tseg }}/{{ termin.id }}/bearbeiten{% else %}{{ mp }}/{{ tseg }}/neu{% endif %}" enctype="multipart/form-data">
+  <form method="post" class="ics-popup__form termin-form-card__form" id="termin-main-form" action="{% if termin %}{{ mp }}/termine/{{ termin.id }}/bearbeiten{% else %}{{ mp }}/termine/neu{% endif %}" enctype="multipart/form-data">
     <header class="ics-popup__head">
       <div class="ics-popup__head-icon" aria-hidden="true">
         {% if termin %}{{ ico.svg_pencil() }}{% else %}{{ ico.svg_plus() }}{% endif %}
       </div>
       <div>
-        <h2 class="ics-popup__h" id="termin-form-title">{% if termin %}Termin bearbeiten{% elif tseg == 'fraktion/termine' %}Neuen Fraktionstermin anlegen{% else %}Neuen Termin anlegen{% endif %}</h2>
+        <h2 class="ics-popup__h" id="termin-form-title">{% if termin %}Termin bearbeiten{% else %}Neuen Termin anlegen{% endif %}</h2>
         <p class="ics-popup__lead">
           {% if termin %}Änderungen gelten für die gesamte Terminansicht und eingetragene Teilnehmer.{% else %}Datum, Ort und Text — sichtbar für alle mit Zugang zur Terminliste.{% endif %}
         </p>
@@ -162,16 +162,24 @@
     </section>
     {% endif %}
 
-    {% if show_fraktion_vertraulich_checkbox %}
-    <section class="ics-popup__panel" aria-label="Fraktion">
-      <h3 class="ics-popup__label">Fraktion</h3>
-      <label>
-        <input type="checkbox" name="fraktion_vertraulich" value="1"{% if fraktion_vertraulich_checked %} checked{% endif %}>
-        Vertraulich — nur für Fraktionsmitglieder sichtbar
-      </label>
-      <p class="termin-form-card__hint muted" style="margin:0.5rem 0 0;font-size:0.84rem;">Ohne Haken sehen alle Verbandsmitglieder diesen Termin; Kreuz nur bei sensiblen Sitzungen.</p>
+    <section class="ics-popup__panel" aria-label="Kategorie">
+      <h3 class="ics-popup__label">Kategorie</h3>
+      <p class="muted termin-form-card__hint" style="margin:0 0 0.65rem;font-size:0.84rem;">Verband: alle freigegebenen Mitglieder. Vorstand und Fraktion nur für Nutzer mit dieser Rolle (OV-Administratoren sehen alle Kategorien).</p>
+      <div class="termin-form-kat-list" style="display:flex;flex-direction:column;gap:0.45rem;">
+        <label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;">
+          <input type="radio" name="termin_kategorie" value="verband" class="js-termin-kat"{% if termin_kategorie_current == 'verband' %} checked{% endif %}{% if not can_kategorie_verband %} disabled{% endif %}>
+          Verband
+        </label>
+        <label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;">
+          <input type="radio" name="termin_kategorie" value="vorstand" class="js-termin-kat"{% if termin_kategorie_current == 'vorstand' %} checked{% endif %}{% if not can_kategorie_vorstand %} disabled{% endif %}>
+          Vorstand
+        </label>
+        <label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;">
+          <input type="radio" name="termin_kategorie" value="fraktion" class="js-termin-kat"{% if termin_kategorie_current == 'fraktion' %} checked{% endif %}{% if not can_kategorie_fraktion %} disabled{% endif %}>
+          Fraktion
+        </label>
+      </div>
     </section>
-    {% endif %}
 
     <section class="ics-popup__panel ics-popup__panel--accent termin-form-card__grund-panel" aria-label="Grunddaten">
       <label for="title">Titel</label>
@@ -208,8 +216,7 @@
       <p class="muted termin-form-card__hint" style="margin:0.45rem 0 0;font-size:0.84rem;">Zur Detailseite bei RIS o. Ä.; wird unter der Beschreibung und in der Terminliste angezeigt.</p>
     </section>
 
-    {% if show_externe_gaeste | default(true) %}
-    <section class="ics-popup__panel" aria-label="Externe Gäste">
+    <section class="ics-popup__panel" id="js-externe-guest-section" aria-label="Externe Gäste"{% if not show_externe_gaeste %} hidden{% endif %}>
       <h3 class="ics-popup__label">Externe Gäste</h3>
       <div class="termin-form-card__guest-list">
         {% for key, label in externe_optionen %}
@@ -220,7 +227,6 @@
         {% endfor %}
       </div>
     </section>
-    {% endif %}
 
     {% if termin and termin.image_path %}
     <section class="ics-popup__panel" aria-label="Aktuelles Foto">
@@ -346,6 +352,22 @@
     });
     input.value = "";
     sync();
+  });
+  sync();
+})();
+</script>
+<script>
+(function () {
+  var sec = document.getElementById("js-externe-guest-section");
+  if (!sec) return;
+  function sync() {
+    var sel = document.querySelector('input[name="termin_kategorie"]:checked');
+    var v = sel ? sel.value : "verband";
+    if (v === "verband") sec.removeAttribute("hidden");
+    else sec.setAttribute("hidden", "");
+  }
+  document.querySelectorAll(".js-termin-kat").forEach(function (r) {
+    r.addEventListener("change", sync);
   });
   sync();
 })();

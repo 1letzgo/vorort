@@ -23,11 +23,16 @@ from app.cal_fraktion_import import (
     validate_and_normalize_cal_subscription_url,
 )
 from app.mandant_features import (
-    FEATURE_FRAKTION,
     FEATURE_PLAKATE,
     FEATURE_SHAREPIC,
     is_mandant_feature_enabled,
     merge_mandant_feature,
+)
+from app.platform_user_admin import (
+    PASSWORD_MIN_PLATFORM_USER,
+    form_ov_slug_list as _form_ov_slug_list,
+    superadmin_user_form_template_ctx as _superadmin_user_form_template_ctx,
+    sync_ov_memberships_superadmin,
 )
 from app.platform_database import get_platform_db
 from app.platform_models import (
@@ -45,8 +50,6 @@ TEMPLATES_DIR = __import__("pathlib").Path(__file__).resolve().parent / "templat
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 router = APIRouter(tags=["superadmin"])
-
-PASSWORD_MIN_SUPERADMIN = 8
 
 
 def _ov_edit_form_ctx(
@@ -72,7 +75,6 @@ def _ov_edit_form_ctx(
         "is_new": False,
         "feature_plakate": is_mandant_feature_enabled(db, ov.slug, FEATURE_PLAKATE),
         "feature_sharepic": is_mandant_feature_enabled(db, ov.slug, FEATURE_SHAREPIC),
-        "feature_fraktion": is_mandant_feature_enabled(db, ov.slug, FEATURE_FRAKTION),
         "cal_feed_url_input": cal_feed_url_input,
         "sharepic_slogan_default": slogan_default,
         "cal_flash_created": cal_flash_created,
@@ -80,35 +82,6 @@ def _ov_edit_form_ctx(
         "flash_ov_gespeichert": flash_ov_gespeichert,
         "max_upload_mb": MAX_UPLOAD_MB,
     }
-
-
-def _form_ov_slug_list(raw: Optional[List[str] | str]) -> List[str]:
-    """Checkbox-Werte: bei einem Eintrag liefert Starlette teils str statt list."""
-    if raw is None:
-        return []
-    if isinstance(raw, str):
-        s = raw.strip().lower()
-        return [s] if s else []
-    out: List[str] = []
-    for x in raw:
-        if not x:
-            continue
-        s = str(x).strip().lower()
-        if s:
-            out.append(s)
-    return out
-
-
-def _show_superadmin_delete_link(request: Request, pu: PlatformUser) -> bool:
-    if is_superadmin_username(pu.username):
-        return False
-    suid = request.session.get("user_id")
-    if suid is None:
-        return False
-    try:
-        return int(suid) != pu.id
-    except (TypeError, ValueError):
-        return False
 
 
 def _purge_dependencies_before_platform_user_delete(db: Session, user_id: int) -> None:
@@ -142,69 +115,6 @@ def _superadmin_user_delete_blocked(
     except (TypeError, ValueError):
         pass
     return None
-
-
-def _superadmin_user_form_template_ctx(
-    request: Request,
-    pu: PlatformUser,
-    ovs: list,
-    mem_by_slug: dict,
-    *,
-    error: Optional[str] = None,
-    flash_ok: bool = False,
-) -> dict:
-    return {
-        "edit_user": pu,
-        "ovs": ovs,
-        "mem_by_slug": mem_by_slug,
-        "error": error,
-        "platform_superadmin": is_superadmin_username(pu.username),
-        "flash_ok": flash_ok,
-        "show_delete_link": _show_superadmin_delete_link(request, pu),
-    }
-
-
-def _sync_ov_memberships_superadmin(
-    db: Session,
-    user_id: int,
-    member_slugs: List[str],
-    admin_slugs: set[str],
-    fraktion_slugs: set[str],
-) -> None:
-    """OV-Zuordnungen aus Superadmin-Sicht: immer freigegeben (`is_approved=True`)."""
-    member_set = {s.strip().lower() for s in member_slugs if s and s.strip()}
-    if not member_set:
-        valid: set[str] = set()
-    else:
-        valid = {
-            r[0].strip().lower()
-            for r in db.query(Ortsverband.slug).filter(Ortsverband.slug.in_(member_set)).all()
-        }
-    member_set &= valid
-    admin_set = {s.strip().lower() for s in admin_slugs} & member_set
-    fraktion_set = {s.strip().lower() for s in fraktion_slugs} & member_set
-
-    rows = db.query(OvMembership).filter(OvMembership.user_id == user_id).all()
-    by_slug = {m.ov_slug.strip().lower(): m for m in rows}
-    for slug in member_set:
-        m = by_slug.pop(slug, None)
-        if m:
-            m.is_approved = True
-            m.is_admin = slug in admin_set
-            m.fraktion_member = slug in fraktion_set
-            db.add(m)
-        else:
-            db.add(
-                OvMembership(
-                    user_id=user_id,
-                    ov_slug=slug,
-                    is_admin=slug in admin_set,
-                    is_approved=True,
-                    fraktion_member=slug in fraktion_set,
-                )
-            )
-    for m in by_slug.values():
-        db.delete(m)
 
 
 @router.get("/admin", include_in_schema=False)
@@ -333,7 +243,6 @@ def superadmin_ov_edit_submit(
     display_name: Annotated[str, Form()],
     feature_plakate: Annotated[Optional[str], Form()] = None,
     feature_sharepic: Annotated[Optional[str], Form()] = None,
-    feature_fraktion: Annotated[Optional[str], Form()] = None,
     sharepic_slogan_default: Annotated[Optional[str], Form()] = None,
     fraktion_cal_feed_url: Annotated[str, Form()] = "",
     fraktion_cal_abo_active: Annotated[Optional[str], Form()] = None,
@@ -365,7 +274,6 @@ def superadmin_ov_edit_submit(
     ms = ov.slug.strip().lower()
     merge_mandant_feature(db, ms, FEATURE_PLAKATE, feature_plakate == "1")
     merge_mandant_feature(db, ms, FEATURE_SHAREPIC, feature_sharepic == "1")
-    merge_mandant_feature(db, ms, FEATURE_FRAKTION, feature_fraktion == "1")
     if sharepic_slogan_default is not None:
         save_sharepic_slogan_default(db, ms, sharepic_slogan_default)
     db.add(ov)
@@ -561,6 +469,7 @@ def superadmin_user_edit_submit(
     ov_member: Annotated[Optional[List[str]], Form()] = None,
     ov_admin: Annotated[Optional[List[str]], Form()] = None,
     ov_fraktion: Annotated[Optional[List[str]], Form()] = None,
+    ov_vorstand: Annotated[Optional[List[str]], Form()] = None,
 ):
     pu = db.get(PlatformUser, user_id)
     if not pu:
@@ -601,8 +510,8 @@ def superadmin_user_edit_submit(
                 ),
                 status_code=400,
             )
-        if len(pw1) < PASSWORD_MIN_SUPERADMIN:
-            err = f"Neues Passwort mindestens {PASSWORD_MIN_SUPERADMIN} Zeichen."
+        if len(pw1) < PASSWORD_MIN_PLATFORM_USER:
+            err = f"Neues Passwort mindestens {PASSWORD_MIN_PLATFORM_USER} Zeichen."
             return templates.TemplateResponse(
                 request,
                 "superadmin_user_form.html",
@@ -638,9 +547,13 @@ def superadmin_user_edit_submit(
     members = _form_ov_slug_list(ov_member)
     admins_raw = _form_ov_slug_list(ov_admin)
     fraktion_raw = _form_ov_slug_list(ov_fraktion)
+    vorstand_raw = _form_ov_slug_list(ov_vorstand)
     admin_set = set(admins_raw)
     fraktion_set = set(fraktion_raw)
-    _sync_ov_memberships_superadmin(db, pu.id, members, admin_set, fraktion_set)
+    vorstand_set = set(vorstand_raw)
+    sync_ov_memberships_superadmin(
+        db, pu.id, members, admin_set, vorstand_set, fraktion_set
+    )
 
     db.add(pu)
     db.commit()

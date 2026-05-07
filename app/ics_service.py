@@ -8,26 +8,11 @@ from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
 from app.config import kreis_ov_slug
-from app.fraktion_visibility import filter_termine_fraktion_ics
-from app.mandant_features import FEATURE_FRAKTION, is_mandant_feature_enabled
 from app.platform_models import TEILNAHME_STATUS_ZUGESAGT, Termin, TerminTeilnahme
 from app.termin_extern import externe_teilnehmer_decode, externe_teilnehmer_labels
+from app.termin_kategorie import filter_termine_fuer_ics
 
 TZ = ZoneInfo("Europe/Berlin")
-
-
-def _termine_without_disabled_fraktion_ov(
-    db: Session,
-    termine: list[Termin],
-) -> list[Termin]:
-    """Fraktionstermine ausblenden, wenn das OV-Feature deaktiviert ist."""
-    out: list[Termin] = []
-    for t in termine:
-        if getattr(t, "is_fraktion_termin", False):
-            if not is_mandant_feature_enabled(db, t.mandant_slug, FEATURE_FRAKTION):
-                continue
-        out.append(t)
-    return out
 
 
 def build_ics_calendar(
@@ -106,8 +91,7 @@ def all_termine_for_feed(db: Session, mandant_slug: str) -> list[Termin]:
         .order_by(Termin.starts_at.asc())
         .all()
     )
-    raw = _termine_without_disabled_fraktion_ov(db, raw)
-    return filter_termine_fraktion_ics(db, raw, calendar_owner_user_id=None)
+    return filter_termine_fuer_ics(db, raw, calendar_owner_user_id=None)
 
 
 def termine_for_user_teilnahmen(db: Session, user_id: int, mandant_slug: str) -> list[Termin]:
@@ -124,8 +108,7 @@ def termine_for_user_teilnahmen(db: Session, user_id: int, mandant_slug: str) ->
         .order_by(Termin.starts_at.asc())
         .all()
     )
-    raw = _termine_without_disabled_fraktion_ov(db, raw)
-    return filter_termine_fraktion_ics(db, raw, calendar_owner_user_id=user_id)
+    return filter_termine_fuer_ics(db, raw, calendar_owner_user_id=user_id)
 
 
 def termine_zugesagt_multi_mandanten(
@@ -162,7 +145,9 @@ def termine_zugesagt_multi_mandanten(
         .order_by(Termin.starts_at.asc())
         .all()
     )
-    return filter_termine_fraktion_ics(db, raw, calendar_owner_user_id=user_id)
+    return filter_termine_fuer_ics(
+        db, raw, calendar_owner_user_id=user_id
+    )
 
 
 def all_termine_multi_mandanten(
@@ -195,6 +180,6 @@ def all_termine_multi_mandanten(
         .order_by(Termin.starts_at.asc())
         .all()
     )
-    return filter_termine_fraktion_ics(
+    return filter_termine_fuer_ics(
         db, raw, calendar_owner_user_id=calendar_owner_user_id
     )

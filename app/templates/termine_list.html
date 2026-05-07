@@ -12,9 +12,9 @@
 <article class="card card--flush termin-card-list">
   <div class="termin-card-list__shell">
     <header class="ics-popup__head termin-card-list__head">
-      <div class="ics-popup__head-icon" aria-hidden="true">{{ ico.svg_calendar() }}</div>
+      <div class="ics-popup__head-icon termin-kat-icon {{ row.termin_kat_icon_class }}" aria-hidden="true">{{ ico.svg_calendar() }}</div>
       <div class="termin-card-list__head-main">
-        <h2 class="ics-popup__h termin-card-list__title"><a href="{{ owner_mp }}/{{ twp }}/{{ t.id }}">{% if row.ov_display_name %}<strong class="termin-ov-name">{{ row.ov_display_name }}</strong><span class="termin-title-sep"> — </span>{% endif %}{{ t.title }}</a></h2>
+        <h2 class="ics-popup__h termin-card-list__title"><a href="{{ owner_mp }}/{{ twp }}/{{ t.id }}">{% if row.ov_display_name %}<strong class="termin-ov-name">{{ row.ov_display_name }}</strong><span class="termin-title-sep"> — </span>{% endif %}{{ t.title }}</a>{% if row.termin_kategorie_label %}<span class="termin-kat-badge">{{ row.termin_kategorie_label }}</span>{% endif %}</h2>
         <p class="ics-popup__lead termin-card-list__meta">
           {{ t.starts_at.strftime('%d.%m.%Y') }} · {{ t.starts_at.strftime('%H:%M') }}
           {% if t.ends_at %}– {{ t.ends_at.strftime('%H:%M') }}{% endif %}
@@ -153,6 +153,21 @@
   }
   .termin-card-list__meta {
     margin: 0.35rem 0 0;
+  }
+  .termin-kat-icon--vorstand {
+    color: #15803d;
+  }
+  .termin-kat-icon--fraktion {
+    color: #1d4ed8;
+  }
+  .termin-kat-badge {
+    display: inline-block;
+    margin-left: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
   }
   .termin-card-list__media-row {
     display: flex;
@@ -312,11 +327,6 @@
         {{ ico.svg_plus() }}<span class="btn-text">{{ t.neuer_termin_button_label }}</span>
       </a>
       {% endif %}
-      {% if t.show_neue_sitzung_button %}
-      <a href="{{ t.neue_sitzung_href }}" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="{{ t.neue_sitzung_button_label }}">
-        {{ ico.svg_plus() }}<span class="btn-text">{{ t.neue_sitzung_button_label }}</span>
-      </a>
-      {% endif %}
     </div>
     {% endfor %}
   </div>
@@ -460,12 +470,6 @@
       Keine aktuellen Termine — <a href="{{ t.neuer_termin_href }}">Termin anlegen</a> oder unter „Archiv“ nachsehen.
       {% elif t.kind == 'alle' %}
       Keine aktuellen Termine — unter „Archiv“ nachsehen.
-      {% elif t.kind == 'fraktion' %}
-      {% if t.show_neue_sitzung_button and t.neue_sitzung_href %}
-      Keine aktuellen Fraktionstermine — <a href="{{ t.neue_sitzung_href }}">Sitzung anlegen</a> oder unter „Archiv“ nachsehen.
-      {% else %}
-      Keine aktuellen Fraktionstermine — unter „Archiv“ nachsehen.
-      {% endif %}
       {% else %}
       Keine aktuellen Termine — unter „Archiv“ nachsehen.
       {% endif %}
