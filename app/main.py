@@ -2400,11 +2400,12 @@ def _termin_sharepic_form_fields(
 
 def _termin_kategorie_ui_dict(t: Termin) -> dict[str, str]:
     kat = termin_kategorie_effective(t)
-    icon = ""
     if kat == TERMIN_KAT_VORSTAND:
         icon = "termin-kat-icon--vorstand"
     elif kat == TERMIN_KAT_FRAKTION:
         icon = "termin-kat-icon--fraktion"
+    else:
+        icon = "termin-kat-icon--verband"
     labels = {
         TERMIN_KAT_VERBAND: "Verband",
         TERMIN_KAT_VORSTAND: "Vorstand",

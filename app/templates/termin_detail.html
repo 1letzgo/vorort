@@ -23,20 +23,14 @@
   .termin-card-list__meta {
     margin: 0.35rem 0 0;
   }
+  .termin-kat-icon--verband {
+    color: #b45309;
+  }
   .termin-kat-icon--vorstand {
     color: #15803d;
   }
   .termin-kat-icon--fraktion {
     color: #1d4ed8;
-  }
-  .termin-kat-badge {
-    display: inline-block;
-    margin-left: 0.35rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--muted);
   }
   .termin-anhang-list {
     list-style: none;
@@ -295,9 +289,9 @@
 <article class="card card--flush termin-card-list">
   <div class="termin-card-list__shell">
     <header class="ics-popup__head termin-card-list__head">
-      <div class="ics-popup__head-icon termin-kat-icon {{ row.termin_kat_icon_class }}" aria-hidden="true">{{ ico.svg_calendar() }}</div>
+      <div class="ics-popup__head-icon termin-kat-icon {{ row.termin_kat_icon_class }}" role="img" aria-label="Kategorie: {{ row.termin_kategorie_label }}">{{ ico.svg_calendar() }}</div>
       <div class="termin-card-list__head-main">
-        <h1 class="ics-popup__h termin-card-list__title">{{ t.title }}{% if row.termin_kategorie_label %}<span class="termin-kat-badge">{{ row.termin_kategorie_label }}</span>{% endif %}</h1>
+        <h1 class="ics-popup__h termin-card-list__title">{{ t.title }}</h1>
         <p class="ics-popup__lead termin-card-list__meta">
           {{ t.starts_at.strftime('%d.%m.%Y') }} · {{ t.starts_at.strftime('%H:%M') }}
           {% if t.ends_at %}– {{ t.ends_at.strftime('%H:%M') }}{% endif %}
