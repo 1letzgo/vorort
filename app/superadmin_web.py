@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated, List, Optional
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import delete, func, update
 from sqlalchemy.exc import IntegrityError
@@ -39,13 +39,6 @@ from app.platform_models import (
     TerminKommentar,
     TerminTeilnahme,
 )
-from app.sharepic_templates import (
-    MAX_SHAREPIC_TEMPLATES,
-    delete_template,
-    ensure_templates_dir as ensure_sharepic_templates_dir,
-    list_templates,
-    upload_template,
-)
 from app.settings_store import save_sharepic_slogan_default, sharepic_slogan_default_value
 
 TEMPLATES_DIR = __import__("pathlib").Path(__file__).resolve().parent / "templates"
@@ -54,33 +47,6 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 router = APIRouter(tags=["superadmin"])
 
 PASSWORD_MIN_SUPERADMIN = 8
-
-
-def _sharepic_vorlagen_for_ov_admin(request: Request, ov_slug: str) -> list[dict]:
-    rp = (request.scope.get("root_path") or "").rstrip("/")
-    ms = ov_slug.strip().lower()
-    ensure_sharepic_templates_dir(ms)
-    rows: list[dict] = []
-    for t in list_templates(ms):
-        rows.append(
-            {
-                "id": t["id"],
-                "label": t["label"],
-                "url": f"{rp}/m/{ms}/media/{t['rel_path']}",
-            }
-        )
-    return rows
-
-
-def _vorlage_flash_from_query(request: Request) -> tuple[str | None, str | None]:
-    v = (request.query_params.get("vorlage") or "").strip()
-    if v == "hochgeladen":
-        return "Vorlage wurde hochgeladen.", None
-    if v == "geloescht":
-        return "Vorlage wurde entfernt.", None
-    err_raw = request.query_params.get("vorlage_err")
-    err = err_raw.strip() if isinstance(err_raw, str) else None
-    return None, err
 
 
 def _ov_edit_form_ctx(
@@ -95,7 +61,6 @@ def _ov_edit_form_ctx(
     cal_flash_err: str | None = None,
     flash_ov_gespeichert: bool = False,
 ) -> dict:
-    vs_ok, vs_err = _vorlage_flash_from_query(request)
     slogan_default = (
         sharepic_slogan_input
         if sharepic_slogan_input is not None
@@ -113,11 +78,7 @@ def _ov_edit_form_ctx(
         "cal_flash_created": cal_flash_created,
         "cal_flash_err": cal_flash_err,
         "flash_ov_gespeichert": flash_ov_gespeichert,
-        "sharepic_vorlagen": _sharepic_vorlagen_for_ov_admin(request, ov.slug),
-        "vorlage_success": vs_ok,
-        "vorlage_error": vs_err,
         "max_upload_mb": MAX_UPLOAD_MB,
-        "sharepic_vorlagen_max": MAX_SHAREPIC_TEMPLATES,
     }
 
 
@@ -411,56 +372,6 @@ def superadmin_ov_edit_submit(
     db.commit()
     return RedirectResponse(
         f"/admin/ortsverbaende/{ms}/bearbeiten?gespeichert=1",
-        status_code=302,
-    )
-
-
-@router.post("/admin/ortsverbaende/{slug}/sharepic-vorlage-hochladen")
-async def superadmin_sharepic_vorlage_upload(
-    slug: str,
-    request: Request,
-    db: Annotated[Session, Depends(get_platform_db)],
-    _: LetzgoSuperadmin,
-    vorlage_datei: UploadFile = File(...),
-    vorlage_bezeichnung: Annotated[str, Form()] = "",
-):
-    s = slug.strip().lower()
-    ov = db.get(Ortsverband, s)
-    if not ov:
-        raise HTTPException(status_code=404, detail="Unbekannt")
-    ok, err_msg = await upload_template(s, vorlage_datei, vorlage_bezeichnung)
-    if not ok:
-        qerr = quote(err_msg or "Upload fehlgeschlagen", safe="")
-        return RedirectResponse(
-            f"/admin/ortsverbaende/{s}/bearbeiten?vorlage_err={qerr}",
-            status_code=302,
-        )
-    return RedirectResponse(
-        f"/admin/ortsverbaende/{s}/bearbeiten?vorlage=hochgeladen",
-        status_code=302,
-    )
-
-
-@router.post("/admin/ortsverbaende/{slug}/sharepic-vorlage-loeschen")
-def superadmin_sharepic_vorlage_loeschen(
-    slug: str,
-    db: Annotated[Session, Depends(get_platform_db)],
-    _: LetzgoSuperadmin,
-    template_id: Annotated[str, Form()],
-):
-    s = slug.strip().lower()
-    ov = db.get(Ortsverband, s)
-    if not ov:
-        raise HTTPException(status_code=404, detail="Unbekannt")
-    ok, err_msg = delete_template(s, template_id)
-    if not ok:
-        qerr = quote(err_msg or "Löschen fehlgeschlagen", safe="")
-        return RedirectResponse(
-            f"/admin/ortsverbaende/{s}/bearbeiten?vorlage_err={qerr}",
-            status_code=302,
-        )
-    return RedirectResponse(
-        f"/admin/ortsverbaende/{s}/bearbeiten?vorlage=geloescht",
         status_code=302,
     )
 

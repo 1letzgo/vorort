@@ -84,20 +84,10 @@ Die Fraktionsfunktion ist pro OV **deaktivierbar** (Superadmin: Feature **„Fra
   - **Ohne** diesen Haken sehen **alle freigegebenen Verbandsmitglieder** den Termin.
   - **Mit** Haken sehen nur **Fraktionsmitglieder** (und Superadmin) den Termin — in der Web-UI und in **Kalender-Feeds** (siehe unten: vertrauliche Termine fehlen in öffentlichen Feeds ohne passende Identität).
 
-### Termine aus einem externen Kalender übernehmen („Abonnieren“ Richtung System)
+### Sharepic direkt im Terminformular
 
-Im **Superadmin** beim jeweiligen Ortsverband:
+Wenn Sharepic aktiv ist, könnt ihr im Terminformular ein **Sharepic erzeugen und als Terminfoto setzen** (wird vor dem Speichern als JPEG in das Foto-Feld übernommen). Datum/Zeit, Titel und Ort werden aus dem Formular übernommen.
 
-- Abschnitt **„Kalender-Abo (Fraktionstermine)“**:
-  - **Kalender-URL:** öffentlicher **ICS- oder Webcal-Link** (`https://…` oder `webcal://…`). Das eignet sich für veröffentlichte Kalender aus **RIS**, **Stadtratstools** oder **Microsoft 365 / Outlook**, wenn der Kalender **als ICS freigegeben** ist (häufig „Im Internet veröffentlichen“ / Abonnement-Link).
-  - **„Kalender-Abo aktiv“:** regelmäßiger Abruf im Hintergrund (Intervall über `CAL_FRAKTION_SYNC_INTERVAL_HOURS` bzw. `CAL_FRAKTION_SYNC_INTERVAL_SECONDS` in `app/config.py`; `0` schaltet den Job ab).
-  - Button **„Kalender jetzt abrufen“** zum manuellen Sync.
-
-Neue Einträge aus dem Feed werden als **Fraktionstermine** angelegt (Duplikate werden über einen Import-Schlüssel vermieden). Es werden **keine** bestehenden Termine in der App durch spätere Syncs aktualisiert oder gelöscht — es geht um **das Anlegen fehlender** Ereignisse.
-
----
-
-## Kalender abonnieren (aus der App heraus)
 
 ### Persönliche Feeds (eingeloggt)
 
@@ -114,14 +104,6 @@ Auf der **Terminliste** (und analog in der Termin-Detailansicht) gibt es **„Ab
 
 Die URLs enthalten einen **geheimen Token** (`t=…`), der eurem Konto zugeordnet ist. **Nicht öffentlich teilen** — wer die URL kennt, sieht den entsprechenden Feed.
 
-### Öffentlicher Mandanten-Feed (ohne Login)
-
-Endpunkt: **`/m/<slug>/calendar.ics?t=<TOKEN>`**
-
-Der Token wird festgelegt über die Umgebungsvariable **`ICS_TOKEN`** (gleicher Token für alle Mandanten über diese Instanz) oder — je nach Betriebskonzept — mandantenspezifisch in der Plattform-DB (technisch vorgesehen in `app/settings_store.py`). Ohne gültigen Token antwortet der Server mit **404**, damit die URL nicht erratbar ist.
-
-Dieser Feed enthält die Termine des Mandanten nach der gleichen **Sichtbarkeitslogik wie öffentlich ohne Nutzerkontext**: **vertrauliche Fraktionstermine** erscheinen **nicht**.
-
 ---
 
 ## Sharepic-Generator
@@ -135,9 +117,7 @@ Menüpunkt **„Sharepic“** (`/m/<slug>/sharepic`), sofern das Feature für de
 
 **Standard-Slogan** (z. B. „Für … Für Dich.“) kann der Superadmin pro OV setzen.
 
-### Sharepic direkt im Terminformular
 
-Wenn Sharepic aktiv ist, könnt ihr im Terminformular ein **Sharepic erzeugen und als Terminfoto setzen** (wird vor dem Speichern als JPEG in das Foto-Feld übernommen). Datum/Zeit, Titel und Ort werden aus dem Formular übernommen.
 
 ---
 
@@ -151,32 +131,6 @@ Menüpunkt **„Plakate“** (`/m/<slug>/plakate`), sofern aktiviert.
 - **„Abhängen“** markiert einen Eintrag als entfernt (für alle sichtbar in der Historie/Logik der App; genaue Darstellung siehe UI).
 
 Superadmins können die Plakat-Daten eines OV bei Bedarf **komplett löschen** (Wartung).
-
----
-
-## Konfiguration (Auszug)
-
-| Variable | Bedeutung |
-|----------|-----------|
-| `SECRET_KEY` | Session-Verschlüsselung — in Produktion **stark und geheim** setzen. |
-| `SUPERADMIN_USERNAME` / `SUPERADMIN_USERNAMES` | Plattform-Admins für `/admin/…`. |
-| `PLATFORM_DATABASE_PATH`, `MANDANTEN_ROOT` | Wo Plattform-DB und OV-Daten liegen (Docker: `/data/…`). |
-| `ICS_TOKEN` | Optional: gemeinsamer Token für öffentliche `calendar.ics`-URLs. |
-| `MAX_UPLOAD_MB` | Maximale Größe pro Upload (Standard 8). |
-| `WAHKAMPF_KREIS_OV_SLUG` | Slug des Kreis-OV für überörtliche Termine. |
-| `CAL_FRAKTION_SYNC_INTERVAL_HOURS` | Abstand für automatischen Abruf der Fraktions-ICS-URLs (oder `CAL_FRAKTION_SYNC_INTERVAL_SECONDS`; `0` = aus). |
-| `PUBLIC_SITE_HOSTS`, `PUBLIC_SITE_MANDANT_SLUG` | Öffentliche Domain(s) mit festem Mandanten-Slug. |
-
----
-
-## Hinweis zu „SharePoint“
-
-In diesem Projekt gibt es **keine direkte Microsoft-Graph- oder SharePoint-API-Anbindung**. Stattdessen arbeitet alles **über Standard-ICS**:
-
-- **Hinein in die App:** Im Superadmin die **öffentliche ICS/Webcal-URL** des Kalenders eintragen (z. B. von Outlook/365, wenn der Kalender **zum Abonnieren veröffentlicht** wurde).
-- **Heraus in Outlook/365:** Die **kopierte HTTPS-URL** eures persönlichen Feeds („Zugesagt“ / „ALLE“) oder — nach Vereinbarung mit dem Betrieb — `calendar.ics` mit `ICS_TOKEN` als **Abonnement-URL** in Outlook oder im Teamkalender verwenden.
-
-So lassen sich dieselben Inhalte oft auch in **SharePoint-angebundenen** Kalendern nutzen, sofern Microsoft-seitig ein ICS-Abonnement erlaubt ist.
 
 ---
 
