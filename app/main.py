@@ -3987,6 +3987,9 @@ def calendar_ics_termine_alle(
     )
 
 
+from app.mobile_api import router as mobile_api_router
+
+tenant_router.include_router(mobile_api_router, prefix="/api/v1", tags=["mobile-api"])
 app.include_router(tenant_router)
 app.include_router(superadmin_router)
 
