@@ -75,8 +75,13 @@ from app.settings_store import (
     verify_ics_token,
 )
 from app.superadmin_web import router as superadmin_router
-from app.sharepic_templates import ensure_templates_dir as ensure_sharepic_templates_dir
-from app.sharepic_templates import list_templates as list_sharepic_templates
+from app.sharepic_templates import (
+    MAX_SHAREPIC_TEMPLATES,
+    delete_template as delete_sharepic_template,
+    ensure_templates_dir as ensure_sharepic_templates_dir,
+    list_templates as list_sharepic_templates,
+    upload_template as upload_sharepic_template,
+)
 from app.tenant_assets import sharepic_mask_url
 from app.termin_attachments import (
     attachments_decode,
@@ -1646,6 +1651,7 @@ def _build_admin_hub_tabs(
             )
             .count()
         )
+        feat_sharepic = is_mandant_feature_enabled(pdb, slug, FEATURE_SHAREPIC)
         tabs.append(
             {
                 "id": _admin_hub_tab_id(slug),
@@ -1653,6 +1659,8 @@ def _build_admin_hub_tabs(
                 "label": dn,
                 "admin_pending_count": pend,
                 "benutzer_href": _href_under_ov(request, slug, "admin/benutzer"),
+                "vorlagen_href": _href_under_ov(request, slug, "admin/sharepic-vorlagen"),
+                "feature_sharepic": feat_sharepic,
             },
         )
     return tabs
@@ -1877,6 +1885,114 @@ def admin_benutzer_loeschen_compat(
     return admin_benutzer_zugriff_entziehen(
         mandant_slug, uid, request, pdb, actor
     )
+
+
+def _sharepic_vorlagen_for_admin(request: Request, mandant_slug: str) -> list[dict]:
+    """Liste mit URL + Bezeichnung + ID für die OV-Admin-Verwaltungsseite."""
+    ms = mandant_slug.strip().lower()
+    ensure_sharepic_templates_dir(ms)
+    pfx = _app_path_prefix(request)
+    mp = getattr(request.state, "mandanten_prefix", "") or ""
+    out: list[dict] = []
+    for t in list_sharepic_templates(ms):
+        out.append(
+            {
+                "id": t["id"],
+                "label": t["label"],
+                "url": f"{pfx}{mp}/media/{t['rel_path']}",
+            }
+        )
+    return out
+
+
+def _sharepic_admin_flash(request: Request) -> tuple[str | None, str | None]:
+    v = (request.query_params.get("vorlage") or "").strip()
+    if v == "hochgeladen":
+        return "Vorlage wurde hochgeladen.", None
+    if v == "geloescht":
+        return "Vorlage wurde entfernt.", None
+    err_raw = request.query_params.get("vorlage_err")
+    err = err_raw.strip() if isinstance(err_raw, str) else None
+    return None, err
+
+
+@tenant_router.get("/admin/sharepic-vorlagen", response_class=HTMLResponse)
+def admin_sharepic_vorlagen_view(
+    mandant_slug: str,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    user: AdminUser,
+):
+    ms = mandant_slug.strip().lower()
+    feature_on = is_mandant_feature_enabled(pdb, ms, FEATURE_SHAREPIC)
+    admin_tabs = _build_admin_hub_tabs(pdb, request, user)
+    current_admin_tab_id = _admin_hub_tab_id(ms)
+    vorlagen = _sharepic_vorlagen_for_admin(request, ms) if feature_on else []
+    flash_ok, flash_err = _sharepic_admin_flash(request)
+    return templates.TemplateResponse(
+        request,
+        "admin_sharepic_vorlagen.html",
+        {
+            "user": user,
+            "admin_tabs": admin_tabs,
+            "current_admin_tab_id": current_admin_tab_id,
+            "feature_sharepic": feature_on,
+            "sharepic_vorlagen": vorlagen,
+            "sharepic_vorlagen_max": MAX_SHAREPIC_TEMPLATES,
+            "max_upload_mb": MAX_UPLOAD_MB,
+            "vorlage_success": flash_ok,
+            "vorlage_error": flash_err,
+        },
+    )
+
+
+@tenant_router.post("/admin/sharepic-vorlagen/hochladen")
+async def admin_sharepic_vorlagen_upload(
+    mandant_slug: str,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    _: AdminUser,
+    vorlage_datei: UploadFile = File(...),
+    vorlage_bezeichnung: Annotated[str, Form()] = "",
+):
+    ms = mandant_slug.strip().lower()
+    if not is_mandant_feature_enabled(pdb, ms, FEATURE_SHAREPIC):
+        raise HTTPException(
+            status_code=403,
+            detail="Sharepic ist für diesen Ortsverband nicht aktiviert.",
+        )
+    ok, err_msg = await upload_sharepic_template(ms, vorlage_datei, vorlage_bezeichnung)
+    base = f"{_mp(request)}/admin/sharepic-vorlagen"
+    if not ok:
+        return RedirectResponse(
+            f"{base}?vorlage_err={quote(err_msg or 'Upload fehlgeschlagen', safe='')}",
+            status_code=302,
+        )
+    return RedirectResponse(f"{base}?vorlage=hochgeladen", status_code=302)
+
+
+@tenant_router.post("/admin/sharepic-vorlagen/loeschen")
+def admin_sharepic_vorlagen_delete(
+    mandant_slug: str,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    _: AdminUser,
+    template_id: Annotated[str, Form()],
+):
+    ms = mandant_slug.strip().lower()
+    if not is_mandant_feature_enabled(pdb, ms, FEATURE_SHAREPIC):
+        raise HTTPException(
+            status_code=403,
+            detail="Sharepic ist für diesen Ortsverband nicht aktiviert.",
+        )
+    ok, err_msg = delete_sharepic_template(ms, template_id)
+    base = f"{_mp(request)}/admin/sharepic-vorlagen"
+    if not ok:
+        return RedirectResponse(
+            f"{base}?vorlage_err={quote(err_msg or 'Löschen fehlgeschlagen', safe='')}",
+            status_code=302,
+        )
+    return RedirectResponse(f"{base}?vorlage=geloescht", status_code=302)
 
 
 @tenant_router.get("/logout")
