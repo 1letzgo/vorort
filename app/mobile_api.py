@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import verify_password
 from app.config import is_superadmin_username
-from app.deps import CurrentUser, get_current_user
+from app.deps import CurrentUser
 from app.platform_database import get_platform_db
 from app.platform_models import (
     MandantAppSetting,
@@ -193,8 +193,8 @@ def mobile_me(
 def mobile_termine_list(
     mandant_slug: str,
     request: Request,
+    user: CurrentUser,
     pdb: Session = Depends(get_platform_db),
-    user: CurrentUser = Depends(get_current_user),
 ):
     from app.main import _split_termine_upcoming_past, _termin_list_rows
 
@@ -213,8 +213,8 @@ def mobile_termin_detail(
     mandant_slug: str,
     termin_id: int,
     request: Request,
+    user: CurrentUser,
     pdb: Session = Depends(get_platform_db),
-    user: CurrentUser = Depends(get_current_user),
 ):
     from app.main import (
         _termin_detail_row,
@@ -251,8 +251,8 @@ def mobile_kommentar_create(
     termin_id: int,
     payload: KommentarBody,
     request: Request,
+    user: CurrentUser,
     pdb: Session = Depends(get_platform_db),
-    user: CurrentUser = Depends(get_current_user),
 ):
     from app.main import _termin_kommentare_public, termin_sichtbar_in_mandant
 
@@ -283,8 +283,8 @@ def mobile_termin_teilnehmen(
     mandant_slug: str,
     termin_id: int,
     request: Request,
+    user: CurrentUser,
     pdb: Session = Depends(get_platform_db),
-    user: CurrentUser = Depends(get_current_user),
 ):
     from app.main import (
         _termin_detail_row,
@@ -324,8 +324,8 @@ def mobile_termin_absagen(
     mandant_slug: str,
     termin_id: int,
     request: Request,
+    user: CurrentUser,
     pdb: Session = Depends(get_platform_db),
-    user: CurrentUser = Depends(get_current_user),
 ):
     from app.main import _termin_detail_row, termin_sichtbar_in_mandant, _termin_row_api
 
@@ -360,8 +360,8 @@ def mobile_termin_absagen(
 def mobile_menu_summary(
     mandant_slug: str,
     request: Request,
+    user: CurrentUser,
     pdb: Session = Depends(get_platform_db),
-    user: CurrentUser = Depends(get_current_user),
 ):
     """Kompakte Übersicht analog Web-Menü (Tabs / Deep Links)."""
     from app.main import (
