@@ -1,38 +1,13 @@
-# VorOrt — Wahlkampf-App
+# VorOrt — Ortsverbands App
 
-Mandantenfähige **FastAPI**-Webapp für die Organisation auf OV-Ebene: **Termine** (inkl. Fraktion), **Kalender-Feeds** (ICS), **Sharepic-Generator**, **Plakat-Karte** und zentrale **OV-/Nutzerverwaltung**. Pro Ortsverband (OV) gibt es eigene Daten unter konfigurierbarem Speicherpfad (SQLite + Datei-Uploads).
-
----
-
-## Schnellstart (Docker)
-
-```bash
-cd /pfad/zum/projekt
-# Empfohlen: SECRET_KEY und ggf. SUPERADMIN_USERNAME setzen (siehe Abschnitt Konfiguration)
-docker compose up --build
-```
-
-Die App lauscht dann auf **Port 8000**. Datenbanken und Uploads liegen im Volume `wahlkampf-data` (unter `/data` im Container) — ohne Volume gehen Daten bei jedem neuen Container verloren.
-
-**Wichtig:** Legt im laufenden System mindestens einen Plattform-Superadmin an (Benutzer in der DB, gleicher Benutzername wie in `SUPERADMIN_USERNAME` / `SUPERADMIN_USERNAMES`), damit ihr unter `/admin/…` Ortsverbände und Features pflegen könnt.
-
-Lokaler Entwicklungslauf ohne Docker:
-
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
+Mandantenfähige **FastAPI**-Webapp für die Organisation auf Oortsvereins-Ebene: **Termine** (inkl. Fraktion), **Kalender-Feeds** (ICS), **Sharepic-Generator**, **Plakat-Karte** und zentrale **OV-/Nutzerverwaltung**. Pro Ortsverband (OV) gibt es eigene Daten unter konfigurierbarem Speicherpfad (SQLite + Datei-Uploads).
 
 ---
+
 
 ## URLs und Mandanten
 
-- **Standard:** Jeder OV hat ein Präfix **`/m/<slug>/`** (Beispiel: `http://localhost:8000/m/westerstede/termine`).
-- **Öffentliche Kurz-URL (optional):** Mit `PUBLIC_SITE_HOSTS` und `PUBLIC_SITE_MANDANT_SLUG` reicht auf der eingetragenen Domain ein Pfad wie `/login` ohne `/m/slug` (siehe Kommentare in `docker-compose.yml` und `app/config.py`).
-- **Subdomain je Mandant (optional):** `MANDANT_HOST_BASE_DOMAIN` — z. B. `westerstede.localhost` → gleicher OV wie `slug`.
-
-Technische Details zu allen Umgebungsvariablen stehen in `app/config.py` und in den Kommentaren von `docker-compose.yml`.
+Die App ist erreichbar unter https://vorort.spd-wst.de
 
 ---
 
