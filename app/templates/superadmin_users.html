@@ -102,6 +102,13 @@
               </td>
               <td data-label="Aktionen" class="admin-users-td-actions">
                 <div>
+                  {% if tenant_ov_slug and row.membership_here and not row.membership_here.is_approved %}
+                  <form method="post" action="{{ request.state.mandanten_prefix }}/admin/benutzer/{{ u.id }}/freigeben" class="admin-users-action-form" style="margin:0;">
+                    <button type="submit" class="btn btn-sm btn-ico btn-with-label" aria-label="Nutzer {{ u.display_name or u.username }} freigeben">
+                      {{ ico.svg_check() }}<span class="btn-text">Freigeben</span>
+                    </button>
+                  </form>
+                  {% endif %}
                   <a href="{{ nutzer_base }}/{{ u.id }}/bearbeiten" class="btn btn-sm btn-ico btn-with-label" aria-label="Nutzer {{ u.username }} bearbeiten">
                     {{ ico.svg_pencil() }}<span class="btn-text">Bearbeiten</span>
                   </a>

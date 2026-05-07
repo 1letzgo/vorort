@@ -693,6 +693,7 @@ def superadmin_user_list(
                 "user": u,
                 "platform_superadmin": is_superadmin_username(u.username),
                 "memberships": mems,
+                "membership_here": None,
             }
         )
     flash_del = request.query_params.get("geloescht") == "1"

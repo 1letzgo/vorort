@@ -1718,11 +1718,16 @@ def tenant_admin_nutzer_list(
     rows = []
     for u in users:
         mems = sorted(u.memberships, key=lambda m: m.ov_slug.lower())
+        m_here = next(
+            (m for m in mems if m.ov_slug.strip().lower() == ms),
+            None,
+        )
         rows.append(
             {
                 "user": u,
                 "platform_superadmin": is_superadmin_username(u.username),
                 "memberships": mems,
+                "membership_here": m_here,
             }
         )
     admin_tabs = _build_admin_hub_tabs(pdb, request, user)
@@ -1740,7 +1745,7 @@ def tenant_admin_nutzer_list(
             "page_heading": "Mitglieder & Rollen",
             "page_lead": (
                 "Nur Nutzer mit Mitgliedschaft in diesem Ortsverband. "
-                "Rollen: Mitglied (freigegeben), Vorstand, Fraktion, Admin."
+                "Rollen: Mitglied, Vorstand, Fraktion, Admin."
             ),
         },
     )
