@@ -7,10 +7,11 @@
 {% include '_admin_data_table_styles.html' %}
 <style>
   @media (min-width: 640px) {
-    .superadmin-cal-table .admin-users-col-name { width: 14%; }
-    .superadmin-cal-table .admin-users-col-status { width: 30%; }
-    .superadmin-cal-table .admin-users-col-url { width: 36%; }
-    .superadmin-cal-table .admin-users-col-actions { width: 20%; }
+    .superadmin-cal-table .admin-users-col-name { width: 10%; }
+    .superadmin-cal-table .admin-users-col-kat { width: 12%; }
+    .superadmin-cal-table .admin-users-col-status { width: 26%; }
+    .superadmin-cal-table .admin-users-col-url { width: 30%; }
+    .superadmin-cal-table .admin-users-col-actions { width: 22%; }
   }
   .cal-sub-url-cell {
     max-width: 42rem;
@@ -29,8 +30,6 @@
   </a>
 {% endcall %}
 
-{% include '_superadmin_platform_nav.html' %}
-
 <div class="admin-page">
   <div class="card card--flush admin-users-card">
     <div class="admin-users-shell">
@@ -39,7 +38,7 @@
         <div>
           <h2 class="ics-popup__h">RIS / externe ICS-Feeds</h2>
           <p class="ics-popup__lead">
-            Mehrere Abos pro Plattform; Ziel ist jeweils ein <strong>Ortsverband</strong>. Importierte Termine sind <strong>Verbandstermine</strong> (für freigegebene Mitglieder sichtbar). Aktive Abos werden im Hintergrund abgerufen.
+            Mehrere Abos pro Plattform; Ziel ist jeweils ein <strong>Ortsverband</strong>. Pro Abo legst du die <strong>Import-Kategorie</strong> fest (Verband / Vorstand / Fraktion). Aktive Abos werden im Hintergrund abgerufen.
           </p>
         </div>
       </header>
@@ -51,6 +50,7 @@
         <table class="admin-users-table superadmin-cal-table">
           <colgroup>
             <col class="admin-users-col-name">
+            <col class="admin-users-col-kat">
             <col class="admin-users-col-status">
             <col class="admin-users-col-url">
             <col class="admin-users-col-actions">
@@ -58,6 +58,7 @@
           <thead>
             <tr>
               <th scope="col">ID</th>
+              <th scope="col">Kategorie</th>
               <th scope="col">Ortsverband</th>
               <th scope="col">Kalender-URL</th>
               <th scope="col" class="admin-users-th-actions">Aktionen</th>
@@ -68,6 +69,15 @@
             {% set o = ovs.get(s.mandant_slug) %}
             <tr>
               <td data-label="ID"><code>{{ s.id }}</code></td>
+              <td data-label="Kategorie">
+                {% if s.termin_kategorie == 'vorstand' %}
+                <span style="font-weight:700;color:#15803d;">Vorstand</span>
+                {% elif s.termin_kategorie == 'fraktion' %}
+                <span style="font-weight:700;color:#1d4ed8;">Fraktion</span>
+                {% else %}
+                Verband
+                {% endif %}
+              </td>
               <td data-label="Ortsverband">
                 <strong>{{ s.label.strip() if s.label and s.label.strip() else '(ohne Bezeichnung)' }}</strong>
                 <br><code class="muted" style="font-size:0.8rem;">{{ s.mandant_slug }}</code>

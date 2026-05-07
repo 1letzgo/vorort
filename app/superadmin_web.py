@@ -28,6 +28,7 @@ from app.mandant_features import (
     is_mandant_feature_enabled,
     merge_mandant_feature,
 )
+from app.termin_kategorie import normalize_termin_kategorie
 from app.platform_user_admin import (
     PASSWORD_MIN_PLATFORM_USER,
     form_ov_slug_list as _form_ov_slug_list,
@@ -269,15 +270,16 @@ def superadmin_cal_sub_new_form(
     return templates.TemplateResponse(
         request,
         "superadmin_cal_subscription_form.html",
-        {
-            "sub": None,
-            "ovs": ovs,
-            "error": None,
-            "feed_url_input": None,
-            "flash_ok": False,
-            "cal_flash_created": None,
-            "cal_flash_err": None,
-        },
+        _cal_sub_form_ctx(
+            sub=None,
+            ovs=ovs,
+            error=None,
+            feed_url_input=None,
+            flash_ok=False,
+            cal_flash_created=None,
+            cal_flash_err=None,
+            termin_kategorie_override=None,
+        ),
     )
 
 
@@ -289,24 +291,27 @@ def superadmin_cal_sub_new_submit(
     mandant_slug: Annotated[str, Form()],
     label: Annotated[str, Form()] = "",
     feed_url: Annotated[str, Form()] = "",
+    termin_kategorie: Annotated[str, Form()] = "verband",
     abo_active: Annotated[Optional[str], Form()] = None,
 ):
     ms = mandant_slug.strip().lower()
     ov = db.get(Ortsverband, ms)
     ovs = db.query(Ortsverband).order_by(Ortsverband.slug.asc()).all()
+    tk = normalize_termin_kategorie(termin_kategorie)
     if not ov:
         return templates.TemplateResponse(
             request,
             "superadmin_cal_subscription_form.html",
-            {
-                "sub": None,
-                "ovs": ovs,
-                "error": "Ortsverband nicht gefunden.",
-                "feed_url_input": feed_url,
-                "flash_ok": False,
-                "cal_flash_created": None,
-                "cal_flash_err": None,
-            },
+            _cal_sub_form_ctx(
+                sub=None,
+                ovs=ovs,
+                error="Ortsverband nicht gefunden.",
+                feed_url_input=feed_url,
+                flash_ok=False,
+                cal_flash_created=None,
+                cal_flash_err=None,
+                termin_kategorie_override=tk,
+            ),
             status_code=400,
         )
     feed_u, feed_err = validate_and_normalize_cal_subscription_url(feed_url)
@@ -314,15 +319,16 @@ def superadmin_cal_sub_new_submit(
         return templates.TemplateResponse(
             request,
             "superadmin_cal_subscription_form.html",
-            {
-                "sub": None,
-                "ovs": ovs,
-                "error": feed_err,
-                "feed_url_input": feed_url.strip(),
-                "flash_ok": False,
-                "cal_flash_created": None,
-                "cal_flash_err": None,
-            },
+            _cal_sub_form_ctx(
+                sub=None,
+                ovs=ovs,
+                error=feed_err,
+                feed_url_input=feed_url.strip(),
+                flash_ok=False,
+                cal_flash_created=None,
+                cal_flash_err=None,
+                termin_kategorie_override=tk,
+            ),
             status_code=400,
         )
     want_active = abo_active == "1"
@@ -330,15 +336,16 @@ def superadmin_cal_sub_new_submit(
         return templates.TemplateResponse(
             request,
             "superadmin_cal_subscription_form.html",
-            {
-                "sub": None,
-                "ovs": ovs,
-                "error": "Für ein aktives Abo ist eine Kalender-URL erforderlich.",
-                "feed_url_input": feed_url.strip(),
-                "flash_ok": False,
-                "cal_flash_created": None,
-                "cal_flash_err": None,
-            },
+            _cal_sub_form_ctx(
+                sub=None,
+                ovs=ovs,
+                error="Für ein aktives Abo ist eine Kalender-URL erforderlich.",
+                feed_url_input=feed_url.strip(),
+                flash_ok=False,
+                cal_flash_created=None,
+                cal_flash_err=None,
+                termin_kategorie_override=tk,
+            ),
             status_code=400,
         )
     sub = ExternCalSubscription(
@@ -346,6 +353,7 @@ def superadmin_cal_sub_new_submit(
         label=" ".join(label.split()).strip()[:200],
         feed_url=feed_u,
         abo_active=want_active,
+        termin_kategorie=tk,
     )
     db.add(sub)
     db.commit()
@@ -365,7 +373,14 @@ def _cal_sub_form_ctx(
     flash_ok: bool,
     cal_flash_created: int | None,
     cal_flash_err: str | None,
+    termin_kategorie_override: str | None = None,
 ) -> dict:
+    if termin_kategorie_override is not None:
+        tk_sel = normalize_termin_kategorie(termin_kategorie_override)
+    elif sub is not None:
+        tk_sel = normalize_termin_kategorie(getattr(sub, "termin_kategorie", None))
+    else:
+        tk_sel = normalize_termin_kategorie("verband")
     return {
         "sub": sub,
         "ovs": ovs,
@@ -374,6 +389,7 @@ def _cal_sub_form_ctx(
         "flash_ok": flash_ok,
         "cal_flash_created": cal_flash_created,
         "cal_flash_err": cal_flash_err,
+        "termin_kategorie_selected": tk_sel,
     }
 
 
@@ -405,6 +421,7 @@ def superadmin_cal_sub_edit_form(
             flash_ok=flash_ok,
             cal_flash_created=cal_flash_created,
             cal_flash_err=cal_flash_err,
+            termin_kategorie_override=None,
         ),
     )
 
@@ -418,12 +435,14 @@ def superadmin_cal_sub_edit_submit(
     mandant_slug: Annotated[str, Form()],
     label: Annotated[str, Form()] = "",
     feed_url: Annotated[str, Form()] = "",
+    termin_kategorie: Annotated[str, Form()] = "verband",
     abo_active: Annotated[Optional[str], Form()] = None,
 ):
     sub = db.get(ExternCalSubscription, sub_id)
     if not sub:
         raise HTTPException(status_code=404, detail="Abo nicht gefunden")
     ovs = db.query(Ortsverband).order_by(Ortsverband.slug.asc()).all()
+    tk = normalize_termin_kategorie(termin_kategorie)
     ms = mandant_slug.strip().lower()
     ov = db.get(Ortsverband, ms)
     if not ov:
@@ -438,6 +457,7 @@ def superadmin_cal_sub_edit_submit(
                 flash_ok=False,
                 cal_flash_created=None,
                 cal_flash_err=None,
+                termin_kategorie_override=tk,
             ),
             status_code=400,
         )
@@ -454,6 +474,7 @@ def superadmin_cal_sub_edit_submit(
                 flash_ok=False,
                 cal_flash_created=None,
                 cal_flash_err=None,
+                termin_kategorie_override=tk,
             ),
             status_code=400,
         )
@@ -470,6 +491,7 @@ def superadmin_cal_sub_edit_submit(
                 flash_ok=False,
                 cal_flash_created=None,
                 cal_flash_err=None,
+                termin_kategorie_override=tk,
             ),
             status_code=400,
         )
@@ -477,6 +499,7 @@ def superadmin_cal_sub_edit_submit(
     sub.label = " ".join(label.split()).strip()[:200]
     sub.feed_url = feed_u
     sub.abo_active = want_active
+    sub.termin_kategorie = tk
     db.add(sub)
     db.commit()
     return RedirectResponse(
@@ -500,7 +523,12 @@ def superadmin_cal_sub_sync_now(
             f"/admin/kalender-abos/{sub_id}/bearbeiten?cal_import_err={quote('Keine Kalender-URL gespeichert.')}",
             status_code=302,
         )
-    n, err = import_fraktion_termine_from_calendar(db, sub.mandant_slug, url)
+    n, err = import_fraktion_termine_from_calendar(
+        db,
+        sub.mandant_slug,
+        url,
+        termin_kategorie=sub.termin_kategorie or "verband",
+    )
     base = f"/admin/kalender-abos/{sub_id}/bearbeiten"
     if err:
         return RedirectResponse(f"{base}?cal_import_err={quote(err)}", status_code=302)

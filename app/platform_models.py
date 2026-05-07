@@ -38,7 +38,7 @@ class Ortsverband(PlatformBase):
 
 
 class ExternCalSubscription(PlatformBase):
-    """Plattform: ICS/Webcal-Abo → Verbandstermine am gewählten Ortsverband (z. B. RIS)."""
+    """Plattform: ICS/Webcal-Abo → Termine am gewählten Ortsverband (Kategorie konfigurierbar)."""
 
     __tablename__ = "extern_cal_subscriptions"
 
@@ -52,6 +52,8 @@ class ExternCalSubscription(PlatformBase):
     feed_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     abo_active: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # verband | vorstand | fraktion — Sichtbarkeit wie bei manuell angelegten Terminen
+    termin_kategorie: Mapped[str] = mapped_column(String(32), default="verband")
 
     ortsverband: Mapped["Ortsverband"] = relationship(back_populates="extern_cal_subscriptions")
 

@@ -15,8 +15,6 @@
   </a>
 </div>
 
-{% include '_superadmin_platform_nav.html' %}
-
 <div class="admin-page">
   <div class="card card--flush admin-users-card">
     <div class="admin-users-shell">
@@ -25,7 +23,7 @@
         <div>
           <h2 class="ics-popup__h">{% if sub %}Abo #{{ sub.id }}{% else %}Neues Abo{% endif %}</h2>
           <p class="ics-popup__lead">
-            ICS/Webcal (z. B. RIS). Termine werden am gewählten Ortsverband als <strong>Verbandstermine</strong> angelegt.
+            ICS/Webcal (z. B. RIS). Neue Termine werden mit der gewählten <strong>Kategorie</strong> im Ortsverband angelegt (Sichtbarkeit wie bei manuellen Terminen).
           </p>
         </div>
       </header>
@@ -48,6 +46,23 @@
         <label for="cal-sub-label" style="margin-top:0.85rem;">Bezeichnung <span class="muted">(optional, nur Verwaltung)</span></label>
         <input id="cal-sub-label" name="label" type="text" maxlength="200" placeholder="z. B. RIS Stadtrat"
           value="{% if sub %}{{ sub.label or '' }}{% endif %}">
+
+        <fieldset style="margin-top:0.85rem;border:1px solid var(--border);border-radius:var(--radius);padding:0.85rem 1rem;">
+          <legend class="ics-popup__label" style="padding:0 0.35rem;">Import-Kategorie</legend>
+          <p class="muted" style="margin:0 0 0.65rem;font-size:0.84rem;">Legt fest, für wen importierte Termine sichtbar sind (wie bei Terminen aus der App).</p>
+          <label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;margin-bottom:0.45rem;cursor:pointer;">
+            <input type="radio" name="termin_kategorie" value="verband"{% if termin_kategorie_selected == 'verband' %} checked{% endif %}>
+            Verband — alle freigegebenen Mitglieder
+          </label>
+          <label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;margin-bottom:0.45rem;cursor:pointer;">
+            <input type="radio" name="termin_kategorie" value="vorstand"{% if termin_kategorie_selected == 'vorstand' %} checked{% endif %}>
+            Vorstand — nur Vorstand und OV-Admin
+          </label>
+          <label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;cursor:pointer;">
+            <input type="radio" name="termin_kategorie" value="fraktion"{% if termin_kategorie_selected == 'fraktion' %} checked{% endif %}>
+            Fraktion — nur Fraktion und OV-Admin
+          </label>
+        </fieldset>
 
         <label for="cal-sub-url" style="margin-top:0.85rem;">Kalender-URL</label>
         <input id="cal-sub-url" name="feed_url" type="text" inputmode="url" maxlength="8000"

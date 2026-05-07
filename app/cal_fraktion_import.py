@@ -1,4 +1,4 @@
-"""ICS/Webcal-Abo → Termine am Ortsverband (Verband-Kategorie, z. B. RIS)."""
+"""ICS/Webcal-Abo → Termine am Ortsverband (Kategorie pro Abo konfigurierbar)."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.config import CAL_FETCH_TIMEOUT_SECONDS
 from app.platform_models import ExternCalSubscription, Termin
-from app.termin_kategorie import TERMIN_KAT_VERBAND, apply_kategorie_to_termin_row
+from app.termin_kategorie import apply_kategorie_to_termin_row, normalize_termin_kategorie
 
 logger = logging.getLogger(__name__)
 
@@ -279,12 +279,16 @@ def import_fraktion_termine_from_calendar(
     db: Session,
     mandant_slug: str,
     cal_url: str,
+    *,
+    termin_kategorie: str = "verband",
 ) -> tuple[int, str | None]:
-    """Legt fehlende Termine aus ICS/Webcal an (öffentlich für alle OV-Mitglieder)."""
+    """Legt fehlende Termine aus ICS/Webcal an; Kategorie wie konfiguriert (Sichtbarkeit im OV)."""
     ms = mandant_slug.strip().lower()
     url = cal_url.strip()
     if not url:
         return 0, "Keine Kalender-URL konfiguriert."
+
+    kat = normalize_termin_kategorie(termin_kategorie)
 
     try:
         raw = fetch_ics_bytes(url)
@@ -324,7 +328,7 @@ def import_fraktion_termine_from_calendar(
             cal_import_key=dedupe,
             link_url=(ev.get("link_url") or None),
         )
-        apply_kategorie_to_termin_row(termin, TERMIN_KAT_VERBAND)
+        apply_kategorie_to_termin_row(termin, kat)
         db.add(termin)
         try:
             db.commit()
@@ -358,7 +362,12 @@ def run_all_fraktion_cal_subscriptions() -> None:
             if not url:
                 continue
             ms = sub.mandant_slug.strip().lower()
-            n, err = import_fraktion_termine_from_calendar(db, ms, url)
+            n, err = import_fraktion_termine_from_calendar(
+                db,
+                ms,
+                url,
+                termin_kategorie=sub.termin_kategorie or "verband",
+            )
             if err:
                 logger.info(
                     "Kalender sub_id=%s mandant=%s created=%s msg=%s",

@@ -187,6 +187,26 @@ def run_platform_sqlite_migrations(engine: Engine) -> None:
     migrate_ov_memberships_vorstand_member_sqlite(engine)
     migrate_termine_kategorie_sqlite(engine)
     migrate_extern_cal_subscriptions_sqlite(engine)
+    migrate_extern_cal_subscriptions_termin_kategorie_sqlite(engine)
+
+
+def migrate_extern_cal_subscriptions_termin_kategorie_sqlite(engine: Engine) -> None:
+    """Spalte termin_kategorie am Kalender-Abo (Import-Kategorie im OV)."""
+    if engine.dialect.name != "sqlite":
+        return
+    insp = inspect(engine)
+    if not insp.has_table("extern_cal_subscriptions"):
+        return
+    cols = {c["name"] for c in insp.get_columns("extern_cal_subscriptions")}
+    if "termin_kategorie" in cols:
+        return
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE extern_cal_subscriptions ADD COLUMN termin_kategorie "
+                "VARCHAR(32) NOT NULL DEFAULT 'verband'"
+            ),
+        )
 
 
 def migrate_extern_cal_subscriptions_sqlite(engine: Engine) -> None:
@@ -208,6 +228,7 @@ def migrate_extern_cal_subscriptions_sqlite(engine: Engine) -> None:
                       feed_url TEXT,
                       abo_active BOOLEAN NOT NULL DEFAULT 0,
                       created_at DATETIME NOT NULL,
+                      termin_kategorie VARCHAR(32) NOT NULL DEFAULT 'verband',
                       FOREIGN KEY(mandant_slug) REFERENCES ortsverbaende (slug) ON DELETE CASCADE
                     )
                     """
