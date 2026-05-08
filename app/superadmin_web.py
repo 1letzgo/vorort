@@ -125,12 +125,23 @@ def superadmin_ov_list(
     _: LetzgoSuperadmin,
 ):
     ovs = db.query(Ortsverband).order_by(Ortsverband.slug.asc()).all()
+    termin_counts_rows = (
+        db.query(Termin.mandant_slug, func.count(Termin.id))
+        .group_by(Termin.mandant_slug)
+        .all()
+    )
+    termin_counts = {slug: int(cnt or 0) for slug, cnt in termin_counts_rows}
     flash_ok = request.query_params.get("geloescht") == "1"
     flash_warn = request.query_params.get("ordner_warnung")
     return templates.TemplateResponse(
         request,
         "superadmin_ovs.html",
-        {"ovs": ovs, "flash_ok": flash_ok, "flash_warn": flash_warn},
+        {
+            "ovs": ovs,
+            "termin_counts": termin_counts,
+            "flash_ok": flash_ok,
+            "flash_warn": flash_warn,
+        },
     )
 
 

@@ -8,14 +8,25 @@
 <style>
   @media (min-width: 640px) {
     .superadmin-ovs-table .admin-users-col-name {
-      width: 26%;
+      width: 22%;
     }
     .superadmin-ovs-table .admin-users-col-status {
-      width: 38%;
+      width: 30%;
+    }
+    .superadmin-ovs-table .admin-users-col-termine {
+      width: 14%;
     }
     .superadmin-ovs-table .admin-users-col-actions {
-      width: 36%;
+      width: 34%;
     }
+  }
+  .superadmin-ovs-table .ov-termin-count {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+  .superadmin-ovs-table .ov-termin-count--zero {
+    color: var(--muted, #6b7280);
+    font-weight: 500;
   }
 </style>
 {% endblock %}
@@ -57,20 +68,28 @@
           <colgroup>
             <col class="admin-users-col-name">
             <col class="admin-users-col-status">
+            <col class="admin-users-col-termine">
             <col class="admin-users-col-actions">
           </colgroup>
           <thead>
             <tr>
               <th scope="col">Slug (URL)</th>
               <th scope="col">Anzeigename</th>
+              <th scope="col" title="Alle Termine inkl. Archiv">Termine</th>
               <th scope="col" class="admin-users-th-actions">Aktionen</th>
             </tr>
           </thead>
           <tbody>
             {% for o in ovs %}
+            {% set t_count = termin_counts.get(o.slug, 0) %}
             <tr>
               <td data-label="Slug (URL)"><code>{{ o.slug }}</code></td>
               <td data-label="Anzeigename">{{ o.display_name }}</td>
+              <td data-label="Termine (inkl. Archiv)">
+                <span class="ov-termin-count{% if not t_count %} ov-termin-count--zero{% endif %}" title="Termine inkl. Archiv">
+                  {{ t_count }}
+                </span>
+              </td>
               <td data-label="Aktionen" class="admin-users-td-actions">
                 <div>
                   <a href="{{ path_prefix }}/admin/ortsverbaende/{{ o.slug }}/bearbeiten" class="btn btn-sm btn-ico btn-with-label" aria-label="OV {{ o.slug }} bearbeiten">
