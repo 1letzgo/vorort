@@ -438,8 +438,7 @@
   </div>
   {% if gruppe_tabs %}
   <nav class="kalender-nav-leiste__submenu" aria-label="Gruppe filtern">
-    <span class="kalender-nav-leiste__submenu-kicker" id="kalender-gruppe-kicker-termine">Gruppe</span>
-    <div id="kalender-gruppe-bar" class="kalender-gruppe-bar kalender-gruppe-bar--submenu" role="group" aria-labelledby="kalender-gruppe-kicker-termine">
+    <div id="kalender-gruppe-bar" class="kalender-gruppe-bar kalender-gruppe-bar--submenu" role="group">
       {% for g in gruppe_tabs %}
       <button type="button" class="kalender-gruppe-bar__btn{% if gruppe_active == g.id %} kalender-gruppe-bar__btn--active{% endif %}" aria-pressed="{{ 'true' if gruppe_active == g.id else 'false' }}" data-gruppe="{{ g.id }}">{{ g.label }}</button>
       {% endfor %}

@@ -1019,6 +1019,26 @@ dialog.popup-dialog::backdrop {
   z-index: 1;
 }
 
+/* Kalender-Leiste: aktiver OV-Tab deutlich als aktiv */
+.kalender-nav-leiste .termin-tab {
+  border-radius: 0.42rem 0.42rem 0 0;
+}
+
+.kalender-nav-leiste .termin-tab[aria-selected="true"] {
+  color: var(--text);
+  font-weight: 700;
+  background: color-mix(in srgb, var(--accent) 15%, transparent) !important;
+  border-bottom: 3px solid var(--accent);
+  margin-bottom: -2px;
+  padding-bottom: calc(0.52rem - 1px);
+  z-index: 2;
+}
+
+.kalender-nav-leiste .termin-tab:not([aria-selected="true"]):hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--border) 40%, transparent) !important;
+}
+
 /* Gemeinsame Kalender-Leiste: OV-Tabs oben, Gruppenfilter als Untermenü darunter */
 .kalender-nav-leiste {
   margin: 0 0 1rem;
@@ -1042,32 +1062,22 @@ dialog.popup-dialog::backdrop {
 .kalender-nav-leiste__submenu {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
-  gap: 0.45rem 0.75rem;
+  gap: 0.3rem;
   margin: 0;
   border-top: 1px solid var(--border);
-  padding: 0.45rem 0.6rem 0.5rem 0.55rem;
+  padding: 0.45rem 0.65rem 0.5rem;
   background: color-mix(in srgb, var(--border) 16%, var(--bg));
   box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent);
-  border-left: 3px solid var(--accent);
-}
-
-.kalender-nav-leiste__submenu-kicker {
-  flex: 0 0 auto;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--muted);
-  line-height: 1.2;
-  opacity: 0.92;
 }
 
 .kalender-nav-leiste .kalender-gruppe-bar--submenu {
-  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   margin: 0;
-  min-width: 0;
-  justify-content: flex-start;
+  width: 100%;
   gap: 0.3rem;
 }
 
