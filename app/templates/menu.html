@@ -93,13 +93,16 @@
 {% endcall %}
 
 {% if show_alle_termine | default(false) %}
-<div class="card card--flush">
-  <ul class="menu-list" role="list">
-    <li class="menu-list-section">
-      <h2 class="menu-list-section__label" id="menu-uebersicht-heading">Kalender</h2>
-    </li>
-    <li><a href="{{ request.state.mandanten_prefix }}/termine?tab=alle"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Termine</span></span></a></li>
-  </ul>
+<div class="card card--flush menu-ov-card">
+  <details class="menu-ov-details" open>
+    <summary class="menu-ov-details__summary" id="menu-kalender-heading">
+      <span class="menu-ov-details__title">Kalender</span>
+      <span class="menu-ov-details__chevron" aria-hidden="true"></span>
+    </summary>
+    <ul class="menu-list" role="list" aria-labelledby="menu-kalender-heading">
+      <li><a href="{{ request.state.mandanten_prefix }}/termine?tab=alle"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Termine</span></span></a></li>
+    </ul>
+  </details>
 </div>
 {% endif %}
 
