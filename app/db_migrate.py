@@ -188,6 +188,7 @@ def run_platform_sqlite_migrations(engine: Engine) -> None:
     migrate_termine_kategorie_sqlite(engine)
     migrate_extern_cal_subscriptions_sqlite(engine)
     migrate_extern_cal_subscriptions_termin_kategorie_sqlite(engine)
+    migrate_aufgaben_tables_sqlite(engine)
 
 
 def migrate_extern_cal_subscriptions_termin_kategorie_sqlite(engine: Engine) -> None:
@@ -207,6 +208,16 @@ def migrate_extern_cal_subscriptions_termin_kategorie_sqlite(engine: Engine) -> 
                 "VARCHAR(32) NOT NULL DEFAULT 'verband'"
             ),
         )
+
+
+def migrate_aufgaben_tables_sqlite(engine: Engine) -> None:
+    """Neue Tabellen für OV-Aufgaben (optional pro Mandant)."""
+    if engine.dialect.name != "sqlite":
+        return
+    from app.platform_models import Aufgabe, AufgabeZuweisung
+
+    Aufgabe.__table__.create(bind=engine, checkfirst=True)
+    AufgabeZuweisung.__table__.create(bind=engine, checkfirst=True)
 
 
 def migrate_extern_cal_subscriptions_sqlite(engine: Engine) -> None:

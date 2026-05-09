@@ -26,6 +26,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.platform_models import (
     TEILNAHME_STATUS_ABGESAGT,
     TEILNAHME_STATUS_ZUGESAGT,
+    Aufgabe,
+    AufgabeZuweisung,
     MandantAppSetting,
     MandantPlakat,
     Ortsverband,
@@ -56,6 +58,7 @@ from app.ics_service import (
     termine_zugesagt_multi_mandanten,
 )
 from app.mandant_features import (
+    FEATURE_AUFGABEN,
     FEATURE_PLAKATE,
     FEATURE_SHAREPIC,
     is_mandant_feature_enabled,
@@ -69,6 +72,7 @@ from app.platform_user_admin import (
 from app.platform_database import get_platform_db
 from app.platform_bootstrap import bootstrap_platform
 from app.cal_fraktion_import import run_all_fraktion_cal_subscriptions
+from app.aufgaben_ics import all_aufgaben_multi_mandanten, build_ics_vtodo_calendar
 from app.settings_store import (
     ensure_user_calendar_token,
     sharepic_slogan_default_value,
@@ -102,6 +106,8 @@ from app.termin_kategorie import (
     TERMIN_KAT_VORSTAND,
     TERMIN_KATEGORIEN,
     apply_kategorie_to_termin_row,
+    aufgabe_kategorie_effective,
+    aufgabe_sichtbar_nach_kategorie,
     normalize_termin_kategorie,
     termin_kategorie_effective,
     termin_sichtbar_nach_kategorie,
@@ -356,6 +362,271 @@ def _can_manage_termin(user: AuthenticatedUser, termin: Termin) -> bool:
     if termin.mandant_slug != user.mandant_slug:
         return False
     return bool(user.is_admin or termin.created_by_id == user.id)
+
+
+def _can_manage_aufgabe(user: AuthenticatedUser, a: Aufgabe) -> bool:
+    if a.mandant_slug.strip().lower() != user.mandant_slug.strip().lower():
+        return False
+    return bool(user.is_admin or a.created_by_id == user.id)
+
+
+def _aufgabe_sichtbar_instance(
+    pdb: Session,
+    a: Aufgabe,
+    viewing_ms: str,
+    user: AuthenticatedUser,
+) -> bool:
+    if a.mandant_slug.strip().lower() != viewing_ms.strip().lower():
+        return False
+    return aufgabe_sichtbar_nach_kategorie(pdb, a, user_id=user.id)
+
+
+def _user_is_assigned_aufgabe(pdb: Session, user_id: int, a: Aufgabe) -> bool:
+    return (
+        pdb.query(AufgabeZuweisung)
+        .filter(
+            AufgabeZuweisung.aufgabe_id == a.id,
+            AufgabeZuweisung.user_id == user_id,
+        )
+        .first()
+        is not None
+    )
+
+
+def _can_toggle_aufgabe_erledigt(
+    pdb: Session,
+    user: AuthenticatedUser,
+    a: Aufgabe,
+) -> bool:
+    if _can_manage_aufgabe(user, a):
+        return True
+    return _user_is_assigned_aufgabe(pdb, user.id, a)
+
+
+def _approved_member_user_ids(pdb: Session, ov_slug: str) -> set[int]:
+    ms = ov_slug.strip().lower()
+    rows = (
+        pdb.query(OvMembership.user_id)
+        .filter(
+            OvMembership.ov_slug == ms,
+            OvMembership.is_approved.is_(True),
+        )
+        .all()
+    )
+    return {int(r[0]) for r in rows}
+
+
+def _aufgaben_mitglieder_fuer_form(
+    pdb: Session,
+    ov_slug: str,
+) -> list[PlatformUser]:
+    ms = ov_slug.strip().lower()
+    rows = (
+        pdb.query(PlatformUser)
+        .join(OvMembership, OvMembership.user_id == PlatformUser.id)
+        .filter(
+            OvMembership.ov_slug == ms,
+            OvMembership.is_approved.is_(True),
+        )
+        .order_by(func.lower(PlatformUser.display_name), PlatformUser.username.asc())
+        .all()
+    )
+    return rows
+
+
+def _parse_zugewiesen_ids(zugewiesen: Optional[List[str]]) -> set[int]:
+    out: set[int] = set()
+    for x in zugewiesen or []:
+        try:
+            out.add(int(x))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def _parse_aufgabe_due_datum(raw: str | None) -> datetime | None:
+    s = (raw or "").strip()
+    if not s:
+        return None
+    try:
+        d = date.fromisoformat(s)
+    except ValueError:
+        return None
+    return datetime(d.year, d.month, d.day, 23, 59, 59)
+
+
+def _sync_aufgabe_zuweisungen(
+    pdb: Session,
+    a: Aufgabe,
+    *,
+    user_ids: set[int],
+    erlaubt: set[int],
+) -> None:
+    clean = user_ids & erlaubt
+    pdb.query(AufgabeZuweisung).filter(AufgabeZuweisung.aufgabe_id == a.id).delete(
+        synchronize_session=False
+    )
+    for uid in sorted(clean):
+        pdb.add(AufgabeZuweisung(aufgabe_id=a.id, user_id=uid))
+
+
+def _aufgabe_form_context(
+    *,
+    user: AuthenticatedUser,
+    pdb: Session,
+    mandant_slug: str,
+    aufgabe: Aufgabe | None,
+    error: str | None,
+    mitglieder: list[PlatformUser],
+    selected_user_ids: set[int],
+    default_kategorie: str | None = None,
+) -> dict[str, Any]:
+    ms_ctx = mandant_slug.strip().lower()
+    if aufgabe is not None:
+        current_kat = aufgabe_kategorie_effective(aufgabe)
+    else:
+        current_kat = normalize_termin_kategorie(default_kategorie)
+    can_pick = bool(ms_ctx)
+    can_verband = bool(
+        can_pick
+        and user_darf_kategorie_anlegen(
+            pdb,
+            user_id=user.id,
+            ov_slug=ms_ctx,
+            kategorie=TERMIN_KAT_VERBAND,
+        )
+    )
+    can_vorstand = bool(
+        can_pick
+        and user_darf_kategorie_anlegen(
+            pdb,
+            user_id=user.id,
+            ov_slug=ms_ctx,
+            kategorie=TERMIN_KAT_VORSTAND,
+        )
+    )
+    can_fraktion = bool(
+        can_pick
+        and user_darf_kategorie_anlegen(
+            pdb,
+            user_id=user.id,
+            ov_slug=ms_ctx,
+            kategorie=TERMIN_KAT_FRAKTION,
+        )
+    )
+    allowed_kat_ui: set[str] = set()
+    if can_verband:
+        allowed_kat_ui.add(TERMIN_KAT_VERBAND)
+    if can_vorstand:
+        allowed_kat_ui.add(TERMIN_KAT_VORSTAND)
+    if can_fraktion:
+        allowed_kat_ui.add(TERMIN_KAT_FRAKTION)
+    if aufgabe is not None:
+        allowed_kat_ui.add(current_kat)
+    elif current_kat not in allowed_kat_ui and allowed_kat_ui:
+        for k in TERMIN_KATEGORIEN:
+            if k in allowed_kat_ui:
+                current_kat = k
+                break
+    show_kat_wahl = len(allowed_kat_ui) > 1
+    option_slugs = [k for k in TERMIN_KATEGORIEN if k in allowed_kat_ui]
+    if show_kat_wahl:
+        kat_fixed = None
+    elif option_slugs:
+        kat_fixed = option_slugs[0]
+    else:
+        kat_fixed = current_kat
+    return {
+        "user": user,
+        "aufgabe": aufgabe,
+        "error": error,
+        "mitglieder": mitglieder,
+        "selected_user_ids": selected_user_ids,
+        "aufgabe_kategorie_current": current_kat,
+        "show_aufgabe_kategorie_wahl": show_kat_wahl,
+        "aufgabe_kategorie_option_slugs": option_slugs,
+        "aufgabe_kategorie_fixed_value": kat_fixed,
+    }
+
+
+def _aufgaben_list_for_mandant(
+    pdb: Session,
+    mandant_slug: str,
+    user: AuthenticatedUser,
+) -> list[Aufgabe]:
+    ms = mandant_slug.strip().lower()
+    raw = (
+        pdb.query(Aufgabe)
+        .options(
+            selectinload(Aufgabe.zuweisungen).selectinload(AufgabeZuweisung.user),
+        )
+        .filter(func.lower(Aufgabe.mandant_slug) == ms)
+        .order_by(Aufgabe.id.asc())
+        .all()
+    )
+    visible = [a for a in raw if _aufgabe_sichtbar_instance(pdb, a, ms, user)]
+
+    def sort_key(a: Aufgabe) -> tuple:
+        due = a.due_at
+        return (
+            a.is_done,
+            0 if due else 1,
+            due or datetime.min,
+            a.id,
+        )
+
+    return sorted(visible, key=sort_key)
+
+
+def _user_darf_irgendeine_aufgabe_anlegen(pdb: Session, user_id: int, ov_slug: str) -> bool:
+    return any(
+        user_darf_kategorie_anlegen(
+            pdb,
+            user_id=user_id,
+            ov_slug=ov_slug,
+            kategorie=k,
+        )
+        for k in TERMIN_KATEGORIEN
+    )
+
+
+def _aufgabe_by_id_visible(
+    pdb: Session,
+    aufgabe_id: int,
+    viewing_ms: str,
+    user: AuthenticatedUser,
+) -> Aufgabe | None:
+    a = (
+        pdb.query(Aufgabe)
+        .options(
+            selectinload(Aufgabe.zuweisungen).selectinload(AufgabeZuweisung.user),
+        )
+        .filter(Aufgabe.id == aufgabe_id)
+        .first()
+    )
+    if not a or not _aufgabe_sichtbar_instance(pdb, a, viewing_ms, user):
+        return None
+    return a
+
+
+def _aufgabe_kategorie_ui_dict(a: Aufgabe) -> dict[str, str]:
+    kat = aufgabe_kategorie_effective(a)
+    if kat == TERMIN_KAT_VORSTAND:
+        icon = "termin-kat-icon--vorstand"
+    elif kat == TERMIN_KAT_FRAKTION:
+        icon = "termin-kat-icon--fraktion"
+    else:
+        icon = "termin-kat-icon--verband"
+    labels = {
+        TERMIN_KAT_VERBAND: "Verband",
+        TERMIN_KAT_VORSTAND: "Vorstand",
+        TERMIN_KAT_FRAKTION: "Fraktion",
+    }
+    return {
+        "aufgabe_kategorie": kat,
+        "aufgabe_kategorie_label": labels.get(kat, kat),
+        "aufgabe_kategorie_icon_class": icon,
+    }
 
 
 def termin_is_promoted(t: Termin) -> bool:
@@ -646,7 +917,8 @@ def _my_ovs_menu_items(
             )
         feature_plakate = is_mandant_feature_enabled(pdb, slug, FEATURE_PLAKATE)
         feature_sharepic = is_mandant_feature_enabled(pdb, slug, FEATURE_SHAREPIC)
-        has_feature_links = bool(feature_plakate or feature_sharepic)
+        feature_aufgaben = is_mandant_feature_enabled(pdb, slug, FEATURE_AUFGABEN)
+        has_feature_links = bool(feature_plakate or feature_sharepic or feature_aufgaben)
         out_members.append(
             {
                 "slug": slug,
@@ -655,6 +927,7 @@ def _my_ovs_menu_items(
                 "admin_pending_count": pend,
                 "feature_plakate": feature_plakate,
                 "feature_sharepic": feature_sharepic,
+                "feature_aufgaben": feature_aufgaben,
                 "has_feature_links": has_feature_links,
             },
         )
@@ -2854,6 +3127,339 @@ def _build_termin_tabs_for_user(
     return tabs, default_id, has_any
 
 
+@tenant_router.get("/aufgaben", response_class=HTMLResponse)
+def aufgaben_list_view(
+    mandant_slug: str,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    user: CurrentUser,
+    tab: Annotated[str | None, Query()] = None,
+):
+    _require_mandant_feature(pdb, mandant_slug, FEATURE_AUFGABEN)
+    ms = mandant_slug.strip().lower()
+    items = _aufgaben_list_for_mandant(pdb, ms, user)
+    tab_ids = ("alle", TERMIN_KAT_VERBAND, TERMIN_KAT_VORSTAND, TERMIN_KAT_FRAKTION)
+    tab_labels = {
+        "alle": "Alle",
+        TERMIN_KAT_VERBAND: "Verband",
+        TERMIN_KAT_VORSTAND: "Vorstand",
+        TERMIN_KAT_FRAKTION: "Fraktion",
+    }
+    tid = (tab or "alle").strip().lower()
+    if tid not in tab_ids:
+        tid = "alle"
+    if tid == "alle":
+        filtered = items
+    else:
+        filtered = [a for a in items if aufgabe_kategorie_effective(a) == tid]
+    base = str(request.base_url).rstrip("/")
+    my_token = ensure_user_calendar_token(pdb, user.platform_user)
+    mp = _mp(request)
+    feed_url_aufgaben = f"{base}{mp}/calendar/aufgaben-alle.ics?t={my_token}"
+    return templates.TemplateResponse(
+        request,
+        "aufgaben_list.html",
+        {
+            "user": user,
+            "page_title": "Aufgaben",
+            "aufgaben": filtered,
+            "aufgaben_tabs": [{"id": k, "label": tab_labels[k]} for k in tab_ids],
+            "tab_active": tid,
+            "show_neue_aufgabe": _user_darf_irgendeine_aufgabe_anlegen(pdb, user.id, ms),
+            "neu_href": _href_under_ov(request, ms, "aufgaben/neu"),
+            "feed_url_aufgaben": feed_url_aufgaben,
+            "mandant_slug": ms,
+        },
+    )
+
+
+@tenant_router.get("/aufgaben/neu", response_class=HTMLResponse)
+def aufgabe_new_form(
+    mandant_slug: str,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    user: CurrentUser,
+    kategorie: Annotated[str | None, Query()] = None,
+):
+    _require_mandant_feature(pdb, mandant_slug, FEATURE_AUFGABEN)
+    ms = mandant_slug.strip().lower()
+    if not _user_darf_irgendeine_aufgabe_anlegen(pdb, user.id, ms):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung.")
+    mitglieder = _aufgaben_mitglieder_fuer_form(pdb, ms)
+    return templates.TemplateResponse(
+        request,
+        "aufgaben_form.html",
+        _aufgabe_form_context(
+            user=user,
+            pdb=pdb,
+            mandant_slug=ms,
+            aufgabe=None,
+            error=None,
+            mitglieder=mitglieder,
+            selected_user_ids=set(),
+            default_kategorie=kategorie,
+        ),
+    )
+
+
+@tenant_router.post("/aufgaben/neu", response_class=HTMLResponse)
+def aufgabe_create(
+    mandant_slug: str,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    user: CurrentUser,
+    title: Annotated[str, Form()],
+    description: Annotated[str, Form()] = "",
+    due_datum: Annotated[str, Form()] = "",
+    termin_kategorie: Annotated[str, Form()] = TERMIN_KAT_VERBAND,
+    zugewiesen: Annotated[Optional[List[str]], Form()] = None,
+):
+    _require_mandant_feature(pdb, mandant_slug, FEATURE_AUFGABEN)
+    ms = mandant_slug.strip().lower()
+    mitglieder = _aufgaben_mitglieder_fuer_form(pdb, ms)
+    erlaubt = _approved_member_user_ids(pdb, ms)
+    kat = normalize_termin_kategorie(termin_kategorie)
+    if not user_darf_kategorie_anlegen(
+        pdb,
+        user_id=user.id,
+        ov_slug=ms,
+        kategorie=kat,
+    ):
+        return templates.TemplateResponse(
+            request,
+            "aufgaben_form.html",
+            _aufgabe_form_context(
+                user=user,
+                pdb=pdb,
+                mandant_slug=ms,
+                aufgabe=None,
+                error="Keine Berechtigung für diese Kategorie.",
+                mitglieder=mitglieder,
+                selected_user_ids=_parse_zugewiesen_ids(zugewiesen),
+                default_kategorie=kat,
+            ),
+            status_code=400,
+        )
+    t_title = " ".join(title.split()).strip()
+    if not t_title:
+        return templates.TemplateResponse(
+            request,
+            "aufgaben_form.html",
+            _aufgabe_form_context(
+                user=user,
+                pdb=pdb,
+                mandant_slug=ms,
+                aufgabe=None,
+                error="Bitte einen Titel angeben.",
+                mitglieder=mitglieder,
+                selected_user_ids=_parse_zugewiesen_ids(zugewiesen),
+                default_kategorie=kat,
+            ),
+            status_code=400,
+        )
+    due = _parse_aufgabe_due_datum(due_datum)
+    a = Aufgabe(
+        mandant_slug=ms,
+        title=t_title[:200],
+        description=(description or "").strip(),
+        termin_kategorie=kat,
+        due_at=due,
+        is_done=False,
+        created_by_id=user.id,
+    )
+    pdb.add(a)
+    pdb.flush()
+    _sync_aufgabe_zuweisungen(
+        pdb,
+        a,
+        user_ids=_parse_zugewiesen_ids(zugewiesen),
+        erlaubt=erlaubt,
+    )
+    pdb.commit()
+    return RedirectResponse(
+        _href_under_ov(request, ms, f"aufgaben/{a.id}"),
+        status_code=302,
+    )
+
+
+@tenant_router.get("/aufgaben/{aufgabe_id}", response_class=HTMLResponse)
+def aufgabe_detail_view(
+    mandant_slug: str,
+    aufgabe_id: int,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    user: CurrentUser,
+):
+    _require_mandant_feature(pdb, mandant_slug, FEATURE_AUFGABEN)
+    ms = mandant_slug.strip().lower()
+    a = _aufgabe_by_id_visible(pdb, aufgabe_id, ms, user)
+    if not a:
+        raise HTTPException(status_code=404, detail="Not found")
+    ctx = _aufgabe_kategorie_ui_dict(a)
+    return templates.TemplateResponse(
+        request,
+        "aufgabe_detail.html",
+        {
+            "user": user,
+            "aufgabe": a,
+            "kann_verwalten": _can_manage_aufgabe(user, a),
+            "kann_erledigt_toggle": _can_toggle_aufgabe_erledigt(pdb, user, a),
+            **ctx,
+        },
+    )
+
+
+@tenant_router.post("/aufgaben/{aufgabe_id}/erledigt")
+def aufgabe_toggle_erledigt(
+    mandant_slug: str,
+    aufgabe_id: int,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    user: CurrentUser,
+    erledigt: Annotated[str, Form()] = "0",
+):
+    _require_mandant_feature(pdb, mandant_slug, FEATURE_AUFGABEN)
+    ms = mandant_slug.strip().lower()
+    a = _aufgabe_by_id_visible(pdb, aufgabe_id, ms, user)
+    if not a:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not _can_toggle_aufgabe_erledigt(pdb, user, a):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung.")
+    a.is_done = (erledigt.strip() == "1")
+    pdb.add(a)
+    pdb.commit()
+    return RedirectResponse(_href_under_ov(request, ms, f"aufgaben/{a.id}"), status_code=302)
+
+
+@tenant_router.get("/aufgaben/{aufgabe_id}/bearbeiten", response_class=HTMLResponse)
+def aufgabe_edit_form(
+    mandant_slug: str,
+    aufgabe_id: int,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    user: CurrentUser,
+):
+    _require_mandant_feature(pdb, mandant_slug, FEATURE_AUFGABEN)
+    ms = mandant_slug.strip().lower()
+    a = _aufgabe_by_id_visible(pdb, aufgabe_id, ms, user)
+    if not a:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not _can_manage_aufgabe(user, a):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung.")
+    mitglieder = _aufgaben_mitglieder_fuer_form(pdb, ms)
+    sel = {z.user_id for z in (a.zuweisungen or [])}
+    return templates.TemplateResponse(
+        request,
+        "aufgaben_form.html",
+        _aufgabe_form_context(
+            user=user,
+            pdb=pdb,
+            mandant_slug=ms,
+            aufgabe=a,
+            error=None,
+            mitglieder=mitglieder,
+            selected_user_ids=sel,
+        ),
+    )
+
+
+@tenant_router.post("/aufgaben/{aufgabe_id}/bearbeiten", response_class=HTMLResponse)
+def aufgabe_update(
+    mandant_slug: str,
+    aufgabe_id: int,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    user: CurrentUser,
+    title: Annotated[str, Form()],
+    description: Annotated[str, Form()] = "",
+    due_datum: Annotated[str, Form()] = "",
+    termin_kategorie: Annotated[str, Form()] = TERMIN_KAT_VERBAND,
+    is_done_vals: Annotated[Optional[List[str]], Form()] = None,
+    zugewiesen: Annotated[Optional[List[str]], Form()] = None,
+):
+    _require_mandant_feature(pdb, mandant_slug, FEATURE_AUFGABEN)
+    ms = mandant_slug.strip().lower()
+    a = _aufgabe_by_id_visible(pdb, aufgabe_id, ms, user)
+    if not a:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not _can_manage_aufgabe(user, a):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung.")
+    mitglieder = _aufgaben_mitglieder_fuer_form(pdb, ms)
+    erlaubt = _approved_member_user_ids(pdb, ms)
+    kat = normalize_termin_kategorie(termin_kategorie)
+    if not user_darf_kategorie_anlegen(
+        pdb,
+        user_id=user.id,
+        ov_slug=ms,
+        kategorie=kat,
+    ):
+        return templates.TemplateResponse(
+            request,
+            "aufgaben_form.html",
+            _aufgabe_form_context(
+                user=user,
+                pdb=pdb,
+                mandant_slug=ms,
+                aufgabe=a,
+                error="Keine Berechtigung für diese Kategorie.",
+                mitglieder=mitglieder,
+                selected_user_ids=_parse_zugewiesen_ids(zugewiesen),
+            ),
+            status_code=400,
+        )
+    t_title = " ".join(title.split()).strip()
+    if not t_title:
+        return templates.TemplateResponse(
+            request,
+            "aufgaben_form.html",
+            _aufgabe_form_context(
+                user=user,
+                pdb=pdb,
+                mandant_slug=ms,
+                aufgabe=a,
+                error="Bitte einen Titel angeben.",
+                mitglieder=mitglieder,
+                selected_user_ids=_parse_zugewiesen_ids(zugewiesen),
+            ),
+            status_code=400,
+        )
+    a.title = t_title[:200]
+    a.description = (description or "").strip()
+    a.termin_kategorie = kat
+    a.due_at = _parse_aufgabe_due_datum(due_datum)
+    if is_done_vals is not None:
+        a.is_done = "1" in (is_done_vals or [])
+    _sync_aufgabe_zuweisungen(
+        pdb,
+        a,
+        user_ids=_parse_zugewiesen_ids(zugewiesen),
+        erlaubt=erlaubt,
+    )
+    pdb.add(a)
+    pdb.commit()
+    return RedirectResponse(_href_under_ov(request, ms, f"aufgaben/{a.id}"), status_code=302)
+
+
+@tenant_router.post("/aufgaben/{aufgabe_id}/loeschen")
+def aufgabe_delete(
+    mandant_slug: str,
+    aufgabe_id: int,
+    request: Request,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    user: CurrentUser,
+):
+    _require_mandant_feature(pdb, mandant_slug, FEATURE_AUFGABEN)
+    ms = mandant_slug.strip().lower()
+    a = _aufgabe_by_id_visible(pdb, aufgabe_id, ms, user)
+    if not a:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not _can_manage_aufgabe(user, a):
+        raise HTTPException(status_code=403, detail="Keine Berechtigung.")
+    pdb.delete(a)
+    pdb.commit()
+    return RedirectResponse(_href_under_ov(request, ms, "aufgaben"), status_code=302)
+
+
 @tenant_router.get("/termine", response_class=HTMLResponse)
 def termine_list(
     mandant_slug: str,
@@ -3984,6 +4590,47 @@ def calendar_ics_termine_alle(
         media_type="text/calendar; charset=utf-8",
         headers={
             "Content-Disposition": 'attachment; filename="alle-termine-alle.ics"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@tenant_router.get("/calendar/aufgaben-alle.ics")
+def calendar_ics_aufgaben_alle(
+    mandant_slug: str,
+    pdb: Annotated[Session, Depends(get_platform_db)],
+    t: Optional[str] = None,
+):
+    """Persönlicher Feed: sichtbare Aufgaben (VTODO) in allen freigegebenen Verbänden."""
+    if not t:
+        raise HTTPException(status_code=404, detail="Not found")
+    owner = (
+        pdb.query(PlatformUser)
+        .filter(PlatformUser.calendar_token == t)
+        .first()
+    )
+    if not owner:
+        raise HTTPException(status_code=404, detail="Not found")
+    au = AuthenticatedUser(owner, mandant_slug, None)
+    slugs = _approved_ov_slugs_for_user_feeds(pdb, au)
+    aufgaben = all_aufgaben_multi_mandanten(
+        pdb, slugs, calendar_owner_user_id=owner.id
+    )
+    ks = kreis_ov_slug()
+    label_slugs = list(slugs)
+    if ks and ks not in label_slugs:
+        label_slugs.append(ks)
+    labels = _ov_display_labels_for_slugs(pdb, label_slugs)
+    body = build_ics_vtodo_calendar(
+        aufgaben,
+        cal_name="Alle Aufgaben — meine Verbände",
+        ov_labels_for_mandant_slug=labels,
+    )
+    return Response(
+        content=body,
+        media_type="text/calendar; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="alle-aufgaben-alle.ics"',
             "Cache-Control": "no-store",
         },
     )

@@ -145,6 +145,51 @@ class Termin(PlatformBase):
     )
 
 
+class Aufgabe(PlatformBase):
+    """Mandantenbezogene Aufgabe (Sichtbarkeit wie Termin-Kategorien)."""
+
+    __tablename__ = "aufgaben"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    mandant_slug: Mapped[str] = mapped_column(
+        String(80), ForeignKey("ortsverbaende.slug", ondelete="CASCADE"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text, default="")
+    termin_kategorie: Mapped[str] = mapped_column(String(32), default="verband")
+    due_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+    is_done: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("platform_users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    creator: Mapped[Optional["PlatformUser"]] = relationship()
+    zuweisungen: Mapped[List["AufgabeZuweisung"]] = relationship(
+        back_populates="aufgabe",
+        cascade="all, delete-orphan",
+    )
+
+
+class AufgabeZuweisung(PlatformBase):
+    __tablename__ = "aufgabe_zuweisungen"
+    __table_args__ = (
+        UniqueConstraint("aufgabe_id", "user_id", name="uq_aufgabe_zuweisung_user"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    aufgabe_id: Mapped[int] = mapped_column(
+        ForeignKey("aufgaben.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("platform_users.id", ondelete="CASCADE"), index=True
+    )
+
+    aufgabe: Mapped["Aufgabe"] = relationship(back_populates="zuweisungen")
+    user: Mapped["PlatformUser"] = relationship()
+
+
 TEILNAHME_STATUS_ZUGESAGT = "zugesagt"
 TEILNAHME_STATUS_ABGESAGT = "abgesagt"
 

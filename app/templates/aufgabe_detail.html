@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from '_ui_macros.html' import app_header_toolbar, public_tenant_prefix with context %}
+{% import '_icons.html' as ico %}
+{% block title %}{{ aufgabe.title }}{% endblock %}
+{% block body %}
+{% set tp = public_tenant_prefix(request) %}
+{% call app_header_toolbar('Aufgabe') %}
+  <a href="{{ tp }}/aufgaben" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Zurück zur Liste">
+    {{ ico.svg_arrow_left() }}<span class="btn-text">Liste</span>
+  </a>
+  {% if kann_verwalten %}
+  <a href="{{ tp }}/aufgaben/{{ aufgabe.id }}/bearbeiten" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Bearbeiten">
+    {{ ico.svg_pencil() }}<span class="btn-text">Bearbeiten</span>
+  </a>
+  {% endif %}
+{% endcall %}
+
+<div class="card" style="max-width: 640px; margin: 0 auto;">
+  <p class="muted" style="margin: 0 0 0.5rem;">
+    <strong>{{ aufgabe_kategorie_label }}</strong>
+    {% if aufgabe.is_done %} · <strong>Erledigt</strong>{% endif %}
+    {% if aufgabe.due_at %} · Fällig {{ aufgabe.due_at.strftime('%d.%m.%Y') }}{% endif %}
+  </p>
+  <h1 style="margin: 0 0 0.75rem; font-size: 1.35rem;">{{ aufgabe.title }}</h1>
+  {% if aufgabe.description %}
+  <div style="white-space: pre-wrap;">{{ aufgabe.description }}</div>
+  {% endif %}
+
+  <h2 class="ics-popup__label" style="margin: 1.25rem 0 0.5rem;">Zugewiesen</h2>
+  {% if aufgabe.zuweisungen %}
+  <ul style="margin: 0; padding-left: 1.2rem;">
+    {% for z in aufgabe.zuweisungen %}
+    <li>{{ (z.user.display_name or '').strip() or z.user.username }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">Niemand zugewiesen.</p>
+  {% endif %}
+
+  {% if kann_erledigt_toggle %}
+  <form method="post" action="{{ tp }}/aufgaben/{{ aufgabe.id }}/erledigt" style="margin-top: 1.25rem;">
+    <input type="hidden" name="erledigt" value="{% if aufgabe.is_done %}0{% else %}1{% endif %}">
+    <button type="submit" class="btn btn-sm btn-ico btn-with-label">
+      {% if aufgabe.is_done %}{{ ico.svg_minus_circle() }}<span class="btn-text">Als offen markieren</span>{% else %}{{ ico.svg_check() }}<span class="btn-text">Als erledigt markieren</span>{% endif %}
+    </button>
+  </form>
+  {% endif %}
+
+  {% if kann_verwalten %}
+  <form method="post" action="{{ tp }}/aufgaben/{{ aufgabe.id }}/loeschen" style="margin-top: 1rem;" onsubmit="return confirm('Aufgabe wirklich löschen?');">
+    <button type="submit" class="btn btn-sm btn-danger btn-ico btn-with-label" aria-label="Löschen">
+      {{ ico.svg_trash() }}<span class="btn-text">Löschen</span>
+    </button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -123,6 +123,9 @@
       {% if o.feature_sharepic | default(true) %}
       <li><a href="{{ op }}/sharepic"><span class="menu-list__main">{{ ico.svg_image() }}<span>Sharepic</span></span></a></li>
       {% endif %}
+      {% if o.feature_aufgaben | default(false) %}
+      <li><a href="{{ op }}/aufgaben"><span class="menu-list__main">{{ ico.svg_check() }}<span>Aufgaben</span></span></a></li>
+      {% endif %}
     </ul>
   </details>
 </div>

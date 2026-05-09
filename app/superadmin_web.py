@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import delete, func, update
+from sqlalchemy import case, delete, func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 from starlette.templating import Jinja2Templates
@@ -23,6 +23,7 @@ from app.cal_fraktion_import import (
     validate_and_normalize_cal_subscription_url,
 )
 from app.mandant_features import (
+    FEATURE_AUFGABEN,
     FEATURE_PLAKATE,
     FEATURE_SHAREPIC,
     is_mandant_feature_enabled,
@@ -74,6 +75,7 @@ def _ov_edit_form_ctx(
         "is_new": False,
         "feature_plakate": is_mandant_feature_enabled(db, ov.slug, FEATURE_PLAKATE),
         "feature_sharepic": is_mandant_feature_enabled(db, ov.slug, FEATURE_SHAREPIC),
+        "feature_aufgaben": is_mandant_feature_enabled(db, ov.slug, FEATURE_AUFGABEN),
         "sharepic_slogan_default": slogan_default,
         "flash_ov_gespeichert": flash_ov_gespeichert,
         "max_upload_mb": MAX_UPLOAD_MB,
@@ -131,6 +133,19 @@ def superadmin_ov_list(
         .all()
     )
     termin_counts = {slug: int(cnt or 0) for slug, cnt in termin_counts_rows}
+    member_rows = (
+        db.query(
+            OvMembership.ov_slug,
+            func.count(OvMembership.id),
+            func.sum(case((OvMembership.is_approved.is_(True), 1), else_=0)),
+        )
+        .group_by(OvMembership.ov_slug)
+        .all()
+    )
+    member_counts = {
+        slug: {"total": int(total or 0), "approved": int(approved or 0)}
+        for slug, total, approved in member_rows
+    }
     flash_ok = request.query_params.get("geloescht") == "1"
     flash_warn = request.query_params.get("ordner_warnung")
     return templates.TemplateResponse(
@@ -139,6 +154,7 @@ def superadmin_ov_list(
         {
             "ovs": ovs,
             "termin_counts": termin_counts,
+            "member_counts": member_counts,
             "flash_ok": flash_ok,
             "flash_warn": flash_warn,
         },
@@ -233,6 +249,7 @@ def superadmin_ov_edit_submit(
     display_name: Annotated[str, Form()],
     feature_plakate: Annotated[Optional[str], Form()] = None,
     feature_sharepic: Annotated[Optional[str], Form()] = None,
+    feature_aufgaben: Annotated[Optional[str], Form()] = None,
     sharepic_slogan_default: Annotated[Optional[str], Form()] = None,
 ):
     ov = db.get(Ortsverband, slug.strip().lower())
@@ -242,6 +259,7 @@ def superadmin_ov_edit_submit(
     ms = ov.slug.strip().lower()
     merge_mandant_feature(db, ms, FEATURE_PLAKATE, feature_plakate == "1")
     merge_mandant_feature(db, ms, FEATURE_SHAREPIC, feature_sharepic == "1")
+    merge_mandant_feature(db, ms, FEATURE_AUFGABEN, feature_aufgaben == "1")
     if sharepic_slogan_default is not None:
         save_sharepic_slogan_default(db, ms, sharepic_slogan_default)
     db.add(ov)

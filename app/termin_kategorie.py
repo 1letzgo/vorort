@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from sqlalchemy.orm import Session
 
 from app.platform_models import OvMembership, Termin
@@ -73,6 +75,67 @@ def user_darf_kategorie_anlegen(
     return False
 
 
+def sichtbar_nach_kategorie(
+    pdb: Session,
+    *,
+    mandant_slug: str,
+    kategorie: str,
+    user_id: int,
+    created_by_id: int | None,
+) -> bool:
+    """Sichtbarkeit Verband/Vorstand/Fraktion (für Termine und Aufgaben)."""
+    kat = normalize_termin_kategorie(kategorie)
+    ms = mandant_slug.strip().lower()
+    if kat == TERMIN_KAT_VERBAND:
+        return True
+    if created_by_id is not None and created_by_id == user_id:
+        return True
+    if kat == TERMIN_KAT_VORSTAND:
+        return user_is_vorstandsmitglied(pdb, user_id, ms)
+    if kat == TERMIN_KAT_FRAKTION:
+        return user_is_fraktionsmitglied(pdb, user_id, ms)
+    return True
+
+
+def aufgabe_kategorie_effective(obj: Any) -> str:
+    return normalize_termin_kategorie(getattr(obj, "termin_kategorie", None))
+
+
+def aufgabe_sichtbar_nach_kategorie(
+    pdb: Session,
+    a: Any,
+    *,
+    user_id: int,
+) -> bool:
+    return sichtbar_nach_kategorie(
+        pdb,
+        mandant_slug=getattr(a, "mandant_slug", "") or "",
+        kategorie=aufgabe_kategorie_effective(a),
+        user_id=user_id,
+        created_by_id=getattr(a, "created_by_id", None),
+    )
+
+
+def filter_aufgaben_fuer_ics(
+    pdb: Session,
+    aufgaben: list[Any],
+    *,
+    calendar_owner_user_id: int | None,
+) -> list[Any]:
+    """Öffentlicher Feed ohne Nutzer: nur Verband. Persönliche Feeds: Kategorie + Rechte."""
+    out: list[Any] = []
+    for a in aufgaben:
+        kat = aufgabe_kategorie_effective(a)
+        if kat == TERMIN_KAT_VERBAND:
+            out.append(a)
+            continue
+        if calendar_owner_user_id is None:
+            continue
+        if aufgabe_sichtbar_nach_kategorie(pdb, a, user_id=calendar_owner_user_id):
+            out.append(a)
+    return out
+
+
 def termin_sichtbar_nach_kategorie(
     pdb: Session,
     t: Termin,
@@ -85,18 +148,13 @@ def termin_sichtbar_nach_kategorie(
     OV-Admin-Rolle. Plattform-Superadmins gelten hier wie normale Nutzer nach
     Mitgliedschaft/Rollen. Der Ersteller sieht seinen eigenen Termin weiterhin.
     """
-    kat = termin_kategorie_effective(t)
-    ms = t.mandant_slug.strip().lower()
-    if kat == TERMIN_KAT_VERBAND:
-        return True
-    created_by = getattr(t, "created_by_id", None)
-    if created_by is not None and created_by == user_id:
-        return True
-    if kat == TERMIN_KAT_VORSTAND:
-        return user_is_vorstandsmitglied(pdb, user_id, ms)
-    if kat == TERMIN_KAT_FRAKTION:
-        return user_is_fraktionsmitglied(pdb, user_id, ms)
-    return True
+    return sichtbar_nach_kategorie(
+        pdb,
+        mandant_slug=t.mandant_slug,
+        kategorie=termin_kategorie_effective(t),
+        user_id=user_id,
+        created_by_id=getattr(t, "created_by_id", None),
+    )
 
 
 def filter_termine_fuer_ics(
