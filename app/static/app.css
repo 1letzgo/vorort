@@ -1044,9 +1044,12 @@ dialog.popup-dialog::backdrop {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.45rem 0.75rem;
+  margin: 0;
   border-top: 1px solid var(--border);
-  padding: 0.42rem 0.65rem 0.48rem;
-  background: color-mix(in srgb, var(--border) 24%, transparent);
+  padding: 0.45rem 0.6rem 0.5rem 0.55rem;
+  background: color-mix(in srgb, var(--border) 16%, var(--bg));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent);
+  border-left: 3px solid var(--accent);
 }
 
 .kalender-nav-leiste__submenu-kicker {
@@ -1057,18 +1060,43 @@ dialog.popup-dialog::backdrop {
   text-transform: uppercase;
   color: var(--muted);
   line-height: 1.2;
+  opacity: 0.92;
 }
 
-.kalender-nav-leiste .kalender-gruppe-bar--in-leiste {
+.kalender-nav-leiste .kalender-gruppe-bar--submenu {
   flex: 1 1 auto;
   margin: 0;
   min-width: 0;
   justify-content: flex-start;
+  gap: 0.3rem;
 }
 
-.kalender-nav-leiste .kalender-gruppe-bar__btn {
+.kalender-gruppe-bar--submenu .kalender-gruppe-bar__btn {
   font-size: 0.8125rem;
-  padding: 0.34rem 0.78rem;
+  padding: 0.34rem 0.75rem;
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--card) 75%, var(--bg));
+  border-color: color-mix(in srgb, var(--border) 70%, var(--accent));
+}
+
+.kalender-gruppe-bar--submenu .kalender-gruppe-bar__btn:hover {
+  background: var(--card);
+}
+
+.kalender-gruppe-bar--submenu .kalender-gruppe-bar__btn[aria-pressed="true"],
+.kalender-gruppe-bar--submenu .kalender-gruppe-bar__btn--active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.kalender-gruppe-bar--submenu .kalender-gruppe-bar__btn[aria-pressed="true"]:hover,
+.kalender-gruppe-bar--submenu .kalender-gruppe-bar__btn--active:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent-dim);
+  color: #fff;
 }
 
 .kalender-gruppe-bar--standalone {
@@ -1078,6 +1106,10 @@ dialog.popup-dialog::backdrop {
   border-radius: var(--radius);
   background: var(--bg);
   box-shadow: var(--shadow-inset-panel), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.termin-tab-panel--kalender {
+  margin-top: 0;
 }
 
 .termin-tab-panel:focus-visible {

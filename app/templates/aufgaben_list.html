@@ -112,7 +112,7 @@
 {% endblock %}
 {% block body %}
 {% call app_header_toolbar(page_title) %}
-  {% if aufgaben_has_any %}
+  {% if aufgaben_tabs %}
   <div class="termin-toolbar-panels">
     {% for t in aufgaben_tabs %}
     <div class="termin-toolbar-panel" data-toolbar-tab="{{ t.id }}"{% if t.id != default_tab_id %} hidden{% endif %}>
@@ -141,17 +141,6 @@
 
 <div class="wrap-inner" style="max-width: 720px; margin: 0 auto;">
 
-{% if not aufgaben_has_any %}
-<p class="muted">{% if aufgaben_multi_ov_mode %}Noch keine Aufgaben in deinen Verbänden.{% elif aufgaben_fallback_neu_href %}Noch keine Aufgaben — <a href="{{ aufgaben_fallback_neu_href }}">erste Aufgabe anlegen</a>.{% else %}Noch keine Aufgaben.{% endif %}</p>
-{% if gruppe_tabs %}
-<div class="kalender-gruppe-bar kalender-gruppe-bar--standalone" id="kalender-gruppe-bar-aufgaben" role="group" aria-labelledby="kalender-gruppe-kicker-aufgaben-empty">
-  <span class="kalender-nav-leiste__submenu-kicker" id="kalender-gruppe-kicker-aufgaben-empty">Gruppe</span>
-  {% for g in gruppe_tabs %}
-  <button type="button" class="kalender-gruppe-bar__btn" aria-pressed="{{ 'true' if gruppe_active == g.id else 'false' }}" data-gruppe="{{ g.id }}">{{ g.label }}</button>
-  {% endfor %}
-</div>
-{% endif %}
-{% else %}
 <div class="kalender-nav-leiste">
   <div id="aufgaben-ov-tablist" class="termin-tablist termin-tablist--in-leiste" role="tablist" aria-label="Aufgaben nach Verband">
     {% for t in aufgaben_tabs %}
@@ -159,20 +148,22 @@
     {% endfor %}
   </div>
   {% if gruppe_tabs %}
-  <div class="kalender-nav-leiste__submenu">
+  <nav class="kalender-nav-leiste__submenu" aria-label="Gruppe filtern">
     <span class="kalender-nav-leiste__submenu-kicker" id="kalender-gruppe-kicker-aufgaben">Gruppe</span>
-    <div id="kalender-gruppe-bar-aufgaben" class="kalender-gruppe-bar kalender-gruppe-bar--in-leiste" role="group" aria-labelledby="kalender-gruppe-kicker-aufgaben">
+    <div id="kalender-gruppe-bar-aufgaben" class="kalender-gruppe-bar kalender-gruppe-bar--submenu" role="group" aria-labelledby="kalender-gruppe-kicker-aufgaben">
       {% for g in gruppe_tabs %}
-      <button type="button" class="kalender-gruppe-bar__btn" aria-pressed="{{ 'true' if gruppe_active == g.id else 'false' }}" data-gruppe="{{ g.id }}">{{ g.label }}</button>
+      <button type="button" class="kalender-gruppe-bar__btn{% if gruppe_active == g.id %} kalender-gruppe-bar__btn--active{% endif %}" aria-pressed="{{ 'true' if gruppe_active == g.id else 'false' }}" data-gruppe="{{ g.id }}">{{ g.label }}</button>
       {% endfor %}
     </div>
-  </div>
+  </nav>
   {% endif %}
 </div>
 
 {% for t in aufgaben_tabs %}
-<div id="aufgaben-panel-{{ loop.index0 }}" class="termin-tab-panel" role="tabpanel" aria-labelledby="aufgaben-tabhead-{{ loop.index0 }}" tabindex="0" data-tab="{{ t.id }}"{% if t.id != default_tab_id %} hidden{% endif %}>
-  {% if t.kind == 'archiv' %}
+<div id="aufgaben-panel-{{ loop.index0 }}" class="termin-tab-panel termin-tab-panel--kalender" role="tabpanel" aria-labelledby="aufgaben-tabhead-{{ loop.index0 }}" tabindex="0" data-tab="{{ t.id }}"{% if t.id != default_tab_id %} hidden{% endif %}>
+  {% if not aufgaben_has_any %}
+  <p class="muted">{% if aufgaben_multi_ov_mode %}Noch keine Aufgaben in deinen Verbänden.{% elif aufgaben_fallback_neu_href %}Noch keine Aufgaben — <a href="{{ aufgaben_fallback_neu_href }}">erste Aufgabe anlegen</a>.{% else %}Noch keine Aufgaben.{% endif %}</p>
+  {% elif t.kind == 'archiv' %}
     {% if not t.done_rows %}
     <p class="muted">Keine erledigten Aufgaben im Archiv.</p>
     {% endif %}
@@ -252,23 +243,19 @@
     else activate({{ default_tab_id | tojson }});
   })();
 </script>
-{% endif %}
-</div>
 
-{# Gruppe-Bar-Skript: läuft IMMER (auch wenn keine Aufgaben), damit der Filter
-   zurückgesetzt werden kann. #}
+{# Gruppe-Untermenü #}
 <script>
   (function () {
     var glist = document.getElementById("kalender-gruppe-bar-aufgaben");
     if (!glist) return;
-    var hasAny = {{ 'true' if aufgaben_has_any else 'false' }};
     var defaultTab = {{ default_tab_id | tojson }};
     glist.querySelectorAll(".kalender-gruppe-bar__btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var g = btn.getAttribute("data-gruppe") || "alle";
         var u = new URL(window.location.href);
         u.searchParams.set("gruppe", g);
-        if (hasAny && defaultTab && !u.searchParams.get("tab")) {
+        if (defaultTab && !u.searchParams.get("tab")) {
           u.searchParams.set("tab", defaultTab);
         }
         window.location.href = u.toString();
@@ -276,6 +263,8 @@
     });
   })();
 </script>
+
+</div>
 
 <dialog id="ics-aufgaben-dialog" class="popup-dialog ics-popup" aria-labelledby="ics-aufgaben-title">
   <form method="dialog" class="ics-popup__form">
