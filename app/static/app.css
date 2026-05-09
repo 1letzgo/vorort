@@ -1024,6 +1024,10 @@ dialog.popup-dialog::backdrop {
   outline-offset: 2px;
 }
 
+.kalender-gruppe-tablist {
+  margin-top: 0.65rem;
+}
+
 /* Administration: gleiches vertikales Raster wie Terminliste (Abstand nur über .termin-tablist margin-bottom) */
 .administration-hub-panel > :first-child {
   margin-top: 0;

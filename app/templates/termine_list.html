@@ -433,9 +433,15 @@
 {% if not termin_has_any %}
 <p class="muted">{% if termin_multi_ov_mode %}Noch keine Termine in deinen Verbänden.{% elif termin_fallback_neu_href %}Noch keine Termine — <a href="{{ termin_fallback_neu_href }}">ersten Termin anlegen</a>.{% else %}Noch keine Termine.{% endif %}</p>
 {% else %}
-<div class="termin-tablist" role="tablist" aria-label="Terminansicht">
+<div id="termin-ov-tablist" class="termin-tablist" role="tablist" aria-label="Terminansicht">
   {% for t in termin_tabs %}
   <button type="button" class="termin-tab" role="tab" id="termin-tabhead-{{ loop.index0 }}" aria-selected="{{ 'true' if t.id == default_tab_id else 'false' }}" aria-controls="termin-panel-{{ loop.index0 }}" data-tab="{{ t.id }}">{{ t.label }}</button>
+  {% endfor %}
+</div>
+
+<div id="kalender-gruppe-tablist" class="termin-tablist kalender-gruppe-tablist" role="tablist" aria-label="Gruppe">
+  {% for g in gruppe_tabs %}
+  <button type="button" class="termin-tab" role="tab" id="gruppe-tabhead-{{ loop.index0 }}" aria-selected="{{ 'true' if gruppe_active == g.id else 'false' }}" data-gruppe="{{ g.id }}">{{ g.label }}</button>
   {% endfor %}
 </div>
 
@@ -469,7 +475,7 @@
 
 <script>
   (function () {
-    var tablist = document.querySelector(".termin-tablist");
+    var tablist = document.getElementById("termin-ov-tablist");
     if (!tablist) return;
     var tabs = tablist.querySelectorAll(".termin-tab");
     var panels = {};
@@ -515,6 +521,23 @@
     var req = sp.get("tab");
     if (req && panels[req]) activate(req);
     else activate({{ default_tab_id | tojson }});
+  })();
+</script>
+<script>
+  (function () {
+    var glist = document.getElementById("kalender-gruppe-tablist");
+    if (!glist) return;
+    glist.querySelectorAll(".termin-tab").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var g = btn.getAttribute("data-gruppe") || "alle";
+        var u = new URL(window.location.href);
+        u.searchParams.set("gruppe", g);
+        if (!u.searchParams.get("tab")) {
+          u.searchParams.set("tab", {{ default_tab_id | tojson }});
+        }
+        window.location.href = u.toString();
+      });
+    });
   })();
 </script>
 <script>

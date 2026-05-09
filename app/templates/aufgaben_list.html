@@ -1,35 +1,68 @@
 {% extends "base.html" %}
 {% from '_ui_macros.html' import app_header_toolbar, public_tenant_prefix with context %}
 {% import '_icons.html' as ico %}
-{% block title %}Aufgaben{% endblock %}
+{% block title %}{{ page_title }} — Wahlkampf{% endblock %}
+
+{% macro aufgabe_karte(row) %}
+{% set a = row.a %}
+{% set task_mp = '/m/' ~ (a.mandant_slug | lower) %}
+{% set taskp = public_tenant_prefix(request, task_mp) %}
+<article class="card card--flush termin-card-list termin-card-list--aufgabe{% if a.is_done %} termin-card-list--aufgabe-done{% endif %}">
+  <div class="termin-card-list__shell">
+    <header class="ics-popup__head termin-card-list__head">
+      <div class="ics-popup__head-icon termin-kat-icon {{ row.aufgabe_kategorie_icon_class }}" role="img" aria-label="Kategorie: {{ row.aufgabe_kategorie_label }}">{{ ico.svg_calendar() }}</div>
+      <div class="termin-card-list__head-main">
+        <h2 class="ics-popup__h termin-card-list__title"><a href="{{ taskp }}/aufgaben/{{ a.id }}">{{ a.title }}</a></h2>
+        <p class="ics-popup__lead termin-card-list__meta">
+          {{ row.aufgabe_kategorie_label }}
+          {% if a.is_done %} · erledigt{% endif %}
+          {% if a.due_at %} · Fällig {{ a.due_at.strftime('%d.%m.%Y') }}{% else %} · ohne Fälligkeit{% endif %}
+        </p>
+      </div>
+    </header>
+
+    <div class="termin-card-list__body">
+      <div class="termin-card-list__columns">
+        {% if a.description %}
+        <section class="ics-popup__panel ics-popup__panel--accent termin-card-list__panel-desc" aria-label="Beschreibung">
+          <h3 class="ics-popup__label">Beschreibung</h3>
+          <p class="termin-card-list__desc">{{ a.description }}</p>
+        </section>
+        {% endif %}
+        <section class="ics-popup__panel termin-card-list__panel-teilnehmer{% if not a.description %} ics-popup__panel--accent{% endif %}" aria-label="Zugewiesen">
+          <h3 class="ics-popup__label">Zugewiesen{% if a.zuweisungen %} ({{ a.zuweisungen|length }}){% endif %}</h3>
+          {% if a.zuweisungen %}
+          <p class="termin-panel-body" style="margin:0;">{% for z in a.zuweisungen %}{{ (z.user.display_name or '').strip() or z.user.username }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+          {% else %}
+          <p class="muted" style="margin:0;">Niemand zugewiesen.</p>
+          {% endif %}
+        </section>
+      </div>
+    </div>
+
+    {% if row.kann_verwalten %}
+    <footer class="termin-card-list__footer termin-card-footer-actions" aria-label="Aktionen zur Aufgabe">
+      <div class="termin-footer-actions">
+        <div class="termin-footer-actions__admin">
+          <a href="{{ taskp }}/aufgaben/{{ a.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico" aria-label="Aufgabe bearbeiten" title="Bearbeiten">
+            {{ ico.svg_pencil() }}
+          </a>
+          <form method="post" action="{{ taskp }}/aufgaben/{{ a.id }}/loeschen" style="margin:0;display:inline;" onsubmit="return confirm('Aufgabe wirklich löschen?');">
+            <button type="submit" class="btn btn-sm btn-danger btn-ico" aria-label="Aufgabe löschen" title="Löschen">
+              {{ ico.svg_trash() }}
+            </button>
+          </form>
+        </div>
+      </div>
+    </footer>
+    {% endif %}
+  </div>
+</article>
+{% endmacro %}
+
 {% block head %}
 {% include '_ics_surface_styles.html' %}
 <style>
-  .aufgaben-tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    margin: 0 0 1rem;
-    padding: 0;
-    list-style: none;
-  }
-  .aufgaben-tabs a {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.35rem 0.65rem;
-    border-radius: var(--radius);
-    font-size: 0.88rem;
-    font-weight: 600;
-    text-decoration: none !important;
-    border: 1px solid var(--border);
-    color: var(--text);
-    background: var(--card);
-  }
-  .aufgaben-tabs a[aria-current="page"] {
-    background: var(--accent);
-    color: #fff !important;
-    border-color: var(--accent);
-  }
   .termin-card-list--aufgabe.termin-card-list--aufgabe-done {
     opacity: 0.78;
   }
@@ -78,12 +111,19 @@
 </style>
 {% endblock %}
 {% block body %}
-{% set tp = public_tenant_prefix(request) %}
 {% call app_header_toolbar(page_title) %}
-  {% if show_neue_aufgabe %}
-  <a href="{{ neu_href }}" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="Neue Aufgabe">
-    {{ ico.svg_plus() }}<span class="btn-text">Neue Aufgabe</span>
-  </a>
+  {% if aufgaben_has_any %}
+  <div class="termin-toolbar-panels">
+    {% for t in aufgaben_tabs %}
+    <div class="termin-toolbar-panel" data-toolbar-tab="{{ t.id }}"{% if t.id != default_tab_id %} hidden{% endif %}>
+      {% if t.show_neue_aufgabe_button %}
+      <a href="{{ t.neue_aufgabe_href }}" class="btn btn-ghost btn-sm btn-ico btn-with-label" aria-label="{{ t.neue_aufgabe_button_label }}">
+        {{ ico.svg_plus() }}<span class="btn-text">{{ t.neue_aufgabe_button_label }}</span>
+      </a>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
   {% endif %}
   <button type="button" class="btn btn-ghost btn-sm btn-ico btn-with-label" id="ics-aufgaben-open" aria-label="Aufgaben abonnieren">
     {{ ico.svg_calendar() }}<span class="btn-text">Abonnieren</span>
@@ -100,72 +140,122 @@
 {% set google_a = 'https://calendar.google.com/calendar/u/0/r/settings/addbyurl?cid=' ~ (feed_url_aufgaben|urlencode) %}
 
 <div class="wrap-inner" style="max-width: 720px; margin: 0 auto;">
-  <ul class="aufgaben-tabs" role="tablist">
-    {% for t in aufgaben_tabs %}
-    <li>
-      <a href="{{ tp }}/aufgaben?tab={{ t.id }}"{% if tab_active == t.id %} aria-current="page"{% endif %}>{{ t.label }}</a>
-    </li>
-    {% endfor %}
-  </ul>
 
-  {% if not aufgaben_rows %}
-  <p class="muted">Keine Aufgaben in dieser Ansicht.</p>
-  {% else %}
-  {% for row in aufgaben_rows %}
-  {% set a = row.a %}
-  <article class="card card--flush termin-card-list termin-card-list--aufgabe{% if a.is_done %} termin-card-list--aufgabe-done{% endif %}">
-    <div class="termin-card-list__shell">
-      <header class="ics-popup__head termin-card-list__head">
-        <div class="ics-popup__head-icon termin-kat-icon {{ row.aufgabe_kategorie_icon_class }}" role="img" aria-label="Kategorie: {{ row.aufgabe_kategorie_label }}">{{ ico.svg_calendar() }}</div>
-        <div class="termin-card-list__head-main">
-          <h2 class="ics-popup__h termin-card-list__title"><a href="{{ tp }}/aufgaben/{{ a.id }}">{{ a.title }}</a></h2>
-          <p class="ics-popup__lead termin-card-list__meta">
-            {{ row.aufgabe_kategorie_label }}
-            {% if a.is_done %} · erledigt{% endif %}
-            {% if a.due_at %} · Fällig {{ a.due_at.strftime('%d.%m.%Y') }}{% else %} · ohne Fälligkeit{% endif %}
-          </p>
-        </div>
-      </header>
-
-      <div class="termin-card-list__body">
-        <div class="termin-card-list__columns">
-          {% if a.description %}
-          <section class="ics-popup__panel ics-popup__panel--accent termin-card-list__panel-desc" aria-label="Beschreibung">
-            <h3 class="ics-popup__label">Beschreibung</h3>
-            <p class="termin-card-list__desc">{{ a.description }}</p>
-          </section>
-          {% endif %}
-          <section class="ics-popup__panel termin-card-list__panel-teilnehmer{% if not a.description %} ics-popup__panel--accent{% endif %}" aria-label="Zugewiesen">
-            <h3 class="ics-popup__label">Zugewiesen{% if a.zuweisungen %} ({{ a.zuweisungen|length }}){% endif %}</h3>
-            {% if a.zuweisungen %}
-            <p class="termin-panel-body" style="margin:0;">{% for z in a.zuweisungen %}{{ (z.user.display_name or '').strip() or z.user.username }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
-            {% else %}
-            <p class="muted" style="margin:0;">Niemand zugewiesen.</p>
-            {% endif %}
-          </section>
-        </div>
-      </div>
-
-      {% if row.kann_verwalten %}
-      <footer class="termin-card-list__footer termin-card-footer-actions" aria-label="Aktionen zur Aufgabe">
-        <div class="termin-footer-actions">
-          <div class="termin-footer-actions__admin">
-            <a href="{{ tp }}/aufgaben/{{ a.id }}/bearbeiten" class="btn btn-sm btn-ghost btn-ico" aria-label="Aufgabe bearbeiten" title="Bearbeiten">
-              {{ ico.svg_pencil() }}
-            </a>
-            <form method="post" action="{{ tp }}/aufgaben/{{ a.id }}/loeschen" style="margin:0;display:inline;" onsubmit="return confirm('Aufgabe wirklich löschen?');">
-              <button type="submit" class="btn btn-sm btn-danger btn-ico" aria-label="Aufgabe löschen" title="Löschen">
-                {{ ico.svg_trash() }}
-              </button>
-            </form>
-          </div>
-        </div>
-      </footer>
-      {% endif %}
-    </div>
-  </article>
+{% if not aufgaben_has_any %}
+<p class="muted">{% if aufgaben_multi_ov_mode %}Noch keine Aufgaben in deinen Verbänden.{% elif aufgaben_fallback_neu_href %}Noch keine Aufgaben — <a href="{{ aufgaben_fallback_neu_href }}">erste Aufgabe anlegen</a>.{% else %}Noch keine Aufgaben.{% endif %}</p>
+{% else %}
+<div id="aufgaben-ov-tablist" class="termin-tablist" role="tablist" aria-label="Aufgaben nach Verband">
+  {% for t in aufgaben_tabs %}
+  <button type="button" class="termin-tab" role="tab" id="aufgaben-tabhead-{{ loop.index0 }}" aria-selected="{{ 'true' if t.id == default_tab_id else 'false' }}" aria-controls="aufgaben-panel-{{ loop.index0 }}" data-tab="{{ t.id }}">{{ t.label }}</button>
   {% endfor %}
+</div>
+
+<div id="kalender-gruppe-tablist-aufgaben" class="termin-tablist kalender-gruppe-tablist" role="tablist" aria-label="Gruppe">
+  {% for g in gruppe_tabs %}
+  <button type="button" class="termin-tab" role="tab" id="aufgaben-gruppe-tabhead-{{ loop.index0 }}" aria-selected="{{ 'true' if gruppe_active == g.id else 'false' }}" data-gruppe="{{ g.id }}">{{ g.label }}</button>
+  {% endfor %}
+</div>
+
+{% for t in aufgaben_tabs %}
+<div id="aufgaben-panel-{{ loop.index0 }}" class="termin-tab-panel" role="tabpanel" aria-labelledby="aufgaben-tabhead-{{ loop.index0 }}" tabindex="0" data-tab="{{ t.id }}"{% if t.id != default_tab_id %} hidden{% endif %}>
+  {% if t.kind == 'archiv' %}
+    {% if not t.done_rows %}
+    <p class="muted">Keine erledigten Aufgaben im Archiv.</p>
+    {% endif %}
+    {% for row in t.done_rows %}
+    {{ aufgabe_karte(row) }}
+    {% endfor %}
+  {% else %}
+    {% if not t.open_rows %}
+    <p class="muted">
+      {% if t.kind == 'ov' %}
+      {% if t.neue_aufgabe_href %}
+      Keine offenen Aufgaben — <a href="{{ t.neue_aufgabe_href }}">Aufgabe anlegen</a> oder unter „Archiv“ nachsehen.
+      {% else %}
+      Keine offenen Aufgaben — unter „Archiv“ nachsehen.
+      {% endif %}
+      {% elif t.kind == 'alle' %}
+      Keine offenen Aufgaben — unter „Archiv“ nachsehen.
+      {% else %}
+      Keine offenen Aufgaben — unter „Archiv“ nachsehen.
+      {% endif %}
+    </p>
+    {% endif %}
+    {% for row in t.open_rows %}
+    {{ aufgabe_karte(row) }}
+    {% endfor %}
   {% endif %}
+</div>
+{% endfor %}
+
+<script>
+  (function () {
+    var tablist = document.getElementById("aufgaben-ov-tablist");
+    if (!tablist) return;
+    var tabs = tablist.querySelectorAll(".termin-tab");
+    var panels = {};
+    document.querySelectorAll(".termin-tab-panel").forEach(function (p) {
+      var id = p.getAttribute("data-tab");
+      if (id) panels[id] = p;
+    });
+    var toolbars = {};
+    document.querySelectorAll(".termin-toolbar-panel").forEach(function (el) {
+      var id = el.getAttribute("data-toolbar-tab");
+      if (id) toolbars[id] = el;
+    });
+    function activate(id) {
+      if (!id || !panels[id]) return;
+      tabs.forEach(function (t) {
+        var sel = t.getAttribute("data-tab") === id;
+        t.setAttribute("aria-selected", sel ? "true" : "false");
+      });
+      Object.keys(panels).forEach(function (key) {
+        var p = panels[key];
+        if (!p) return;
+        if (key === id) p.removeAttribute("hidden");
+        else p.setAttribute("hidden", "");
+      });
+      Object.keys(toolbars).forEach(function (key) {
+        var tb = toolbars[key];
+        if (!tb) return;
+        if (key === id) tb.removeAttribute("hidden");
+        else tb.setAttribute("hidden", "");
+      });
+      try {
+        var u = new URL(window.location.href);
+        u.searchParams.set("tab", id);
+        history.replaceState({}, "", u.toString());
+      } catch (e) {}
+    }
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        activate(tab.getAttribute("data-tab"));
+      });
+    });
+    var sp = new URLSearchParams(window.location.search);
+    var req = sp.get("tab");
+    if (req && panels[req]) activate(req);
+    else activate({{ default_tab_id | tojson }});
+  })();
+</script>
+<script>
+  (function () {
+    var glist = document.getElementById("kalender-gruppe-tablist-aufgaben");
+    if (!glist) return;
+    glist.querySelectorAll(".termin-tab").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var g = btn.getAttribute("data-gruppe") || "alle";
+        var u = new URL(window.location.href);
+        u.searchParams.set("gruppe", g);
+        if (!u.searchParams.get("tab")) {
+          u.searchParams.set("tab", {{ default_tab_id | tojson }});
+        }
+        window.location.href = u.toString();
+      });
+    });
+  })();
+</script>
+{% endif %}
 </div>
 
 <dialog id="ics-aufgaben-dialog" class="popup-dialog ics-popup" aria-labelledby="ics-aufgaben-title">

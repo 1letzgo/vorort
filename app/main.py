@@ -364,10 +364,24 @@ def _can_manage_termin(user: AuthenticatedUser, termin: Termin) -> bool:
     return bool(user.is_admin or termin.created_by_id == user.id)
 
 
-def _can_manage_aufgabe(user: AuthenticatedUser, a: Aufgabe) -> bool:
-    if a.mandant_slug.strip().lower() != user.mandant_slug.strip().lower():
+def _can_manage_aufgabe(pdb: Session, user: AuthenticatedUser, a: Aufgabe) -> bool:
+    if is_superadmin_username(user.username):
+        return True
+    ms_a = a.mandant_slug.strip().lower()
+    mem = (
+        pdb.query(OvMembership)
+        .filter(
+            OvMembership.user_id == user.id,
+            OvMembership.ov_slug == ms_a,
+            OvMembership.is_approved.is_(True),
+        )
+        .first()
+    )
+    if not mem:
         return False
-    return bool(user.is_admin or a.created_by_id == user.id)
+    if a.created_by_id == user.id:
+        return True
+    return bool(mem.is_admin)
 
 
 def _aufgabe_sichtbar_instance(
@@ -398,7 +412,7 @@ def _can_toggle_aufgabe_erledigt(
     user: AuthenticatedUser,
     a: Aufgabe,
 ) -> bool:
-    if _can_manage_aufgabe(user, a):
+    if _can_manage_aufgabe(pdb, user, a):
         return True
     return _user_is_assigned_aufgabe(pdb, user.id, a)
 
@@ -918,7 +932,7 @@ def _my_ovs_menu_items(
         feature_plakate = is_mandant_feature_enabled(pdb, slug, FEATURE_PLAKATE)
         feature_sharepic = is_mandant_feature_enabled(pdb, slug, FEATURE_SHAREPIC)
         feature_aufgaben = is_mandant_feature_enabled(pdb, slug, FEATURE_AUFGABEN)
-        has_feature_links = bool(feature_plakate or feature_sharepic or feature_aufgaben)
+        has_feature_links = bool(feature_plakate or feature_sharepic)
         out_members.append(
             {
                 "slug": slug,
@@ -1303,6 +1317,9 @@ def app_menu(
         sharepic_vorlagen_href = _href_under_ov(
             request, target["slug"], "admin/sharepic-vorlagen"
         )
+    show_aufgaben_kalender = any(
+        bool(o.get("feature_aufgaben")) for o in my_ovs_items
+    )
     return templates.TemplateResponse(
         request,
         "menu.html",
@@ -1311,6 +1328,7 @@ def app_menu(
             "show_superadmin_link": is_superadmin_username(user.username),
             "my_ovs": my_ovs_items,
             "show_alle_termine": _menu_show_alle_termine(pdb, user),
+            "show_aufgaben_kalender": show_aufgaben_kalender,
             "show_administration_card": any(o["is_admin"] for o in my_ovs_items),
             "administration_pending_total": sum(
                 o["admin_pending_count"] for o in my_ovs_items if o["is_admin"]
@@ -2999,6 +3017,37 @@ def _href_under_ov(request: Request, ov_slug: str, path_suffix: str) -> str:
     return f"{rp}/m/{s}/{rel}"
 
 
+GRUPPE_FILTER_ALLE = "alle"
+
+
+def _normalize_gruppe_filter_query(raw: str | None) -> str:
+    s = (raw or "").strip().lower()
+    if not s or s == GRUPPE_FILTER_ALLE:
+        return GRUPPE_FILTER_ALLE
+    if s in TERMIN_KATEGORIEN:
+        return s
+    return GRUPPE_FILTER_ALLE
+
+
+def _kalender_gruppe_tab_defs() -> list[dict[str, str]]:
+    return [
+        {"id": GRUPPE_FILTER_ALLE, "label": "Alle"},
+        {"id": TERMIN_KAT_VERBAND, "label": "Verband"},
+        {"id": TERMIN_KAT_VORSTAND, "label": "Vorstand"},
+        {"id": TERMIN_KAT_FRAKTION, "label": "Fraktion"},
+    ]
+
+
+def _apply_gruppe_filter_to_termin_tabs(tabs: list[dict[str, Any]], gruppe: str) -> None:
+    if gruppe == GRUPPE_FILTER_ALLE:
+        return
+    for t in tabs:
+        t["termin_upcoming"] = [
+            r for r in t["termin_upcoming"] if r.get("termin_kategorie") == gruppe
+        ]
+        t["termin_past"] = [r for r in t["termin_past"] if r.get("termin_kategorie") == gruppe]
+
+
 def _termin_tabs_resolve_default(tabs: list[dict[str, Any]], requested_tab: str | None) -> str:
     ids = [t["id"] for t in tabs]
     if not ids:
@@ -3016,6 +3065,7 @@ def _build_termin_tabs_for_user(
     user: AuthenticatedUser,
     *,
     requested_tab: str | None,
+    gruppe_filter: str = GRUPPE_FILTER_ALLE,
 ) -> tuple[list[dict[str, Any]], str, bool]:
     """Tab-Metadaten für die zentrale Terminseite; letzter Return: termin_has_any."""
     vm = mandant_slug.strip().lower()
@@ -3062,7 +3112,8 @@ def _build_termin_tabs_for_user(
             },
         )
         default_id = _termin_tabs_resolve_default(tabs, requested_tab)
-        has_any = bool(up or past)
+        has_any = any(bool(t["termin_upcoming"] or t["termin_past"]) for t in tabs)
+        _apply_gruppe_filter_to_termin_tabs(tabs, gruppe_filter)
         return tabs, default_id, has_any
 
     labels = _ov_display_labels_for_slugs(pdb, slugs)
@@ -3124,6 +3175,195 @@ def _build_termin_tabs_for_user(
 
     default_id = _termin_tabs_resolve_default(tabs, requested_tab)
     has_any = any(bool(t["termin_upcoming"] or t["termin_past"]) for t in tabs)
+    _apply_gruppe_filter_to_termin_tabs(tabs, gruppe_filter)
+    return tabs, default_id, has_any
+
+
+def _merge_aufgaben_by_id_unique(items: list[Aufgabe]) -> list[Aufgabe]:
+    seen: set[int] = set()
+    out: list[Aufgabe] = []
+    for a in items:
+        if a.id in seen:
+            continue
+        seen.add(a.id)
+        out.append(a)
+    return out
+
+
+def _sort_aufgaben_done(items: list[Aufgabe]) -> list[Aufgabe]:
+    def sk(a: Aufgabe) -> tuple:
+        due = a.due_at or datetime.min
+        return (due, a.id)
+
+    return sorted(items, key=sk, reverse=True)
+
+
+def _empty_aufgaben_tab_toolbar() -> dict[str, Any]:
+    return {
+        "show_neue_aufgabe_button": False,
+        "neue_aufgabe_href": None,
+        "neue_aufgabe_button_label": "Neue Aufgabe",
+    }
+
+
+def _aufgabe_rows_for_list(pdb: Session, user: AuthenticatedUser, tasks: list[Aufgabe]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for a in tasks:
+        row = _aufgabe_kategorie_ui_dict(a)
+        row["a"] = a
+        row["kann_verwalten"] = _can_manage_aufgabe(pdb, user, a)
+        rows.append(row)
+    return rows
+
+
+def _aufgaben_filter_gruppe(items: list[Aufgabe], gruppe: str) -> list[Aufgabe]:
+    if gruppe == GRUPPE_FILTER_ALLE:
+        return items
+    return [a for a in items if aufgabe_kategorie_effective(a) == gruppe]
+
+
+def _slugs_mit_aufgaben_feature(pdb: Session, user: AuthenticatedUser) -> list[str]:
+    slugs_all = _approved_ov_slugs_for_user_feeds(pdb, user)
+    return sorted([s for s in slugs_all if is_mandant_feature_enabled(pdb, s, FEATURE_AUFGABEN)])
+
+
+def _redirect_aufgaben_if_mandant_without_feature(
+    pdb: Session,
+    request: Request,
+    mandant_slug: str,
+    user: AuthenticatedUser,
+) -> RedirectResponse | None:
+    ms = mandant_slug.strip().lower()
+    if is_mandant_feature_enabled(pdb, ms, FEATURE_AUFGABEN):
+        return None
+    candidates = _slugs_mit_aufgaben_feature(pdb, user)
+    if not candidates:
+        raise HTTPException(status_code=404, detail="Not found")
+    target = _href_under_ov(request, candidates[0], "aufgaben")
+    q = request.url.query
+    dest = f"{target}?{q}" if q else target
+    return RedirectResponse(dest, status_code=302)
+
+
+def _build_aufgaben_tabs_for_user(
+    pdb: Session,
+    request: Request,
+    user: AuthenticatedUser,
+    *,
+    requested_tab: str | None,
+    gruppe_filter: str,
+) -> tuple[list[dict[str, Any]], str, bool]:
+    slugs_af = _slugs_mit_aufgaben_feature(pdb, user)
+    tabs: list[dict[str, Any]] = []
+
+    if not slugs_af:
+        return [], "", False
+
+    def _tabs_append_rows(t: dict[str, Any]) -> None:
+        o_items = t.get("_open_items") or []
+        d_items = t.get("_done_items") or []
+        t["open_rows"] = _aufgabe_rows_for_list(pdb, user, o_items)
+        t["done_rows"] = _aufgabe_rows_for_list(pdb, user, d_items)
+        t.pop("_open_items", None)
+        t.pop("_done_items", None)
+
+    if len(slugs_af) == 1:
+        s = slugs_af[0]
+        items = _aufgaben_filter_gruppe(_aufgaben_list_for_mandant(pdb, s, user), gruppe_filter)
+        open_items = [a for a in items if not a.is_done]
+        done_items = [a for a in items if a.is_done]
+        done_sorted = _sort_aufgaben_done(done_items)
+        ov = pdb.query(Ortsverband).filter(Ortsverband.slug == s).first()
+        label_vm = ((ov.display_name or "").strip() or s) if ov else s
+        ov_id = _termin_tab_ov_id(s)
+        tb = _empty_aufgaben_tab_toolbar()
+        if _user_darf_irgendeine_aufgabe_anlegen(pdb, user.id, s):
+            tb["show_neue_aufgabe_button"] = True
+            tb["neue_aufgabe_href"] = _href_under_ov(request, s, "aufgaben/neu")
+        tabs.append(
+            {
+                "id": ov_id,
+                "kind": "ov",
+                "ov_slug": s,
+                "label": label_vm,
+                "_open_items": open_items,
+                "_done_items": [],
+                **tb,
+            },
+        )
+        tb_ar = _empty_aufgaben_tab_toolbar()
+        tabs.append(
+            {
+                "id": "archiv",
+                "kind": "archiv",
+                "ov_slug": None,
+                "label": "Archiv",
+                "_open_items": [],
+                "_done_items": done_sorted,
+                **tb_ar,
+            },
+        )
+    else:
+        merged: list[Aufgabe] = []
+        for s in slugs_af:
+            merged.extend(_aufgaben_list_for_mandant(pdb, s, user))
+        merged_u = _merge_aufgaben_by_id_unique(merged)
+        merged_f = _aufgaben_filter_gruppe(merged_u, gruppe_filter)
+        open_alle = [a for a in merged_f if not a.is_done]
+        labels = _ov_display_labels_for_slugs(pdb, slugs_af)
+        tb_alle = _empty_aufgaben_tab_toolbar()
+        tabs.append(
+            {
+                "id": "alle",
+                "kind": "alle",
+                "ov_slug": None,
+                "label": "Alle",
+                "_open_items": open_alle,
+                "_done_items": [],
+                **tb_alle,
+            },
+        )
+        done_bucket: list[Aufgabe] = []
+        for s in slugs_af:
+            items_ov = _aufgaben_filter_gruppe(_aufgaben_list_for_mandant(pdb, s, user), gruppe_filter)
+            open_ov = [a for a in items_ov if not a.is_done]
+            done_ov = [a for a in items_ov if a.is_done]
+            done_bucket.extend(done_ov)
+            oid = _termin_tab_ov_id(s)
+            tb = _empty_aufgaben_tab_toolbar()
+            if _user_darf_irgendeine_aufgabe_anlegen(pdb, user.id, s):
+                tb["show_neue_aufgabe_button"] = True
+                tb["neue_aufgabe_href"] = _href_under_ov(request, s, "aufgaben/neu")
+            tabs.append(
+                {
+                    "id": oid,
+                    "kind": "ov",
+                    "ov_slug": s,
+                    "label": labels.get(s, s),
+                    "_open_items": open_ov,
+                    "_done_items": [],
+                    **tb,
+                },
+            )
+        arch_done = _sort_aufgaben_done(_merge_aufgaben_by_id_unique(done_bucket))
+        tb_ar = _empty_aufgaben_tab_toolbar()
+        tabs.append(
+            {
+                "id": "archiv",
+                "kind": "archiv",
+                "ov_slug": None,
+                "label": "Archiv",
+                "_open_items": [],
+                "_done_items": arch_done,
+                **tb_ar,
+            },
+        )
+
+    has_any = any(bool(t.get("_open_items") or t.get("_done_items")) for t in tabs)
+    for t in tabs:
+        _tabs_append_rows(t)
+
+    default_id = _termin_tabs_resolve_default(tabs, requested_tab)
     return tabs, default_id, has_any
 
 
@@ -3134,30 +3374,27 @@ def aufgaben_list_view(
     pdb: Annotated[Session, Depends(get_platform_db)],
     user: CurrentUser,
     tab: Annotated[str | None, Query()] = None,
+    gruppe: Annotated[str | None, Query()] = None,
 ):
-    _require_mandant_feature(pdb, mandant_slug, FEATURE_AUFGABEN)
     ms = mandant_slug.strip().lower()
-    items = _aufgaben_list_for_mandant(pdb, ms, user)
-    tab_ids = ("alle", TERMIN_KAT_VERBAND, TERMIN_KAT_VORSTAND, TERMIN_KAT_FRAKTION)
-    tab_labels = {
-        "alle": "Alle",
-        TERMIN_KAT_VERBAND: "Verband",
-        TERMIN_KAT_VORSTAND: "Vorstand",
-        TERMIN_KAT_FRAKTION: "Fraktion",
-    }
-    tid = (tab or "alle").strip().lower()
-    if tid not in tab_ids:
-        tid = "alle"
-    if tid == "alle":
-        filtered = items
-    else:
-        filtered = [a for a in items if aufgabe_kategorie_effective(a) == tid]
-    aufgaben_rows: list[dict[str, Any]] = []
-    for a in filtered:
-        row = _aufgabe_kategorie_ui_dict(a)
-        row["a"] = a
-        row["kann_verwalten"] = _can_manage_aufgabe(user, a)
-        aufgaben_rows.append(row)
+    redir = _redirect_aufgaben_if_mandant_without_feature(pdb, request, ms, user)
+    if redir is not None:
+        return redir
+    gnorm = _normalize_gruppe_filter_query(gruppe)
+    aufgaben_tabs, default_tab_id, aufgaben_has_any = _build_aufgaben_tabs_for_user(
+        pdb,
+        request,
+        user,
+        requested_tab=tab,
+        gruppe_filter=gnorm,
+    )
+    slugs_af = _slugs_mit_aufgaben_feature(pdb, user)
+    aufgaben_multi_ov_mode = len(slugs_af) >= 2
+    aufgaben_fallback_neu_href = None
+    if not aufgaben_multi_ov_mode and slugs_af:
+        s0 = slugs_af[0]
+        if _user_darf_irgendeine_aufgabe_anlegen(pdb, user.id, s0):
+            aufgaben_fallback_neu_href = _href_under_ov(request, s0, "aufgaben/neu")
     base = str(request.base_url).rstrip("/")
     my_token = ensure_user_calendar_token(pdb, user.platform_user)
     mp = _mp(request)
@@ -3168,11 +3405,13 @@ def aufgaben_list_view(
         {
             "user": user,
             "page_title": "Aufgaben",
-            "aufgaben_rows": aufgaben_rows,
-            "aufgaben_tabs": [{"id": k, "label": tab_labels[k]} for k in tab_ids],
-            "tab_active": tid,
-            "show_neue_aufgabe": _user_darf_irgendeine_aufgabe_anlegen(pdb, user.id, ms),
-            "neu_href": _href_under_ov(request, ms, "aufgaben/neu"),
+            "aufgaben_tabs": aufgaben_tabs,
+            "default_tab_id": default_tab_id,
+            "aufgaben_has_any": aufgaben_has_any,
+            "aufgaben_multi_ov_mode": aufgaben_multi_ov_mode,
+            "aufgaben_fallback_neu_href": aufgaben_fallback_neu_href,
+            "gruppe_tabs": _kalender_gruppe_tab_defs(),
+            "gruppe_active": gnorm,
             "feed_url_aufgaben": feed_url_aufgaben,
             "mandant_slug": ms,
         },
@@ -3312,7 +3551,7 @@ def aufgabe_detail_view(
         {
             "user": user,
             "aufgabe": a,
-            "kann_verwalten": _can_manage_aufgabe(user, a),
+            "kann_verwalten": _can_manage_aufgabe(pdb, user, a),
             "kann_erledigt_toggle": _can_toggle_aufgabe_erledigt(pdb, user, a),
             "feed_url_aufgaben": feed_url_aufgaben,
             **ctx,
@@ -3355,7 +3594,7 @@ def aufgabe_edit_form(
     a = _aufgabe_by_id_visible(pdb, aufgabe_id, ms, user)
     if not a:
         raise HTTPException(status_code=404, detail="Not found")
-    if not _can_manage_aufgabe(user, a):
+    if not _can_manage_aufgabe(pdb, user, a):
         raise HTTPException(status_code=403, detail="Keine Berechtigung.")
     mitglieder = _aufgaben_mitglieder_fuer_form(pdb, ms)
     sel = {z.user_id for z in (a.zuweisungen or [])}
@@ -3393,7 +3632,7 @@ def aufgabe_update(
     a = _aufgabe_by_id_visible(pdb, aufgabe_id, ms, user)
     if not a:
         raise HTTPException(status_code=404, detail="Not found")
-    if not _can_manage_aufgabe(user, a):
+    if not _can_manage_aufgabe(pdb, user, a):
         raise HTTPException(status_code=403, detail="Keine Berechtigung.")
     mitglieder = _aufgaben_mitglieder_fuer_form(pdb, ms)
     erlaubt = _approved_member_user_ids(pdb, ms)
@@ -3464,7 +3703,7 @@ def aufgabe_delete(
     a = _aufgabe_by_id_visible(pdb, aufgabe_id, ms, user)
     if not a:
         raise HTTPException(status_code=404, detail="Not found")
-    if not _can_manage_aufgabe(user, a):
+    if not _can_manage_aufgabe(pdb, user, a):
         raise HTTPException(status_code=403, detail="Keine Berechtigung.")
     pdb.delete(a)
     pdb.commit()
@@ -3478,13 +3717,16 @@ def termine_list(
     pdb: Annotated[Session, Depends(get_platform_db)],
     user: CurrentUser,
     tab: Annotated[str | None, Query()] = None,
+    gruppe: Annotated[str | None, Query()] = None,
 ):
+    gnorm = _normalize_gruppe_filter_query(gruppe)
     termin_tabs, default_tab_id, termin_has_any = _build_termin_tabs_for_user(
         pdb,
         mandant_slug,
         request,
         user,
         requested_tab=tab,
+        gruppe_filter=gnorm,
     )
     slugs = _approved_ov_slugs_for_user_feeds(pdb, user)
     termin_multi_ov_mode = bool(slugs)
@@ -3513,6 +3755,8 @@ def termine_list(
             "page_title": "Termine",
             "ics_my_label": ics_my_label,
             "ics_all_label": ics_all_label,
+            "gruppe_tabs": _kalender_gruppe_tab_defs(),
+            "gruppe_active": gnorm,
         },
     )
 

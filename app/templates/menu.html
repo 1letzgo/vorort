@@ -92,13 +92,18 @@
   </a>
 {% endcall %}
 
-{% if show_alle_termine | default(false) %}
+{% if show_alle_termine | default(false) or show_aufgaben_kalender | default(false) %}
 <div class="card card--flush">
   <ul class="menu-list" role="list">
     <li class="menu-list-section">
       <h2 class="menu-list-section__label" id="menu-uebersicht-heading">Kalender</h2>
     </li>
-    <li><a href="{{ request.state.mandanten_prefix }}/termine?tab=alle"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Termine</span></span></a></li>
+    {% if show_alle_termine | default(false) %}
+    <li><a href="{{ request.state.mandanten_prefix }}/termine?tab=alle&amp;gruppe=alle"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Termine</span></span></a></li>
+    {% endif %}
+    {% if show_aufgaben_kalender | default(false) %}
+    <li><a href="{{ request.state.mandanten_prefix }}/aufgaben?tab=alle&amp;gruppe=alle"><span class="menu-list__main">{{ ico.svg_check() }}<span>Aufgaben</span></span></a></li>
+    {% endif %}
   </ul>
 </div>
 {% endif %}
@@ -122,9 +127,6 @@
       {% endif %}
       {% if o.feature_sharepic | default(true) %}
       <li><a href="{{ op }}/sharepic"><span class="menu-list__main">{{ ico.svg_image() }}<span>Sharepic</span></span></a></li>
-      {% endif %}
-      {% if o.feature_aufgaben | default(false) %}
-      <li><a href="{{ op }}/aufgaben"><span class="menu-list__main">{{ ico.svg_check() }}<span>Aufgaben</span></span></a></li>
       {% endif %}
     </ul>
   </details>
