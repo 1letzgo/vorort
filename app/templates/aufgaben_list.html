@@ -141,18 +141,22 @@
 
 <div class="wrap-inner" style="max-width: 720px; margin: 0 auto;">
 
+{# Gruppe-Filter (zweite Ebene) als Buttons. Immer sichtbar — auch bei leerer Auswahl,
+   damit man zu „Alle“ oder einer anderen Gruppe zurückwechseln kann. #}
+{% if gruppe_tabs %}
+<div id="kalender-gruppe-bar-aufgaben" class="kalender-gruppe-bar" role="group" aria-label="Gruppe filtern">
+  {% for g in gruppe_tabs %}
+  <button type="button" class="kalender-gruppe-bar__btn" aria-pressed="{{ 'true' if gruppe_active == g.id else 'false' }}" data-gruppe="{{ g.id }}">{{ g.label }}</button>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% if not aufgaben_has_any %}
 <p class="muted">{% if aufgaben_multi_ov_mode %}Noch keine Aufgaben in deinen Verbänden.{% elif aufgaben_fallback_neu_href %}Noch keine Aufgaben — <a href="{{ aufgaben_fallback_neu_href }}">erste Aufgabe anlegen</a>.{% else %}Noch keine Aufgaben.{% endif %}</p>
 {% else %}
 <div id="aufgaben-ov-tablist" class="termin-tablist" role="tablist" aria-label="Aufgaben nach Verband">
   {% for t in aufgaben_tabs %}
   <button type="button" class="termin-tab" role="tab" id="aufgaben-tabhead-{{ loop.index0 }}" aria-selected="{{ 'true' if t.id == default_tab_id else 'false' }}" aria-controls="aufgaben-panel-{{ loop.index0 }}" data-tab="{{ t.id }}">{{ t.label }}</button>
-  {% endfor %}
-</div>
-
-<div id="kalender-gruppe-tablist-aufgaben" class="termin-tablist kalender-gruppe-tablist" role="tablist" aria-label="Gruppe">
-  {% for g in gruppe_tabs %}
-  <button type="button" class="termin-tab" role="tab" id="aufgaben-gruppe-tabhead-{{ loop.index0 }}" aria-selected="{{ 'true' if gruppe_active == g.id else 'false' }}" data-gruppe="{{ g.id }}">{{ g.label }}</button>
   {% endfor %}
 </div>
 
@@ -238,25 +242,30 @@
     else activate({{ default_tab_id | tojson }});
   })();
 </script>
+{% endif %}
+</div>
+
+{# Gruppe-Bar-Skript: läuft IMMER (auch wenn keine Aufgaben), damit der Filter
+   zurückgesetzt werden kann. #}
 <script>
   (function () {
-    var glist = document.getElementById("kalender-gruppe-tablist-aufgaben");
+    var glist = document.getElementById("kalender-gruppe-bar-aufgaben");
     if (!glist) return;
-    glist.querySelectorAll(".termin-tab").forEach(function (btn) {
+    var hasAny = {{ 'true' if aufgaben_has_any else 'false' }};
+    var defaultTab = {{ default_tab_id | tojson }};
+    glist.querySelectorAll(".kalender-gruppe-bar__btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var g = btn.getAttribute("data-gruppe") || "alle";
         var u = new URL(window.location.href);
         u.searchParams.set("gruppe", g);
-        if (!u.searchParams.get("tab")) {
-          u.searchParams.set("tab", {{ default_tab_id | tojson }});
+        if (hasAny && defaultTab && !u.searchParams.get("tab")) {
+          u.searchParams.set("tab", defaultTab);
         }
         window.location.href = u.toString();
       });
     });
   })();
 </script>
-{% endif %}
-</div>
 
 <dialog id="ics-aufgaben-dialog" class="popup-dialog ics-popup" aria-labelledby="ics-aufgaben-title">
   <form method="dialog" class="ics-popup__form">
