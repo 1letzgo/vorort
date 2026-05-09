@@ -430,23 +430,33 @@
   })();
 </script>
 
-{# Gruppe-Filter (zweite Ebene) als Buttons. Immer sichtbar — auch bei leerer Auswahl,
-   damit man zu „Alle“ oder einer anderen Gruppe zurückwechseln kann. #}
+{% if not termin_has_any %}
+<p class="muted">{% if termin_multi_ov_mode %}Noch keine Termine in deinen Verbänden.{% elif termin_fallback_neu_href %}Noch keine Termine — <a href="{{ termin_fallback_neu_href }}">ersten Termin anlegen</a>.{% else %}Noch keine Termine.{% endif %}</p>
 {% if gruppe_tabs %}
-<div id="kalender-gruppe-bar" class="kalender-gruppe-bar" role="group" aria-label="Gruppe filtern">
+<div class="kalender-gruppe-bar kalender-gruppe-bar--standalone" id="kalender-gruppe-bar" role="group" aria-labelledby="kalender-gruppe-kicker-termine-empty">
+  <span class="kalender-nav-leiste__submenu-kicker" id="kalender-gruppe-kicker-termine-empty">Gruppe</span>
   {% for g in gruppe_tabs %}
   <button type="button" class="kalender-gruppe-bar__btn" aria-pressed="{{ 'true' if gruppe_active == g.id else 'false' }}" data-gruppe="{{ g.id }}">{{ g.label }}</button>
   {% endfor %}
 </div>
 {% endif %}
-
-{% if not termin_has_any %}
-<p class="muted">{% if termin_multi_ov_mode %}Noch keine Termine in deinen Verbänden.{% elif termin_fallback_neu_href %}Noch keine Termine — <a href="{{ termin_fallback_neu_href }}">ersten Termin anlegen</a>.{% else %}Noch keine Termine.{% endif %}</p>
 {% else %}
-<div id="termin-ov-tablist" class="termin-tablist" role="tablist" aria-label="Terminansicht">
-  {% for t in termin_tabs %}
-  <button type="button" class="termin-tab" role="tab" id="termin-tabhead-{{ loop.index0 }}" aria-selected="{{ 'true' if t.id == default_tab_id else 'false' }}" aria-controls="termin-panel-{{ loop.index0 }}" data-tab="{{ t.id }}">{{ t.label }}</button>
-  {% endfor %}
+<div class="kalender-nav-leiste">
+  <div id="termin-ov-tablist" class="termin-tablist termin-tablist--in-leiste" role="tablist" aria-label="Terminansicht">
+    {% for t in termin_tabs %}
+    <button type="button" class="termin-tab" role="tab" id="termin-tabhead-{{ loop.index0 }}" aria-selected="{{ 'true' if t.id == default_tab_id else 'false' }}" aria-controls="termin-panel-{{ loop.index0 }}" data-tab="{{ t.id }}">{{ t.label }}</button>
+    {% endfor %}
+  </div>
+  {% if gruppe_tabs %}
+  <div class="kalender-nav-leiste__submenu">
+    <span class="kalender-nav-leiste__submenu-kicker" id="kalender-gruppe-kicker-termine">Gruppe</span>
+    <div id="kalender-gruppe-bar" class="kalender-gruppe-bar kalender-gruppe-bar--in-leiste" role="group" aria-labelledby="kalender-gruppe-kicker-termine">
+      {% for g in gruppe_tabs %}
+      <button type="button" class="kalender-gruppe-bar__btn" aria-pressed="{{ 'true' if gruppe_active == g.id else 'false' }}" data-gruppe="{{ g.id }}">{{ g.label }}</button>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 {% for t in termin_tabs %}
