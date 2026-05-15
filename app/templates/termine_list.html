@@ -438,9 +438,9 @@
   </div>
   {% if gruppe_tabs %}
   <nav class="kalender-nav-leiste__submenu" aria-label="Gruppe filtern">
-    <div id="kalender-gruppe-bar" class="kalender-gruppe-bar kalender-gruppe-bar--submenu" role="group">
+    <div id="kalender-gruppe-bar" class="termin-tablist termin-tablist--in-leiste kalender-gruppe-tablist" role="tablist" aria-label="Gruppe">
       {% for g in gruppe_tabs %}
-      <button type="button" class="kalender-gruppe-bar__btn{% if gruppe_active == g.id %} kalender-gruppe-bar__btn--active{% endif %}" aria-pressed="{{ 'true' if gruppe_active == g.id else 'false' }}" data-gruppe="{{ g.id }}">{{ g.label }}</button>
+      <button type="button" class="termin-tab kalender-gruppe-tab" role="tab" aria-selected="{{ 'true' if gruppe_active == g.id else 'false' }}" data-gruppe="{{ g.id }}">{{ g.label }}</button>
       {% endfor %}
     </div>
   </nav>
@@ -512,8 +512,17 @@
       });
       try {
         var u = new URL(window.location.href);
+        var gruppeKeep = u.searchParams.get("gruppe");
+        if (gruppeKeep === null || gruppeKeep === "") {
+          gruppeKeep = {{ gruppe_active | tojson }};
+        }
         u.searchParams.set("tab", id);
-        history.replaceState({}, "", u.toString());
+        if (gruppeKeep === "alle") {
+          u.searchParams.delete("gruppe");
+        } else {
+          u.searchParams.set("gruppe", gruppeKeep);
+        }
+        history.replaceState({}, "", u.pathname + u.search + u.hash);
       } catch (e) {}
     }
     tabs.forEach(function (tab) {
@@ -634,7 +643,7 @@
     var glist = document.getElementById("kalender-gruppe-bar");
     if (!glist) return;
     var defaultTab = {{ default_tab_id | tojson }};
-    glist.querySelectorAll(".kalender-gruppe-bar__btn").forEach(function (btn) {
+    glist.querySelectorAll("button[data-gruppe]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var g = btn.getAttribute("data-gruppe") || "alle";
         var u = new URL(window.location.href);

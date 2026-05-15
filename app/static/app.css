@@ -1059,6 +1059,10 @@ dialog.popup-dialog::backdrop {
   background: transparent !important;
 }
 
+.kalender-gruppe-tablist {
+  margin-bottom: 0 !important;
+}
+
 .kalender-nav-leiste__submenu {
   display: flex;
   flex-wrap: wrap;
@@ -1067,46 +1071,9 @@ dialog.popup-dialog::backdrop {
   gap: 0.3rem;
   margin: 0;
   border-top: 1px solid var(--border);
-  padding: 0.45rem 0.65rem 0.5rem;
-  background: color-mix(in srgb, var(--border) 16%, var(--bg));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent);
-}
-
-.kalender-nav-leiste .kalender-gruppe-bar--submenu {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin: 0;
-  width: 100%;
-  gap: 0.3rem;
-}
-
-.kalender-gruppe-bar--submenu .kalender-gruppe-bar__btn {
-  font-size: 0.8125rem;
-  padding: 0.34rem 0.75rem;
-  border-radius: 0.35rem;
-  background: color-mix(in srgb, var(--card) 75%, var(--bg));
-  border-color: color-mix(in srgb, var(--border) 70%, var(--accent));
-}
-
-.kalender-gruppe-bar--submenu .kalender-gruppe-bar__btn:hover {
-  background: var(--card);
-}
-
-.kalender-gruppe-bar--submenu .kalender-gruppe-bar__btn[aria-pressed="true"],
-.kalender-gruppe-bar--submenu .kalender-gruppe-bar__btn--active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-  font-weight: 700;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-}
-
-.kalender-gruppe-bar--submenu .kalender-gruppe-bar__btn[aria-pressed="true"]:hover,
-.kalender-gruppe-bar--submenu .kalender-gruppe-bar__btn--active:hover {
-  background: var(--accent-dim);
-  border-color: var(--accent-dim);
-  color: #fff;
+  padding: 0.25rem 0.35rem 0.35rem;
+  background: transparent;
+  box-shadow: none;
 }
 
 .kalender-gruppe-bar--standalone {
