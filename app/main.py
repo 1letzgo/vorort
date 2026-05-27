@@ -121,6 +121,24 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
+
+def _compute_asset_version() -> str:
+    """Cache-Buster: höchste mtime relevanter Static-Assets (app.css, *.js)."""
+    candidates = [STATIC_DIR / "app.css", *STATIC_DIR.glob("*.js")]
+    mtimes = []
+    for p in candidates:
+        try:
+            mtimes.append(p.stat().st_mtime)
+        except OSError:
+            continue
+    if not mtimes:
+        return "0"
+    return str(int(max(mtimes)))
+
+
+ASSET_VERSION = _compute_asset_version()
+templates.env.globals["asset_version"] = ASSET_VERSION
+
 _cal_log = logging.getLogger("wahlkampf.fraktion_cal")
 
 
