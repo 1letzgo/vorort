@@ -1204,26 +1204,38 @@ dialog.popup-dialog::backdrop {
 }
 /* ─── Kalender-Navigation als zwei Dropdowns ──────────────────────────── */
 .kalender-nav-dd {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
+  width: 100%;
   margin: 0 0 1rem;
   position: relative;
+  box-sizing: border-box;
+}
+
+/* Admin-Hub: nur ein OV-Dropdown → volle Breite */
+.kalender-nav-dd__group:only-child {
+  grid-column: 1 / -1;
 }
 
 .kalender-nav-dd__group {
-  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   min-width: 0;
   position: relative;
 }
 
 .kalender-nav-dd__label {
   display: block;
+  width: 100%;
   font-size: 0.66rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted);
-  margin: 0 0 0.32rem 0.25rem;
+  margin: 0 0 0.35rem;
+  line-height: 1.2;
 }
 
 .kalender-nav-dd__btn {
