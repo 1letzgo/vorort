@@ -1202,3 +1202,212 @@ dialog.popup-dialog::backdrop {
   gap: 0.5rem;
   justify-content: flex-end;
 }
+/* ─── Kalender-Navigation als zwei Dropdowns ──────────────────────────── */
+.kalender-nav-dd {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  position: relative;
+}
+
+.kalender-nav-dd__group {
+  flex: 1 1 0;
+  min-width: 0;
+  position: relative;
+}
+
+.kalender-nav-dd__label {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 0 0 0.32rem 0.25rem;
+}
+
+.kalender-nav-dd__btn {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.65rem 0.6rem 0.8rem;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  text-align: left;
+  line-height: 1.2;
+  min-height: 2.6rem;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.kalender-nav-dd__btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.kalender-nav-dd__btn:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.18);
+}
+
+.kalender-nav-dd__btn[aria-expanded="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.12);
+}
+
+.kalender-nav-dd__btn-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.kalender-nav-dd__btn-val {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kalender-nav-dd__caret {
+  color: var(--muted);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.kalender-nav-dd__btn[aria-expanded="true"] .kalender-nav-dd__caret {
+  transform: rotate(180deg);
+}
+
+/* Gruppen-Punkt im Trigger und in den Optionen */
+.kalender-nav-dd__btn-dot,
+.kalender-nav-dd__opt-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.kalender-nav-dd__btn-dot--alle,
+.kalender-nav-dd__opt-dot--alle { background: var(--muted); }
+.kalender-nav-dd__btn-dot--verband,
+.kalender-nav-dd__opt-dot--verband { background: #c41e3a; }
+.kalender-nav-dd__btn-dot--vorstand,
+.kalender-nav-dd__opt-dot--vorstand { background: #15803d; }
+.kalender-nav-dd__btn-dot--fraktion,
+.kalender-nav-dd__opt-dot--fraktion { background: #1d4ed8; }
+
+/* Menü-Popover */
+.kalender-nav-dd__menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+  z-index: 50;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.kalender-nav-dd__menu[hidden] {
+  display: none;
+}
+
+.kalender-nav-dd__opt {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: calc(var(--radius) - 3px);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+  outline: none;
+}
+
+.kalender-nav-dd__opt:hover,
+.kalender-nav-dd__opt:focus-visible {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.kalender-nav-dd__opt.is-active {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.kalender-nav-dd__opt-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kalender-nav-dd__check {
+  flex-shrink: 0;
+  color: var(--accent);
+  opacity: 0;
+}
+
+.kalender-nav-dd__opt.is-active .kalender-nav-dd__check {
+  opacity: 1;
+}
+
+/* Badge (z. B. Admin-Hub: Anzahl offener Anfragen pro OV) */
+.kalender-nav-dd__btn-badge,
+.kalender-nav-dd__opt-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.kalender-nav-dd__opt-badge {
+  margin-left: auto;
+}
+
+.kalender-nav-dd__opt .kalender-nav-dd__opt-badge + .kalender-nav-dd__check {
+  margin-left: 0.35rem;
+}
+
+/* Schmale Screens: Labels enger an Buttons, etwas kompakter */
+@media (max-width: 480px) {
+  .kalender-nav-dd {
+    gap: 0.4rem;
+  }
+  .kalender-nav-dd__btn {
+    padding: 0.55rem 0.5rem 0.55rem 0.65rem;
+    font-size: 0.9rem;
+  }
+}
