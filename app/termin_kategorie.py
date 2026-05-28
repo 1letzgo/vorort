@@ -83,7 +83,7 @@ def sichtbar_nach_kategorie(
     user_id: int,
     created_by_id: int | None,
 ) -> bool:
-    """Sichtbarkeit Verband/Vorstand/Fraktion (für Termine und Aufgaben)."""
+    """Sichtbarkeit Verband/Vorstand/Fraktion (für Termine)."""
     kat = normalize_termin_kategorie(kategorie)
     ms = mandant_slug.strip().lower()
     if kat == TERMIN_KAT_VERBAND:
@@ -95,45 +95,6 @@ def sichtbar_nach_kategorie(
     if kat == TERMIN_KAT_FRAKTION:
         return user_is_fraktionsmitglied(pdb, user_id, ms)
     return True
-
-
-def aufgabe_kategorie_effective(obj: Any) -> str:
-    return normalize_termin_kategorie(getattr(obj, "termin_kategorie", None))
-
-
-def aufgabe_sichtbar_nach_kategorie(
-    pdb: Session,
-    a: Any,
-    *,
-    user_id: int,
-) -> bool:
-    return sichtbar_nach_kategorie(
-        pdb,
-        mandant_slug=getattr(a, "mandant_slug", "") or "",
-        kategorie=aufgabe_kategorie_effective(a),
-        user_id=user_id,
-        created_by_id=getattr(a, "created_by_id", None),
-    )
-
-
-def filter_aufgaben_fuer_ics(
-    pdb: Session,
-    aufgaben: list[Any],
-    *,
-    calendar_owner_user_id: int | None,
-) -> list[Any]:
-    """Öffentlicher Feed ohne Nutzer: nur Verband. Persönliche Feeds: Kategorie + Rechte."""
-    out: list[Any] = []
-    for a in aufgaben:
-        kat = aufgabe_kategorie_effective(a)
-        if kat == TERMIN_KAT_VERBAND:
-            out.append(a)
-            continue
-        if calendar_owner_user_id is None:
-            continue
-        if aufgabe_sichtbar_nach_kategorie(pdb, a, user_id=calendar_owner_user_id):
-            out.append(a)
-    return out
 
 
 def termin_sichtbar_nach_kategorie(

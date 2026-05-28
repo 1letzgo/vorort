@@ -15,7 +15,7 @@
   <title>{% block title %}Wahlkampf{% endblock %}</title>
   <link rel="stylesheet" href="{{ path_prefix }}/static/app.css?v={{ asset_version }}">
   {% include '_ics_surface_styles.html' %}
-  {# Dropdown-Navigation für Termine / Aufgaben / Admin. Wird nur aktiv,
+  {# Dropdown-Navigation für Termine / Admin. Wird nur aktiv,
      wenn die Seite einen [data-kalnav]-Container enthält. #}
   <script defer src="{{ path_prefix }}/static/kalender-nav.js?v={{ asset_version }}"></script>
   {% block head %}{% endblock %}

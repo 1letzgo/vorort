@@ -23,7 +23,6 @@ from app.cal_fraktion_import import (
     validate_and_normalize_cal_subscription_url,
 )
 from app.mandant_features import (
-    FEATURE_AUFGABEN,
     FEATURE_PLAKATE,
     FEATURE_SHAREPIC,
     is_mandant_feature_enabled,
@@ -75,7 +74,6 @@ def _ov_edit_form_ctx(
         "is_new": False,
         "feature_plakate": is_mandant_feature_enabled(db, ov.slug, FEATURE_PLAKATE),
         "feature_sharepic": is_mandant_feature_enabled(db, ov.slug, FEATURE_SHAREPIC),
-        "feature_aufgaben": is_mandant_feature_enabled(db, ov.slug, FEATURE_AUFGABEN),
         "sharepic_slogan_default": slogan_default,
         "flash_ov_gespeichert": flash_ov_gespeichert,
         "max_upload_mb": MAX_UPLOAD_MB,
@@ -249,7 +247,6 @@ def superadmin_ov_edit_submit(
     display_name: Annotated[str, Form()],
     feature_plakate: Annotated[Optional[str], Form()] = None,
     feature_sharepic: Annotated[Optional[str], Form()] = None,
-    feature_aufgaben: Annotated[Optional[str], Form()] = None,
     sharepic_slogan_default: Annotated[Optional[str], Form()] = None,
 ):
     ov = db.get(Ortsverband, slug.strip().lower())
@@ -259,7 +256,6 @@ def superadmin_ov_edit_submit(
     ms = ov.slug.strip().lower()
     merge_mandant_feature(db, ms, FEATURE_PLAKATE, feature_plakate == "1")
     merge_mandant_feature(db, ms, FEATURE_SHAREPIC, feature_sharepic == "1")
-    merge_mandant_feature(db, ms, FEATURE_AUFGABEN, feature_aufgaben == "1")
     if sharepic_slogan_default is not None:
         save_sharepic_slogan_default(db, ms, sharepic_slogan_default)
     db.add(ov)

@@ -92,18 +92,13 @@
   </a>
 {% endcall %}
 
-{% if show_alle_termine | default(false) or show_aufgaben_kalender | default(false) %}
+{% if show_alle_termine | default(false) %}
 <div class="card card--flush">
   <ul class="menu-list" role="list">
     <li class="menu-list-section">
       <h2 class="menu-list-section__label" id="menu-uebersicht-heading">Kalender</h2>
     </li>
-    {% if show_alle_termine | default(false) %}
     <li><a href="{{ request.state.mandanten_prefix }}/termine?tab=alle&amp;gruppe=alle"><span class="menu-list__main">{{ ico.svg_calendar() }}<span>Termine</span></span></a></li>
-    {% endif %}
-    {% if show_aufgaben_kalender | default(false) %}
-    <li><a href="{{ request.state.mandanten_prefix }}/aufgaben?tab=alle&amp;gruppe=alle"><span class="menu-list__main">{{ ico.svg_check() }}<span>Aufgaben</span></span></a></li>
-    {% endif %}
   </ul>
 </div>
 {% endif %}

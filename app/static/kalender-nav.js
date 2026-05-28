@@ -1,5 +1,5 @@
 /*
- * kalender-nav.js — Dropdown-Navigation für Termine / Aufgaben / Admin.
+ * kalender-nav.js — Dropdown-Navigation für Termine / Admin.
  *
  * Pro Seite gibt es einen Container [data-kalnav] mit ein oder zwei Dropdowns:
  *   - data-kalnav-trigger="ov"     -> wechselt Panel + URL ?tab=

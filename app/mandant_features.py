@@ -9,11 +9,8 @@ from app.platform_models import MandantAppSetting
 FEATURE_PLAKATE = "feature_plakate"
 FEATURE_SHAREPIC = "feature_sharepic"
 FEATURE_FRAKTION = "feature_fraktion"
-FEATURE_AUFGABEN = "feature_aufgaben"
 
-_FEATURE_DEFAULT_ENABLED: dict[str, bool] = {
-    FEATURE_AUFGABEN: False,
-}
+_FEATURE_DEFAULT_ENABLED: dict[str, bool] = {}
 
 
 def is_mandant_feature_enabled(

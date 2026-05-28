@@ -188,7 +188,7 @@ def run_platform_sqlite_migrations(engine: Engine) -> None:
     migrate_termine_kategorie_sqlite(engine)
     migrate_extern_cal_subscriptions_sqlite(engine)
     migrate_extern_cal_subscriptions_termin_kategorie_sqlite(engine)
-    migrate_aufgaben_tables_sqlite(engine)
+    drop_aufgaben_tables_sqlite(engine)
 
 
 def migrate_extern_cal_subscriptions_termin_kategorie_sqlite(engine: Engine) -> None:
@@ -210,14 +210,16 @@ def migrate_extern_cal_subscriptions_termin_kategorie_sqlite(engine: Engine) -> 
         )
 
 
-def migrate_aufgaben_tables_sqlite(engine: Engine) -> None:
-    """Neue Tabellen für OV-Aufgaben (optional pro Mandant)."""
+def drop_aufgaben_tables_sqlite(engine: Engine) -> None:
+    """Aufgaben-Feature wurde entfernt — Tabellen droppen, falls noch vorhanden."""
     if engine.dialect.name != "sqlite":
         return
-    from app.platform_models import Aufgabe, AufgabeZuweisung
-
-    Aufgabe.__table__.create(bind=engine, checkfirst=True)
-    AufgabeZuweisung.__table__.create(bind=engine, checkfirst=True)
+    insp = inspect(engine)
+    with engine.begin() as conn:
+        if insp.has_table("aufgabe_zuweisungen"):
+            conn.execute(text("DROP TABLE aufgabe_zuweisungen"))
+        if insp.has_table("aufgaben"):
+            conn.execute(text("DROP TABLE aufgaben"))
 
 
 def migrate_extern_cal_subscriptions_sqlite(engine: Engine) -> None:
