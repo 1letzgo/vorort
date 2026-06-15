@@ -23,7 +23,7 @@
   var TEXT2_LH = 50;
   var TEXT2_MAX_W = 680;
   var TEXT2_MAX_LINES = 2;
-  var FONT_FOOT = '700 50px "Open Sans", system-ui, sans-serif';
+  var FONT_FOOT = '700 50px "Karla", system-ui, sans-serif';
   var FILL = "#ffffff";
 
   function loadImage(src, useAnonymousCors) {
@@ -156,7 +156,7 @@
     var headerAvail = L.headerBottom - y0 - 8;
     for (; fs >= 15; fs -= 2) {
       lh = Math.round(fs * 1.14);
-      ctx.font = '700 ' + fs + 'px "Open Sans", system-ui, sans-serif';
+      ctx.font = '700 ' + fs + 'px "Karla", system-ui, sans-serif';
       lines = textToLines(ctx, name, maxW, 2);
       var blockH = lines.length * lh;
       var ok = blockH <= headerAvail && blockH <= L.headerBottom - y0 - 4;
@@ -168,7 +168,7 @@
       if (ok) break;
     }
     lh = Math.round(fs * 1.14);
-    ctx.font = '700 ' + fs + 'px "Open Sans", system-ui, sans-serif';
+    ctx.font = '700 ' + fs + 'px "Karla", system-ui, sans-serif';
     lines = textToLines(ctx, name, maxW, 2);
     if (!lines.length) return;
     for (var i = 0; i < lines.length; i++) {
@@ -189,13 +189,13 @@
     var fs = 40;
     var lines;
     for (; fs >= 18; fs -= 2) {
-      ctx.font = '700 ' + fs + 'px "Open Sans", system-ui, sans-serif';
+      ctx.font = '700 ' + fs + 'px "Karla", system-ui, sans-serif';
       lines = textToLines(ctx, raw, maxW, MID_MAX_LINES);
       if (!lines.length) return;
       var ok = ctx.measureText(lines[0]).width <= maxW;
       if (ok) break;
     }
-    ctx.font = '700 ' + fs + 'px "Open Sans", system-ui, sans-serif';
+    ctx.font = '700 ' + fs + 'px "Karla", system-ui, sans-serif';
     lines = textToLines(ctx, raw, maxW, MID_MAX_LINES);
     if (!lines.length) {
       ctx.textAlign = "left";
@@ -226,7 +226,7 @@
     var lines;
     for (; fs >= 22; fs -= 2) {
       lh = Math.round(fs * 1.1);
-      ctx.font = '700 ' + fs + 'px "Open Sans", system-ui, sans-serif';
+      ctx.font = '700 ' + fs + 'px "Karla", system-ui, sans-serif';
       lines = useExplicit ? explicitLines : textToLines(ctx, raw, maxW, SLOGAN_MAX_LINES);
       var blockH = lines.length * lh;
       var ok = blockH <= L.headerBottom - 10;
@@ -238,7 +238,7 @@
       if (ok) break;
     }
     lh = Math.round(fs * 1.1);
-    ctx.font = '700 ' + fs + 'px "Open Sans", system-ui, sans-serif';
+    ctx.font = '700 ' + fs + 'px "Karla", system-ui, sans-serif';
     lines = useExplicit ? explicitLines : textToLines(ctx, raw, maxW, SLOGAN_MAX_LINES);
     var blockH = lines.length * lh;
     var y0 = Math.max(4, Math.round((L.headerBottom - blockH) / 2) - 10);
@@ -268,9 +268,9 @@
     if (!document.fonts || !document.fonts.load) return;
     try {
       await document.fonts.load(FONT_FOOT);
-      await document.fonts.load('700 40px "Open Sans", system-ui, sans-serif');
-      await document.fonts.load('700 26px "Open Sans", system-ui, sans-serif');
-      await document.fonts.load('700 46px "Open Sans", system-ui, sans-serif');
+      await document.fonts.load('700 40px "Karla", system-ui, sans-serif');
+      await document.fonts.load('700 26px "Karla", system-ui, sans-serif');
+      await document.fonts.load('700 46px "Karla", system-ui, sans-serif');
     } catch (e) {}
   }
 

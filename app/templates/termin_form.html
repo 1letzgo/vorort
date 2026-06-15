@@ -117,7 +117,7 @@
 {% if termin_sharepic_enabled %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Karla:wght@700&display=swap" rel="stylesheet">
 {% endif %}
 {% endblock %}
 {% block body %}
@@ -376,7 +376,7 @@
 })();
 </script>
 {% if termin_sharepic_enabled %}
-<script src="{{ path_prefix }}/static/sharepic-generator-v2.js?v=20260506e"></script>
+<script src="{{ path_prefix }}/static/sharepic-generator-v2.js?v={{ asset_version }}"></script>
 <script type="application/json" id="termin-sharepic-config">{{ {"maskSrc": termin_sharepic_mask_src, "ovDisplay": termin_sharepic_ov_display, "slogan": termin_sharepic_slogan_default } | tojson }}</script>
 <script>
 (function () {
