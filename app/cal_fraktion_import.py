@@ -7,9 +7,10 @@ import logging
 import re
 import urllib.request
 import xml.etree.ElementTree as ET
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time
 from typing import Any
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo
 
 from icalendar import Calendar
 from sqlalchemy.exc import IntegrityError
@@ -20,6 +21,9 @@ from app.platform_models import ExternCalSubscription, Termin
 from app.termin_kategorie import apply_kategorie_to_termin_row, normalize_termin_kategorie
 
 logger = logging.getLogger(__name__)
+
+# Termine in der App sind naive Europe/Berlin-Wanduhrzeiten (wie manuelle Eingabe).
+TZ_LOCAL = ZoneInfo("Europe/Berlin")
 
 
 def validate_and_normalize_cal_subscription_url(raw: str) -> tuple[str | None, str | None]:
@@ -72,15 +76,16 @@ def fetch_subscription_bytes(feed_url: str, *, timeout: int | None = None) -> by
         return resp.read()
 
 
-def _aware_to_naive_utc(dt: datetime) -> datetime:
+def _aware_to_naive_local(dt: datetime) -> datetime:
+    """Zeitzone-aware ICS-Zeit → naive Ortszeit (Deutschland)."""
     if dt.tzinfo is None:
         return dt
-    return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt.astimezone(TZ_LOCAL).replace(tzinfo=None)
 
 
 def _dtstart_to_datetime(val: Any) -> datetime | None:
     if isinstance(val, datetime):
-        return _aware_to_naive_utc(val)
+        return _aware_to_naive_local(val)
     if isinstance(val, date):
         return datetime.combine(val, time.min)
     return None
