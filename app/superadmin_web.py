@@ -571,6 +571,11 @@ def superadmin_cal_sub_sync_now(
     base = f"/admin/kalender-abos/{sub_id}/bearbeiten"
     if err:
         return RedirectResponse(f"{base}?cal_import_err={quote(err)}", status_code=302)
+    q: list[str] = []
+    if n:
+        q.append(f"cal_import_created={n}")
+    if u:
+        q.append(f"cal_import_updated={u}")
     if not q:
         return RedirectResponse(base, status_code=302)
     return RedirectResponse(f"{base}?{'&'.join(q)}", status_code=302)
